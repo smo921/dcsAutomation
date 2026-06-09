@@ -1,3 +1,23 @@
+-- ============================================================================
+-- GLOBAL THEATER ASSETS (Spawned relative to Bullseye at Mission Start)
+-- ============================================================================
+local GlobalTheaterAssets = {
+    awacs = {
+        groupName   = "Magic_Global_Sentry",
+        unitType    = "E-3A",
+        country     = "USA",
+        frequency   = 251.0,     -- MHz AM
+        callsign    = 2,         -- Magic
+        number      = 1,         -- Magic 1-1
+        altitude    = 9500,      -- Meters (~31,000 ft) for maximum radar horizon
+        speed       = 540,       -- km/h
+        orbitLength = 60000,     -- 60km wide racetrack pattern
+        
+        -- BULLSEYE STANDOFF VECTOR
+        offsetHeading  = 240,    -- Heading from Bullseye to safe orbit zone (SW)
+        offsetDistance = 90      -- Stay 90 kilometers away from Bullseye center
+    }
+}
 -- ==============================================================================
 -- 1. CENTRALIZED SECTOR MANIFEST (Edit your mission profiles here)
 -- ==============================================================================
@@ -16,6 +36,16 @@ local SectorManifest = {
         route = {
             { type = "On Road", speed = 30, offsetX = 5000, offsetY = 5000 },
             { type = "On Road", speed = 30, offsetX = 8000, offsetY = 12000 }
+        },
+        -- NEW: Drone assigned to track this ground movement profile right at mission start
+        drone = {
+            groupName   = "Reaper_Overwatch_Alpha",
+            unitType    = "MQ-9 Reaper",
+            country     = "USA",
+            frequency   = 133.1,
+            callsign    = 1,
+            altitude    = 4500,
+            speed       = 200
         }
     },
 
@@ -43,6 +73,17 @@ local SectorManifest = {
         maxDetectRange   = 150000.0,
         checkInterval    = 5.0,
         
+        -- DEDICATED RECON DRONE: Tied strictly to this localized sector target
+        drone = {
+            groupName   = "Reaper_Eye_Bravo",
+            unitType    = "MQ-9 Reaper",
+            country     = "USA",
+            frequency   = 133.0, -- MHz AM
+            callsign    = 1,     -- Darkstar
+            altitude    = 5000,  -- Meters
+            speed       = 220    -- km/h
+        },
+
         groupName        = "North_Vanguard_Platoon",
         country          = "Russia",
         composition      = { "T-72B", "BMP-2", "ZSU-23-4 Shilka" },
@@ -99,11 +140,16 @@ local SectorManifest = {
 -- ==============================================================================
 
 function startDynamicTheatre()
-    for _, configBlock in ipairs(SectorManifest) do
-        local directorInstance = MissionDirector.new(configBlock)
-        directorInstance:startEngineLoop()
-    end
-    
+    -- 1. Initialize global assets (AWACS relative to Bullseye)
+    MissionDirector:initializeGlobalAssets(GlobalTheaterAssets)
+
+    -- 2. Loop through the manifest, build the objects, and spin up their lifecycles
+    for _, profile in ipairs(SectorManifest) do
+        local sector = MissionDirector.new(profile)
+        
+        -- REUSED HOOK: This kicks off the routing logic we defined above!
+        sector:startEngineLoop()
+    end    
     env.info("[Orchestrator] All dynamic theatre environments successfully initialized.")
 end
 
