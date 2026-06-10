@@ -69,6 +69,7 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
         offsetX = 1500, -- fallback offset from bullseye if zone not found
         offsetY = 2500,
         spawnRadius = 1000,
+        strategy = "ZONE_RANDOM",
         zoneName = "Alpha_Radar_Clearing"
     },
 

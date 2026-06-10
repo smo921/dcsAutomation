@@ -18,7 +18,12 @@ function SpatialSolver.terrainIsClear(x, y, radius)
     return true
 end
 
-function SpatialSolver.resolveCoordinates(coalition, placementConfig)
+function SpatialSolver.getCoordinates(coalition, placementConfig)
+    local bullseye = SpatialSolver.getBullseye(coalition)
+    return bullseye.x + placementConfig.offsetX, bullseye.y + placementConfig.offsetY
+end
+
+function SpatialSolver.findSafeGroundCoordinates(coalition, placementConfig)
     local blueBullseye = SpatialSolver.getBullseye(coalition)
     local startX, startY
     local finalX, finalY
@@ -36,8 +41,7 @@ function SpatialSolver.resolveCoordinates(coalition, placementConfig)
             startY = zoneData.point.z
         end
     else
-        startX = blueBullseye.x + placementConfig.offsetX
-        startY = blueBullseye.y + placementConfig.offsetY
+        startX, startY = SpatialSolver.getCoordinates(coalition, placementConfig)
     end
     
     local safeFound = false
@@ -63,8 +67,8 @@ function SpatialSolver.resolveCoordinates(coalition, placementConfig)
     
     -- Fallback: If 20 attempts all hit dense forest, fall back to random offset
     if not safeFound then
-        finalX = x + (math.random(-50, 50))
-        finalY = y + (math.random(-50, 50))
+        finalX = startX + (math.random(-50, 50))
+        finalY = startY + (math.random(-50, 50))
         env.info(string.format("[Director Warning] Could not find clear clearing for %s Unit %d after 20 attempts. Defaulting near center.", self.groupName, i))
     end
 
@@ -197,7 +201,7 @@ function MissionDirector:executeSectorSpawn()
     
     -- 1A. If this is a RADAR sector, insert the master emitting radar unit first
     if self.triggerType == "RADAR" and self.radarUnitType then
-        finalX, finalY = SpatialSolver.resolveCoordinates("blue", self.placement)
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates("blue", self.placement)
         table.insert(unitsPayload, {
             ["type"]    = self.unitType,
             ["name"]    = self.groupName .. "_Master_Unit",
@@ -211,7 +215,7 @@ function MissionDirector:executeSectorSpawn()
     -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
     if self.units then
         for i, unitType in ipairs(self.units) do
-            finalX, finalY = SpatialSolver.resolveCoordinates("blue", self.placement)
+            finalX, finalY = SpatialSolver.findSafeGroundCoordinates("blue", self.placement)
             table.insert(unitsPayload, {
                 ["type"]    = unitType,
                 ["name"]    = self.groupName .. "_Unit_" .. i,
@@ -259,12 +263,8 @@ function MissionDirector:executeSectorSpawn()
         timer.scheduleFunction(function()
             
             -- Establish the final anchor coordinates for the drone's station
-            local targetX = calculatedX or (mist.DBs.missionData["bullseye"]["blue"].x + self.placement.offsetX)
-            local targetY = calculatedY or (mist.DBs.missionData["bullseye"]["blue"].y + self.placement.offsetY)
-            
-            self.droneConfig.targetX = targetX
-            self.droneConfig.targetY = targetY
-            
+            local targetX, targetY = SpatialSolver.getCoordinates("blue", self.placement)
+                        
             -- FIX: Only spawn the drone here if it hasn't already been spawned by deployRadarStation!
             if not Group.getByName(self.droneConfig.groupName) then
                 self:spawnDynamicDrone(self.droneConfig, targetX, targetY)
@@ -398,7 +398,7 @@ function MissionDirector:assignDroneToTarget(droneGroupName, targetGroupName)
 end
 
 function MissionDirector:deployRadarStation()
-    if not self.groupName or not self.radarUnitType then return end
+    if not self.groupName or not self.unitType then return end
     
     local finalX, finalY
     
@@ -432,7 +432,7 @@ function MissionDirector:deployRadarStation()
     
     -- 2. Explicit Fallback: If zone logic fails or isn't specified, use your profile offsets
     if not finalX or not finalY then
-        finalX, finalY = SpatialSolver.resolveCoordinates("blue", self.placement)
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates("blue", self.placement)
         env.info("[Director Fallback] Anchoring radar " .. self.radarGroupName .. " to configured profile offsets.")
     end
 
@@ -442,14 +442,14 @@ function MissionDirector:deployRadarStation()
         ["task"] = "EWR",
         ["category"] = "GROUND",
         ["country"] = self.country,
-        ["name"] = self.radarGroupName,
+        ["name"] = self.groupName,
         ["route"] = { ["points"] = { { ["x"] = finalX, ["y"] = finalY, ["type"] = "Turning Point", ["action"] = "From Ground Area", ["speed"] = 0 } } },
         ["units"] = {
             {
-                ["type"] = self.radarUnitType,
-                ["name"] = self.radarGroupName .. "_Sensor_Unit",
+                ["type"] = self.unitType,
+                ["name"] = self.groupName .. "_Sensor_Unit",
                 ["x"] = finalX, ["y"] = finalY,
-                ["heading"] = (self.radarHeading or 0) * (math.pi / 180)
+                ["heading"] = (self.heading or 0) * (math.pi / 180)
             }
         }
     }
@@ -462,7 +462,7 @@ function MissionDirector:deployRadarStation()
         if g and g:getController() then
             g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
         end
-    end, {name = self.radarGroupName}, timer.getTime() + 1.0)
+    end, {name = self.groupName}, timer.getTime() + 1.0)
 
     -- 3. Deploy Air Defense Ring Escorts if configured
     if self.pointDefense and type(self.pointDefense.units) == "table" and #self.pointDefense.units > 0 then
@@ -477,7 +477,7 @@ function MissionDirector:deployRadarStation()
             local adY = finalY + (math.sin(randomAngle) * randomDist)
             
             if land.getSurfaceType({x = adX, y = adY}) ~= 3 then
-                local adGroupName = self.radarGroupName .. "_AD_Node_" .. idx
+                local adGroupName = self.groupName .. "_AD_Node_" .. idx
                 local adPayload = {
                     ["visible"] = true,
                     ["task"] = "Ground Nothing",
