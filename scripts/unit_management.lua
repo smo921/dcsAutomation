@@ -1,4 +1,88 @@
-local function countSceneryObstructions(x, y, radius)
+SpatialSolver = {}
+
+function SpatialSolver.getBullseye(coalition)
+    return mist.DBs.missionData["bullseye"][coalition]
+end
+
+function SpatialSolver.terrainIsClear(x, y, radius)
+    -- Check surface type (not water)
+    if land.getSurfaceType({x, y}) == 3 then
+        return false -- surface type is water
+    elseif SpatialSolver.findStaticObstructions(x, y, radius) == true then
+        return false
+    elseif SpatialSolver.countSceneryObstructions(x, y, radius) > 0 then
+        -- 2. CRITICAL: Use your scenery scanner to check for trees!
+        -- A radius of 15-20 meters ensures enough physical space for a tank/vehicle.
+        return false
+    end
+    return true
+end
+
+function SpatialSolver.resolveCoordinates(coalition, placementConfig)
+    local blueBullseye = SpatialSolver.getBullseye(coalition)
+
+    -- Strategy 1: Zone Randomization
+    if placementConfig.strategy == "ZONE_RANDOM" then
+        local zoneData = trigger.misc.getZone(placementConfig.zoneName)
+        if zoneData then
+            local point = mist.getRandomPointInZone(placementConfig.zoneName)
+            -- Check surface type (not water)
+            if land.getSurfaceType({x = point.x, y = point.y}) ~= 3 then
+                return point.x, point.y
+            end
+            return zoneData.point.x, zoneData.point.z -- fallback to center
+        end
+    end
+    
+    local safeFound = false
+    local attempts = 0
+    local scatterRadius = placementConfig.spawnRadius or 1000
+
+    -- Keep trying to find a clear spot up to 20 times per unit
+    while not safeFound and attempts < 20 do
+        attempts = attempts + 1
+        
+        local randomAngle = math.random() * 2 * math.pi
+        local randomDist  = math.random() * scatterRadius
+        
+        local checkX = placementConfig.offsetX + (math.cos(randomAngle) * randomDist)
+        local checkY = placementConfig.offsetY + (math.sin(randomAngle) * randomDist)
+        
+        if SpatialSolver.findStaticObstructions(checkX, checkY, 50) == false then
+            return checkX, checkY
+        end
+
+        -- 1. Ensure it's not open water
+        local surfaceType = land.getSurfaceType({x = checkX, y = checkY})
+        if surfaceType ~= 3 then -- 3 = Water
+            
+            -- 2. CRITICAL: Use your scenery scanner to check for trees!
+            -- A radius of 15-20 meters ensures enough physical space for a tank/vehicle.
+            local treeCount = countSceneryObstructions(checkX, checkY, 20)
+            
+            if treeCount == 0 then
+                unitX = checkX
+                unitY = checkY
+                safeFound = true
+            end
+        end
+    end
+    
+    -- Fallback: If 20 attempts all hit dense forest, fall back to the exact center anchor
+    if not safeFound then
+        unitX = placementConfig.offsetX + (math.random(-50, 50))
+        unitY = placementConfig.offsetX + (math.random(-50, 50))
+        env.info(string.format("[Director Warning] Could not find clear clearing for %s Unit %d after 20 attempts. Defaulting near center.", self.groupName, i))
+    end
+
+    -- Strategy 2: Bullseye Offset (Default Fallback)
+    local finalX = blueBullseye.x + (placementConfig.offsetX or 0)
+    local finalY = blueBullseye.y + (placementConfig.offsetY or 0)
+    return finalX, finalY
+end
+
+
+function SpatialSolver.countSceneryObstructions(x, y, radius)
     local obstructionCount = 0
     local sphere = {
         id = world.VolumeType.SPHERE,
@@ -23,7 +107,8 @@ local function countSceneryObstructions(x, y, radius)
     return obstructionCount
 end
 
-local function findStaticObstructions(x, y, radius)
+-- findStaticObstructions searche cirular area for obstructions, returning false if none found
+function SpatialSolver.findStaticObstructions(x, y, radius)
     local hasObstruction = false
     local sphere = {
         id = world.VolumeType.SPHERE,
@@ -52,27 +137,22 @@ function MissionDirector.new(configProfile)
     -- Activation Rules Configuration
     self.triggerType     = configProfile.triggerType or "IMMEDIATE"
     self.checkInterval   = configProfile.checkInterval or 5.0
-    self.spawnRadius     = configProfile.spawnRadius -- Capture the radius property mapping
 
     -- Conditional Triggers parameters
-    self.radarGroupName  = configProfile.radarGroupName
-    self.radarUnitType   = configProfile.radarUnitType
-    self.radarOffsetX    = configProfile.radarOffsetX
-    self.radarOffsetY    = configProfile.radarOffsetY
-    self.radarHeading    = configProfile.radarHeading or 0
+    self.groupName  = configProfile.groupName
+    self.unitType   = configProfile.unitType
+    self.heading    = configProfile.heading or 0
     self.pointDefense    = configProfile.pointDefense
     self.maxDetectRange  = configProfile.maxDetectRange or 200000.0
-    self.radarZoneName   = configProfile.radarZoneName
-    self.zoneName        = configProfile.zoneName or configProfile.radarZoneName
+        
     self.parentGroupName = configProfile.parentGroupName
     
     -- Spawning Layout Parameters
     self.country         = configProfile.country or "Russia"
-    self.groupName       = configProfile.groupName
-    self.composition     = configProfile.composition
-    self.heading         = configProfile.heading or 0
-    self.offsetX         = configProfile.offsetX or 0
-    self.offsetY         = configProfile.offsetY or 0
+    self.units     = configProfile.units
+
+    self.placement = configProfile.placement
+
     self.routeConfig     = configProfile.route
     
     self.awacsConfig     = configProfile.awacs   -- Stores the nested awacs sub-table
@@ -92,7 +172,7 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
     local awacsData = globalConfig.awacs
     
     -- Fetch the exact coalition Bullseye coordinates from the DCS environment
-    local bullseyePos = mist.DBs.missionData["bullseye"]["blue"]
+    local bullseyePos = SpatialSolver.getBullseye("blue")
     
     if bullseyePos then
         local headingDeg = awacsData.offsetHeading or 180
@@ -105,31 +185,21 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
         local safeX = bullseyePos.x + (math.cos(headingRad) * distanceMeters)
         local safeY = bullseyePos.y + (math.sin(headingRad) * distanceMeters)
         
-        -- Apply the calculated coordinates straight to the configuration block
-        awacsData.centerX = safeX
-        awacsData.centerY = safeY
-        
         -- Fire execution
-        self:spawnDynamicAWACS(awacsData)
+        self:spawnDynamicAWACS(awacsData, safeX, safeY)
         env.info("[Director] Global AWACS established relative to Theater Bullseye coordinates.")
     else
         env.info("[Director Error] Failed to retrieve Blue coalition Bullseye from the environment map!")
     end
 end
 
-function MissionDirector:executeSectorSpawn(calculatedX, calculatedY)
+function MissionDirector:executeSectorSpawn()
     -- ========================================================================
     -- SPATIAL CORRECTION MATRIX: Translate Relative Offsets to Absolute Map Space
     -- ========================================================================
-    local blueBullseye = mist.DBs.missionData["bullseye"]["blue"]
-    local bx = blueBullseye.x
-    local by = blueBullseye.y -- MIST maps horizontal plane to .y inside database properties
+    local blueBullseye = SpatialSolver.getBullseye("blue")
+    local finalX, finalY = SpatialSolver.resolveCoordinates("blue", self.placement)
     
-    -- If a conditional trigger calculates positions dynamically, use them.
-    -- Otherwise, anchor static manifest values straight out from the visual Bullseye.
-    local finalX = calculatedX or (bx + self.offsetX)
-    local finalY = calculatedY or (by + self.offsetY)
-
     -- ========================================================================
     -- STEP 1: CONSTRUCT AND DEPLOY GROUND ELEMENTS VIA MIST
     -- ========================================================================
@@ -147,47 +217,9 @@ function MissionDirector:executeSectorSpawn(calculatedX, calculatedY)
         })
     end
 
--- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
-    if self.composition then
-        for i, unitType in ipairs(self.composition) do
-            local scatterRadius = self.spawnRadius or 1000
-            local unitX, unitY
-            local safeFound = false
-            local attempts = 0
-            
-            -- Keep trying to find a clear spot up to 20 times per unit
-            while not safeFound and attempts < 20 do
-                attempts = attempts + 1
-                
-                local randomAngle = math.random() * 2 * math.pi
-                local randomDist  = math.random() * scatterRadius
-                
-                local checkX = finalX + (math.cos(randomAngle) * randomDist)
-                local checkY = finalY + (math.sin(randomAngle) * randomDist)
-                
-                -- 1. Ensure it's not open water
-                local surfaceType = land.getSurfaceType({x = checkX, y = checkY})
-                if surfaceType ~= 3 then -- 3 = Water
-                    
-                    -- 2. CRITICAL: Use your scenery scanner to check for trees!
-                    -- A radius of 15-20 meters ensures enough physical space for a tank/vehicle.
-                    local treeCount = countSceneryObstructions(checkX, checkY, 20)
-                    
-                    if treeCount == 0 then
-                        unitX = checkX
-                        unitY = checkY
-                        safeFound = true
-                    end
-                end
-            end
-            
-            -- Fallback: If 20 attempts all hit dense forest, fall back to the exact center anchor
-            if not safeFound then
-                unitX = finalX + (math.random(-50, 50))
-                unitY = finalY + (math.random(-50, 50))
-                env.info(string.format("[Director Warning] Could not find clear clearing for %s Unit %d after 20 attempts. Defaulting near center.", self.groupName, i))
-            end
-
+    -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
+    if self.units then
+        for i, unitType in ipairs(self.units) do
             table.insert(unitsPayload, {
                 ["type"]    = unitType,
                 ["name"]    = self.groupName .. "_Unit_" .. i,
@@ -235,8 +267,8 @@ function MissionDirector:executeSectorSpawn(calculatedX, calculatedY)
         timer.scheduleFunction(function()
             
             -- Establish the final anchor coordinates for the drone's station
-            local targetX = calculatedX or (mist.DBs.missionData["bullseye"]["blue"].x + self.offsetX)
-            local targetY = calculatedY or (mist.DBs.missionData["bullseye"]["blue"].y + self.offsetY)
+            local targetX = calculatedX or (mist.DBs.missionData["bullseye"]["blue"].x + self.placement.offsetX)
+            local targetY = calculatedY or (mist.DBs.missionData["bullseye"]["blue"].y + self.placement.offsetY)
             
             self.droneConfig.targetX = targetX
             self.droneConfig.targetY = targetY
@@ -283,11 +315,11 @@ end
 function MissionDirector:deployPlatoon()
     if self.hasSpawned then return end
 
-    local blueBullseye = mist.DBs.missionData["bullseye"]["blue"]
-    local bx, bz = blueBullseye.x, blueBullseye.y
+    local blueBullseye = SpatialSolver.getBullseye("blue")
+    local bx, by = blueBullseye.x, blueBullseye.y
     
     -- Calculate our baseline center anchor
-    local centerPoint = { x = bx + self.offsetX, y = bz + self.offsetY }
+    local centerPoint = { x = bx + self.placement.offsetX, y = by + self.placement.offsetY }
     local spawnOrigin = { x = centerPoint.x, y = centerPoint.y }
     
     -- If a radius is defined, shift our spawn point randomly within that boundary circle
@@ -306,7 +338,7 @@ function MissionDirector:deployPlatoon()
     -- Compile Waypoints
     local points = {}
     for _, wp in ipairs(self.routeConfig) do
-        local node = { ["x"] = bx + wp.offsetX, ["y"] = bz + wp.offsetY, ["type"] = "Turning Point", ["action"] = wp.type or "Off Road", ["speed"] = wp.speed / 3.6 }
+        local node = { ["x"] = bx + wp.offsetX, ["y"] = by + wp.offsetY, ["type"] = "Turning Point", ["action"] = wp.type or "Off Road", ["speed"] = wp.speed / 3.6 }
         local opts = {}
         if wp.roe and MissionDirector.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["ROE"], ["value"] = MissionDirector.ROE[wp.roe] } }) end
         if wp.threat and MissionDirector.THREAT_REACTION[wp.threat] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["THREAT_REACTION"], ["value"] = MissionDirector.THREAT_REACTION[wp.threat] } }) end
@@ -317,7 +349,7 @@ function MissionDirector:deployPlatoon()
     -- Compile Safe Units Layout (Maintains linear convoy line trailing back from the random origin point)
     local unitPool = {}
     local currentYOffset = 0
-    for idx, unitType in ipairs(self.composition) do
+    for idx, unitType in ipairs(self.units) do
         local checkX, checkY = spawnOrigin.x, spawnOrigin.y + currentYOffset
         local attempts = 0
         while attempts < 20 do
@@ -374,16 +406,16 @@ function MissionDirector:assignDroneToRadar(droneGroupName, targetGroupName)
 end
 
 function MissionDirector:deployRadarStation()
-    if not self.radarGroupName or not self.radarUnitType then return end
+    if not self.groupName or not self.radarUnitType then return end
     
     local finalX, finalY
     
     -- 1. Grab a random point inside the specified ME Trigger Zone
-    if self.radarZoneName then
-        local zoneData = trigger.misc.getZone(self.radarZoneName)
+    if self.placement.zoneName then
+        local zoneData = trigger.misc.getZone(self.placement.zoneName)
         
         if zoneData then
-            local randomZonePoint = mist.getRandomPointInZone(self.radarZoneName)
+            local randomZonePoint = mist.getRandomPointInZone(self.placement.zoneName)
             
             if randomZonePoint then
                 local surfaceCheckPoint = { 
@@ -408,12 +440,7 @@ function MissionDirector:deployRadarStation()
     
     -- 2. Explicit Fallback: If zone logic fails or isn't specified, use your profile offsets
     if not finalX or not finalY then
-        local blueBullseye = mist.DBs.missionData["bullseye"]["blue"]
-        local offsetX = self.radarOffsetX or 0
-        local offsetY = self.radarOffsetY or 0
-        
-        finalX = blueBullseye.x + offsetX
-        finalY = blueBullseye.y + offsetY
+        finalX, finalY = SpatialSolver.resolveCoordinates("blue", self.placement)
         env.info("[Director Fallback] Anchoring radar " .. self.radarGroupName .. " to configured profile offsets.")
     end
 
@@ -498,32 +525,38 @@ function MissionDirector:deployRadarStation()
     end
 end
 
-function MissionDirector:spawnDynamicAWACS(config)
-    local groupName   = config.groupName or "Dynamic_AWACS"
-    local unitType    = config.unitType or "E-3A"
-    local country     = config.country or "USA"
-    local frequency   = (config.frequency or 251.0) * 1000000 -- Convert MHz to Hz
-    local modulation  = config.modulation or 0 -- 0 = AM, 1 = FM
-    local callsignId  = config.callsign or 1    
-    local callsignNum = config.number or 1      
-    local spawnAlt    = config.altitude or 8000 
-    local speedKmh    = config.speed or 550
+function MissionDirector:spawnDynamicAWACS(awacsConfig, spawnX, spawnY)
+    local altitude    = awacsConfig.altitude or 8000 
+    local speed    = awacsConfig.speed or 550
     
-    local wp1_x = config.centerX
-    local wp1_y = config.centerY
-    local wp2_x = config.centerX + (config.orbitLength or 40000)
-    local wp2_y = config.centerY
+    local wp1_x = spawnX
+    local wp1_y = spawnY
+    local wp2_x = spawnX + (awacsConfig.orbitLength or 40000)
+    local wp2_y = spawnY
     
     local awacsPayload = {
         ["visible"] = true,
         ["category"] = "AIRPLANE",
-        ["country"] = country,
-        ["name"] = groupName,
+        ["country"] = awacsConfig.country,
+        ["name"] = awacsConfig.groupName,
+        ["units"] = {
+            [1] = {
+                ["type"] = awacsConfig.unitType or "E-3A",
+                ["name"] = awacsConfig.groupName .. "_Unit_1",
+                ["x"] = wp1_x,
+                ["y"] = wp1_y,
+                ["alt"] = altitude,
+                ["alt_type"] = "BARO",
+                ["speed"] = speed,
+                ["heading"] = 0,
+                ["skill"] = "Excellent"
+            }
+        },
         ["route"] = {
             ["points"] = {
-                {
-                    ["x"] = wp1_x, ["y"] = wp1_y, ["alt"] = spawnAlt, ["alt_type"] = "BARO",
-                    ["type"] = "Turning Point", ["action"] = "Turning Point", ["speed"] = speedKmh / 3.6,
+                [1] = {
+                    ["x"] = wp1_x, ["y"] = wp1_y, ["alt"] = altitude, ["alt_type"] = "BARO",
+                    ["type"] = "Turning Point", ["action"] = "Turning Point", ["speed"] = speed,
                     ["task"] = {
                         ["id"] = "ComboTask",
                         ["params"] = {
@@ -531,33 +564,25 @@ function MissionDirector:spawnDynamicAWACS(config)
                                 [1] = { ["id"] = "AWACS", ["params"] = {} },
                                 [2] = {
                                     ["id"] = "Orbit",
-                                    ["params"] = { ["pattern"] = "Racetrack", ["altitude"] = spawnAlt, ["speed"] = speedKmh / 3.6 }
+                                    ["params"] = { ["pattern"] = "Racetrack", ["altitude"] = altitude, ["speed"] = speed }
                                 },
-                                [3] = { ["id"] = "SetFrequency", ["params"] = { ["frequency"] = frequency, ["modulation"] = modulation } },
-                                [4] = { ["id"] = "SetCallsign", ["params"] = { ["callsign"] = callsignId, ["number"] = callsignNum } }
+                                [3] = { ["id"] = "SetFrequency", ["params"] = { ["frequency"] = awacsConfig.frequency, ["modulation"] = awacsConfig.modulation } },
+                                [4] = { ["id"] = "SetCallsign", ["params"] = { ["callsign"] = awacsConfig.callsign, ["number"] = awacsConfig.callsignNumber } }
                             }
                         }
                     }
                 },
                 {
-                    ["x"] = wp2_x, ["y"] = wp2_y, ["alt"] = spawnAlt, ["alt_type"] = "BARO",
-                    ["type"] = "Turning Point", ["action"] = "Turning Point", ["speed"] = speedKmh / 3.6,
+                    ["x"] = wp2_x, ["y"] = wp2_y, ["alt"] = altitude, ["alt_type"] = "BARO",
+                    ["type"] = "Turning Point", ["action"] = "Turning Point", ["speed"] = speed,
                     ["task"] = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = {} } }
                 }
-            }
-        },
-        ["units"] = {
-            {
-                ["type"] = unitType,
-                ["name"] = groupName .. "_Unit_1",
-                ["x"] = wp1_x, ["y"] = wp1_y, ["alt"] = spawnAlt,
-                ["speed"] = speedKmh / 3.6, ["heading"] = 0, ["skill"] = "Excellent"
             }
         }
     }
     
     mist.dynAdd(awacsPayload)
-    env.info(string.format("[Director] Dynamic AWACS %s (%s) spawned via configuration.", groupName, unitType))
+    env.info(string.format("[Director] Dynamic AWACS %s (%s) spawned via configuration.", awacsConfig.groupName, awacsConfig.unitType))
 end
 
 function MissionDirector:spawnDynamicDrone(droneConfig, spawnX, spawnY)
@@ -670,7 +695,7 @@ function MissionDirector:checkTriggerCondition()
             -- For now, falling back to standard offsets calculation inside executeSectorSpawn.
         end
         
-        self:executeSectorSpawn(spawnX, spawnY)
+        self:executeSectorSpawn(self.placement)
     else
         timer.scheduleFunction(function() 
             self:checkTriggerCondition() 
