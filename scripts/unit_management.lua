@@ -20,6 +20,8 @@ end
 
 function SpatialSolver.resolveCoordinates(coalition, placementConfig)
     local blueBullseye = SpatialSolver.getBullseye(coalition)
+    local startX, startY
+    local finalX, finalY
 
     -- Strategy 1: Zone Randomization
     if placementConfig.strategy == "ZONE_RANDOM" then
@@ -27,11 +29,15 @@ function SpatialSolver.resolveCoordinates(coalition, placementConfig)
         if zoneData then
             local point = mist.getRandomPointInZone(placementConfig.zoneName)
             -- Check surface type (not water)
-            if land.getSurfaceType({x = point.x, y = point.y}) ~= 3 then
+            if SpatialSolver.terrainIsClear(point.x, point.y, 20) then
                 return point.x, point.y
             end
-            return zoneData.point.x, zoneData.point.z -- fallback to center
+            startX = zoneData.point.x
+            startY = zoneData.point.z
         end
+    else
+        startX = blueBullseye.x + placementConfig.offsetX
+        startY = blueBullseye.y + placementConfig.offsetY
     end
     
     local safeFound = false
@@ -45,39 +51,23 @@ function SpatialSolver.resolveCoordinates(coalition, placementConfig)
         local randomAngle = math.random() * 2 * math.pi
         local randomDist  = math.random() * scatterRadius
         
-        local checkX = placementConfig.offsetX + (math.cos(randomAngle) * randomDist)
-        local checkY = placementConfig.offsetY + (math.sin(randomAngle) * randomDist)
+        local checkX = startX + (math.cos(randomAngle) * randomDist)
+        local checkY = startY + (math.sin(randomAngle) * randomDist)
         
-        if SpatialSolver.findStaticObstructions(checkX, checkY, 50) == false then
-            return checkX, checkY
-        end
-
-        -- 1. Ensure it's not open water
-        local surfaceType = land.getSurfaceType({x = checkX, y = checkY})
-        if surfaceType ~= 3 then -- 3 = Water
-            
-            -- 2. CRITICAL: Use your scenery scanner to check for trees!
-            -- A radius of 15-20 meters ensures enough physical space for a tank/vehicle.
-            local treeCount = countSceneryObstructions(checkX, checkY, 20)
-            
-            if treeCount == 0 then
-                unitX = checkX
-                unitY = checkY
-                safeFound = true
-            end
+        if SpatialSolver.terrainIsClear(checkX, checkX, 50) == true then
+            finalX = checkX
+            finalY = checkY
+            safeFound = true            
         end
     end
     
-    -- Fallback: If 20 attempts all hit dense forest, fall back to the exact center anchor
+    -- Fallback: If 20 attempts all hit dense forest, fall back to random offset
     if not safeFound then
-        unitX = placementConfig.offsetX + (math.random(-50, 50))
-        unitY = placementConfig.offsetX + (math.random(-50, 50))
+        finalX = x + (math.random(-50, 50))
+        finalY = y + (math.random(-50, 50))
         env.info(string.format("[Director Warning] Could not find clear clearing for %s Unit %d after 20 attempts. Defaulting near center.", self.groupName, i))
     end
 
-    -- Strategy 2: Bullseye Offset (Default Fallback)
-    local finalX = blueBullseye.x + (placementConfig.offsetX or 0)
-    local finalY = blueBullseye.y + (placementConfig.offsetY or 0)
     return finalX, finalY
 end
 
@@ -197,22 +187,23 @@ function MissionDirector:executeSectorSpawn()
     -- ========================================================================
     -- SPATIAL CORRECTION MATRIX: Translate Relative Offsets to Absolute Map Space
     -- ========================================================================
-    local blueBullseye = SpatialSolver.getBullseye("blue")
-    local finalX, finalY = SpatialSolver.resolveCoordinates("blue", self.placement)
+    -- local blueBullseye = SpatialSolver.getBullseye("blue")
     
     -- ========================================================================
     -- STEP 1: CONSTRUCT AND DEPLOY GROUND ELEMENTS VIA MIST
     -- ========================================================================
+    local finalX, finalY
     local unitsPayload = {}
     
     -- 1A. If this is a RADAR sector, insert the master emitting radar unit first
     if self.triggerType == "RADAR" and self.radarUnitType then
+        finalX, finalY = SpatialSolver.resolveCoordinates("blue", self.placement)
         table.insert(unitsPayload, {
-            ["type"]    = self.radarUnitType,
-            ["name"]    = self.radarGroupName .. "_Master_Unit",
+            ["type"]    = self.unitType,
+            ["name"]    = self.groupName .. "_Master_Unit",
             ["x"]       = finalX,
             ["y"]       = finalY,
-            ["heading"] = math.rad(self.radarHeading or 0),
+            ["heading"] = math.rad(self.heading or 0),
             ["skill"]   = "Excellent"
         })
     end
@@ -220,11 +211,12 @@ function MissionDirector:executeSectorSpawn()
     -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
     if self.units then
         for i, unitType in ipairs(self.units) do
+            finalX, finalY = SpatialSolver.resolveCoordinates("blue", self.placement)
             table.insert(unitsPayload, {
                 ["type"]    = unitType,
                 ["name"]    = self.groupName .. "_Unit_" .. i,
-                ["x"]       = unitX,
-                ["y"]       = unitY,
+                ["x"]       = finalX,
+                ["y"]       = finalY,
                 ["heading"] = math.rad(self.heading or 0),
                 ["skill"]   = "High"
             })
@@ -285,7 +277,7 @@ function MissionDirector:executeSectorSpawn()
                     self:createGroundTargetMarkpoint(self.groupName, targetX, targetY)
                     
                     -- Fire the autonomous zone search we built
-                    self:assignDroneToRadar(self.droneConfig.groupName, self.groupName)
+                    self:assignDroneToTarget(self.droneConfig.groupName, self.groupName)
                 end
             end, {}, timer.getTime() + 3.0)
 
@@ -377,7 +369,7 @@ function MissionDirector:checkOwnUnitsDead()
     return true
 end
 
-function MissionDirector:assignDroneToRadar(droneGroupName, targetGroupName)
+function MissionDirector:assignDroneToTarget(droneGroupName, targetGroupName)
     local droneGroup = Group.getByName(droneGroupName)
     
     if droneGroup then
@@ -586,8 +578,8 @@ function MissionDirector:spawnDynamicAWACS(awacsConfig, spawnX, spawnY)
 end
 
 function MissionDirector:spawnDynamicDrone(droneConfig, spawnX, spawnY)
-    local x = spawnX or droneConfig.targetX or 0
-    local y = spawnY or droneConfig.targetY or 0
+    local x = spawnX
+    local y = spawnY
     local altitude = droneConfig.altitude or 4572 
     local speed = (droneConfig.speed or 200) / 3.6 
 
