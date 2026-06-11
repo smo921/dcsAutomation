@@ -29,9 +29,9 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
     groupName = "Border_Patrol_Alpha",
     country = "Russia",
     units = {"T-72B", "BMP-2"},
-    heading = 90,
 
     placement = {
+        heading = 90,
         offsetX = 5000,
         offsetY = 5000,
         spawnRadius = 2000
@@ -63,9 +63,9 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
     triggerType = "RADAR",
     groupName = "EW Radar Alpha",
     unitType = "1L13 EWR",
-    heading = 135,
 
     placement = {
+        heading = 135,
         offsetX = 1500, -- fallback offset from bullseye if zone not found
         offsetY = 2500,
         spawnRadius = 1000,
@@ -101,10 +101,12 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
         groupName = "North_Vanguard_Platoon",
         country = "Russia",
         units = {"T-72B", "BMP-2", "ZSU-23-4 Shilka"},
-        heading = 0,
-        offsetX = 15000,
-        offsetY = 10000,
-        spawnRadius = 2000,
+        placement = {
+            heading = 0,
+            offsetX = 15000,
+            offsetY = 10000,
+            spawnRadius = 2000,
+        },
         route = {{
             type = "On Road",
             speed = 40,
@@ -126,9 +128,9 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
     groupName = "Ambush_Team_Bravo",
     country = "Russia",
     units = {"BMP-2", "BRDM-2"},
-    heading = 180,
     placement = {
         zoneName = "Valley_Breach_Zone", -- Must match your exact ME Trigger Zone Name
+        heading = 180,
         offsetX = -2000,
         offsetY = 15000,
         spawnRadius = 2000
@@ -154,8 +156,8 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
     groupName = "Quick_Reaction_Force_QRF",
     country = "Russia",
     units = {"T-72B", "T-72B", "BMP-2"},
-    heading = 45,
     placement = {
+        heading = 45,
         offsetX = 32000,
         offsetY = 12000,
         spawnRadius = 2000,
@@ -172,6 +174,17 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
         offsetY = 10000,
         roe = "OPEN_FREE"
     }}
+},
+{
+    triggerType = "IMMEDIATE",
+    groupName = "Waypoint_Patrol",
+    country = "Russia",
+    units = {"T-72B", "BMP-2"},
+    placement = {
+        groupName = "Aerial-1",
+        waypoint = 5,
+        heading = 90
+    }
 }}
 -- ==============================================================================
 -- MAIN ORCHESTRATION ENGINE INJECTION

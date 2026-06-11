@@ -2,10 +2,79 @@ local function nm2Meters(distanceNm)
     return distanceNm * 1.852 * 1000
 end
 
+local function getWaypointFromFlight(flightName, waypoint)
+    -- Returns a sub-table containing coordinate positions, speed, and altitude for each waypoint
+    local flightPlan = mist.getGroupRoute(flightName)
+    if flightPlan and flightPlan[waypoint] then return flightPlan[waypoint] end
+end
+
+local function printFlightPath(flightName)
+    -- Returns a sub-table containing coordinate positions, speed, and altitude for each waypoint
+    local flightPlan = mist.getGroupRoute(flightName)
+
+    if flightPlan then
+        -- Iterate through the waypoints
+        for i, waypoint in ipairs(flightPlan) do
+            -- Extract properties for each waypoint
+            local wpIndex = i
+            local latitude = waypoint.x
+            local longitude = waypoint.y
+            local altitude = waypoint.alt
+            local wpType = waypoint.type
+            
+            -- Do something with the waypoint data (e.g., print to dcs.log)
+            env.info("Waypoint " .. wpIndex .. " - X: " .. latitude .. " Y: " .. longitude)
+        end
+    end
+end
+
 local function printSurfaceType(surfaceType)
     for str, ind in pairs(land.SurfaceType) do
         if ind == surfaceType then
             env.info('point is type ' .. surfaceType .. ' String: ' .. str)			
+        end
+    end
+end
+
+UnitFormationBuilder = {}
+
+function UnitFormationBuilder.Linear(coalition, groupName, units, placement)
+    local unitPayload = {}
+    local currentYOffset = 0
+    local startX, startY = SpatialSolver.findSafeGroundCoordinates(coalition, placement)
+    for idx, unitType in ipairs(units) do
+        local checkX, checkY = startX, startY + currentYOffset
+        local attempts = 0
+        while attempts < 20 do
+            attempts = attempts + 1
+            local surf = land.getSurfaceType({x = checkX, y = checkY})
+            if (surf == 1 or surf == 4 or surf == 5) and not SpatialSolver.findStaticObstructions(checkX, checkY, 12) then break end
+            checkY = checkY - 20
+        end
+        table.insert(unitPayload, {
+            ["type"] = unitType,
+            ["name"] = groupName .. "_Unit_" .. idx,
+            ["x"] = checkX,
+            ["y"] = checkY,
+            ["heading"] = self.placement.heading * (math.pi / 180) })
+        currentYOffset = (checkY - startY) - 25
+    end
+end
+
+function UnitFormationBuilder.RadialScatter(coalition, units, placement)
+    local unitsPayload = {}
+    -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
+    if units then
+        for i, unitType in ipairs(units) do
+            local finalX, finalY = SpatialSolver.findSafeGroundCoordinates(coalition, placement)
+            table.insert(unitsPayload, {
+                ["type"]    = unitType,
+                ["name"]    = self.groupName .. "_Unit_" .. i,
+                ["x"]       = finalX,
+                ["y"]       = finalY,
+                ["heading"] = math.rad(self.placement.heading or 0),
+                ["skill"]   = "High"
+            })
         end
     end
 end
@@ -32,7 +101,15 @@ end
 
 function SpatialSolver.getCoordinates(coalition, placementConfig)
     local bullseye = SpatialSolver.getBullseye(coalition)
-    return bullseye.x + placementConfig.offsetX, bullseye.y + placementConfig.offsetY
+    if placementConfig.offsetX and placementConfig.offsetY then
+        return bullseye.x + placementConfig.offsetX, bullseye.y + placementConfig.offsetY
+    elseif placementConfig.groupName and placementConfig.waypoint then
+        env.info("Placing unit near group: " .. placementConfig.groupName .. "waypoint: " .. placementConfig.waypoint)
+        local wp = getWaypointFromFlight(placementConfig.groupName, placementConfig.waypoint)
+        return wp.x, wp.y
+    else
+        return bullseye.x, bullseye.y
+    end
 end
 
 function SpatialSolver.findSafeGroundCoordinates(coalition, placementConfig)
@@ -392,7 +469,6 @@ function MissionDirector.new(configProfile)
     -- Conditional Triggers parameters
     self.groupName  = configProfile.groupName
     self.unitType   = configProfile.unitType
-    self.heading    = configProfile.heading or 0
     self.pointDefense    = configProfile.pointDefense
     self.maxDetectRange  = configProfile.maxDetectRange or 200000.0
         
@@ -464,7 +540,7 @@ function MissionDirector:executeSectorSpawn()
             ["name"]    = self.groupName .. "_Master_Unit",
             ["x"]       = finalX,
             ["y"]       = finalY,
-            ["heading"] = math.rad(self.heading or 0),
+            ["heading"] = math.rad(self.placement.heading or 0),
             ["skill"]   = "Excellent"
         })
     end
@@ -478,7 +554,7 @@ function MissionDirector:executeSectorSpawn()
                 ["name"]    = self.groupName .. "_Unit_" .. i,
                 ["x"]       = finalX,
                 ["y"]       = finalY,
-                ["heading"] = math.rad(self.heading or 0),
+                ["heading"] = math.rad(self.placement.heading or 0),
                 ["skill"]   = "High"
             })
         end
@@ -607,7 +683,7 @@ function MissionDirector:deployPlatoon()
             if (surf == 1 or surf == 4 or surf == 5) and not findStaticObstructions(checkX, checkY, 12) then break end
             checkY = checkY - 20
         end
-        table.insert(unitPool, { ["type"] = unitType, ["name"] = self.groupName .. "_Unit_" .. idx, ["x"] = checkX, ["y"] = checkY, ["heading"] = self.heading * (math.pi / 180) })
+        table.insert(unitPool, { ["type"] = unitType, ["name"] = self.groupName .. "_Unit_" .. idx, ["x"] = checkX, ["y"] = checkY, ["heading"] = self.placement.heading * (math.pi / 180) })
         currentYOffset = (checkY - spawnOrigin.y) - 25
     end
     
@@ -701,7 +777,7 @@ function MissionDirector:deployRadarStation()
                 ["type"] = self.unitType,
                 ["name"] = self.groupName .. "_Sensor_Unit",
                 ["x"] = finalX, ["y"] = finalY,
-                ["heading"] = (self.heading or 0) * (math.pi / 180)
+                ["heading"] = (self.placement.heading or 0) * (math.pi / 180)
             }
         }
     }
