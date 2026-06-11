@@ -1,11 +1,3 @@
-local function FeetToMeters(feet)
-    return feet * 0.3048
-end
-
-local function KnotsPerHourToKmPerHour(knots)
-    return knots * 1.852
-end
-
 local function nm2Meters(distanceNm) 
     return distanceNm * 1.852 * 1000
 end
@@ -84,48 +76,6 @@ function MapMarkerRegistry.clearMark(trackingKey)
 end
 
 
-UnitFormationBuilder = {}
-
-function UnitFormationBuilder.Linear(coalition, groupName, units, placement)
-    local unitPayload = {}
-    local currentYOffset = 0
-    local startX, startY = SpatialSolver.findSafeGroundCoordinates(coalition, placement)
-    for idx, unitType in ipairs(units) do
-        local checkX, checkY = startX, startY + currentYOffset
-        local attempts = 0
-        while attempts < 20 do
-            attempts = attempts + 1
-            local surf = land.getSurfaceType({x = checkX, y = checkY})
-            if (surf == 1 or surf == 4 or surf == 5) and not SpatialSolver.findStaticObstructions(checkX, checkY, 12) then break end
-            checkY = checkY - 20
-        end
-        table.insert(unitPayload, {
-            ["type"] = unitType,
-            ["name"] = groupName .. "_Unit_" .. idx,
-            ["x"] = checkX,
-            ["y"] = checkY,
-            ["heading"] = self.placement.heading * (math.pi / 180) })
-        currentYOffset = (checkY - startY) - 25
-    end
-end
-
-function UnitFormationBuilder.RadialScatter(coalition, units, placement)
-    local unitsPayload = {}
-    -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
-    if units then
-        for i, unitType in ipairs(units) do
-            local finalX, finalY = SpatialSolver.findSafeGroundCoordinates(coalition, placement)
-            table.insert(unitsPayload, {
-                ["type"]    = unitType,
-                ["name"]    = self.groupName .. "_Unit_" .. i,
-                ["x"]       = finalX,
-                ["y"]       = finalY,
-                ["heading"] = math.rad(self.placement.heading or 0),
-                ["skill"]   = "High"
-            })
-        end
-    end
-end
 
 SpatialSolver = {}
 
@@ -429,7 +379,7 @@ function TriggerRegistry._heartbeat(args, time)
 end
 
 
-
+-- Process the sector.  Return true to signal that all processing is complete
 function TriggerRegistry.evaluate(sector)
     if sector.droneConfig then
         -- return true if drone is dead to signal TriggerRegistry to stop monitoring sector
@@ -449,7 +399,6 @@ function TriggerRegistry.evaluate(sector)
     elseif sector.triggerType == "OBJECTIVE_COMPLETE" then
         return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName) 
     end
-
 
     -- Unrecognized or faulty trigger logic drops safe fallback logging
     env.info(string.format("[TriggerRegistry Warning] Unknown trigger type '%s' on group %s", sector.triggerType, sector.groupName))
@@ -559,7 +508,7 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
         local safeY = bullseyePos.y + (math.sin(headingRad) * distanceMeters)
         
         -- Fire execution
-        self:spawnDynamicAWACS(awacsData, safeX, safeY)
+        mist.dynAdd(AssetFactories.buildAWACS(awacsData, safeX, safeY))
         env.info("[Director] Global AWACS established relative to Theater Bullseye coordinates.")
     else
         env.info("[Director Error] Failed to retrieve Blue coalition Bullseye from the environment map!")
@@ -640,26 +589,7 @@ function MissionDirector:executeSectorSpawn()
     -- STEP 2: PROCESS THE DATA-DRIVEN DRONE OVERWATCH ASSETS
     -- ========================================================================
     if self.droneConfig then
-        -- Give the ground payload 3 full seconds to completely stabilize in the world database
-        TriggerRegistry.scheduleAction(3.0, function()            
-            -- Establish the final anchor coordinates for the drone's station
-            local targetX, targetY = SpatialSolver.getCoordinates("blue", self.placement)
-                        
-            -- FIX: Only spawn the drone here if it hasn't already been spawned by deployRadarStation!
-            if not Group.getByName(self.droneConfig.groupName) then
-                self:spawnDynamicDrone(targetX, targetY)
-            end
-            
-            -- Wait 3 seconds for the airframe to register before assigning its search task
-            TriggerRegistry.scheduleAction(3.0, function()
-                if Group.getByName(self.droneConfig.groupName) then
-                    -- Paint map tracking markpoint readouts onto the player's F10 layer
-                    self:createGroundTargetMarkpoint(self.groupName, targetX, targetY)
-                    self:assignDroneToTarget(self.droneConfig.groupName, self.groupName)
-                    self:addDroneRadioMenu()
-                end
-            end)
-        end)
+        self:spawnDynamicDrone(SpatialSolver.getCoordinates("blue", self.placement))
     end
 
     self.hasSpawned = true
@@ -750,7 +680,6 @@ function MissionDirector:createGroundTargetMarkpoint(targetX, targetY)
         
         local targetType = self.radarUnitType or "Mechanized Armor Platoon"
         
-        env.info(string.format("MGRS: %d %d", mgrs.Easting, mgrs.Northing))
         local x = mgrs.Easting / 100
         local y = mgrs.Northing / 100
         x = x - (math.floor(x / 100) * 100)
@@ -953,185 +882,33 @@ function MissionDirector:deployRadarStation()
 
     -- 3. Deploy Air Defense Ring Escorts if configured
     if self.pointDefense and type(self.pointDefense.units) == "table" and #self.pointDefense.units > 0 then
-        local minR = self.pointDefense.minRadius or 100
-        local maxR = self.pointDefense.maxRadius or 300
-        
-        for idx, unitType in ipairs(self.pointDefense.units) do
-            local randomAngle = math.random() * 2 * math.pi
-            local randomDist = minR + (math.random() * (maxR - minR))
-            
-            local adX = finalX + (math.cos(randomAngle) * randomDist)
-            local adY = finalY + (math.sin(randomAngle) * randomDist)
-            
-            if land.getSurfaceType({x = adX, y = adY}) ~= 3 then
-                local adGroupName = self.groupName .. "_AD_Node_" .. idx
-                local adPayload = {
-                    ["visible"] = true,
-                    ["task"] = "Ground Nothing",
-                    ["category"] = "GROUND",
-                    ["country"] = self.country,
-                    ["name"] = adGroupName,
-                    ["route"] = { ["points"] = { { ["x"] = adX, ["y"] = adY, ["type"] = "Turning Point", ["action"] = "From Ground Area", ["speed"] = 0 } } },
-                    ["units"] = {
-                        {
-                            ["type"] = unitType,
-                            ["name"] = adGroupName .. "_Unit",
-                            ["x"] = adX, ["y"] = adY,
-                            ["heading"] = math.random(0, 359) * (math.pi / 180)
-                        }
-                    }
-                }
-                mist.dynAdd(adPayload)
-                
-                TriggerRegistry.scheduleAction(1.5, function(args)
-                    local g = Group.getByName(args.name)
-                    if g and g:getController() then
-                        g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
-                    end
-                end, {name = adGroupName})
-            end
-        end
+        local adPayload = AssetFactories.buildPointDefense(self, finalX, finalY)
+        mist.dynAdd(adPayload)        
+        activatePointDefense(adPayload)
     end
 
     -- Sector Drone Deployment Phase
     if self.droneConfig then
-        local droneContext = {
-            directorRef = self,
-            targetX = finalX,
-            targetY = finalY
-        }
-        TriggerRegistry.scheduleAction(2.0, function(args)
-            local sector = args.directorRef
-            sector:spawnDynamicDrone(args.targetX, args.targetY)
-
-            -- Wait 3 seconds for the airframe to register before assigning its search task
-            TriggerRegistry.scheduleAction(3.0, function()
-                if Group.getByName(sector.droneConfig.groupName) then
-                    -- Paint map tracking markpoint readouts onto the player's F10 layer
-                    sector:createGroundTargetMarkpoint(args.targetX, args.targetY)
-                    sector:assignDroneToTarget(sector.droneConfig.groupName, sector.groupName)
-                    sector:addDroneRadioMenu()
-                end
-            end)
-
-        end, droneContext)
+        self:spawnDynamicDrone(finalX, finalY)
     end
-end
-
-function MissionDirector:spawnDynamicAWACS(awacsConfig, spawnX, spawnY)
-    local altitude    = FeetToMeters(awacsConfig.altitude) or 8000 
-    local speed    = KnotsPerHourToKmPerHour(awacsConfig.speed) or 550
-    
-    local wp1_x = spawnX
-    local wp1_y = spawnY
-    local wp2_x = spawnX + (awacsConfig.orbitLength or 40000)
-    local wp2_y = spawnY
-    
-    local awacsPayload = {
-        ["visible"] = true,
-        ["category"] = "AIRPLANE",
-        ["country"] = awacsConfig.country,
-        ["name"] = awacsConfig.groupName,
-        ["units"] = {
-            [1] = {
-                ["type"] = awacsConfig.unitType or "E-3A",
-                ["name"] = awacsConfig.groupName .. "_Unit_1",
-                ["x"] = wp1_x,
-                ["y"] = wp1_y,
-                ["alt"] = altitude,
-                ["alt_type"] = "BARO",
-                ["speed"] = speed,
-                ["heading"] = 0,
-                ["skill"] = "Excellent"
-            }
-        },
-        ["route"] = {
-            ["points"] = {
-                [1] = {
-                    ["x"] = wp1_x, ["y"] = wp1_y, ["alt"] = altitude, ["alt_type"] = "BARO",
-                    ["type"] = "Turning Point", ["action"] = "Turning Point", ["speed"] = speed,
-                    ["task"] = {
-                        ["id"] = "ComboTask",
-                        ["params"] = {
-                            ["tasks"] = {
-                                [1] = { ["id"] = "AWACS", ["params"] = {} },
-                                [2] = {
-                                    ["id"] = "Orbit",
-                                    ["params"] = { ["pattern"] = "Racetrack", ["altitude"] = altitude, ["speed"] = speed }
-                                },
-                                [3] = { ["id"] = "SetFrequency", ["params"] = { ["frequency"] = awacsConfig.frequency, ["modulation"] = awacsConfig.modulation } },
-                                [4] = { ["id"] = "SetCallsign", ["params"] = { ["callsign"] = awacsConfig.callsign, ["number"] = awacsConfig.callsignNumber } }
-                            }
-                        }
-                    }
-                },
-                {
-                    ["x"] = wp2_x, ["y"] = wp2_y, ["alt"] = altitude, ["alt_type"] = "BARO",
-                    ["type"] = "Turning Point", ["action"] = "Turning Point", ["speed"] = speed,
-                    ["task"] = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = {} } }
-                }
-            }
-        }
-    }
-    
-    mist.dynAdd(awacsPayload)
-    env.info(string.format("[Director] Dynamic AWACS %s (%s) spawned via configuration.", awacsConfig.groupName, awacsConfig.unitType))
+    self.hasSpawned = true
 end
 
 function MissionDirector:spawnDynamicDrone(spawnX, spawnY)
-    local altitude = FeetToMeters(self.droneConfig.altitude) or 4572 
-    local speed = (KnotsPerHourToKmPerHour(self.droneConfig.speed) or 200) / 3.6 
+    TriggerRegistry.scheduleAction(2.0, function()
+        mist.dynAdd(AssetFactories.buildDrone(self.droneConfig, spawnX, spawnY))
+        env.info("[Director] Dynamic Overwatch Drone spawned directly over target coordinates: " .. self.droneConfig.groupName)
 
-    local dronePayload = {
-        ["visible"]  = true,
-        ["category"] = "AIRPLANE",
-        ["country"]  = self.droneConfig.country or "USA",
-        ["name"]     = self.droneConfig.groupName,
-        ["units"]    = {
-            [1] = {
-                ["type"]     = self.droneConfig.unitType or "MQ-9 Reaper",
-                ["name"]     = self.droneConfig.groupName .. "_Unit_1",
-                ["x"]        = spawnX,
-                ["y"]        = spawnY,
-                ["alt"]      = altitude,
-                ["alt_type"] = "BARO",
-                ["speed"]    = speed,
-                ["heading"]  = 0,
-                ["skill"]    = "Excellent"
-            }
-        },
-        ["route"] = {
-            ["points"] = {
-                [1] = {
-                    ["x"]        = spawnX,
-                    ["y"]        = spawnY,
-                    ["alt"]      = altitude,
-                    ["alt_type"] = "BARO",
-                    ["speed"]    = speed,
-                    ["action"]   = "Turning Point",
-                    ["type"]     = "Turning Point",
-                    ["task"]     = {
-                        ["id"] = "ComboTask",
-                        ["params"] = {
-                            ["tasks"] = {
-                                [1] = {
-                                    ["id"] = "Orbit",
-                                    ["params"] = {
-                                        ["pattern"] = "Circle",
-                                        ["altitude"] = altitude,
-                                        ["speed"] = speed
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    mist.dynAdd(dronePayload)
-    env.info("[Director] Dynamic Overwatch Drone spawned directly over target coordinates: " .. self.droneConfig.groupName)
+        -- Wait 3 seconds for the airframe to register before assigning its search task
+        TriggerRegistry.scheduleAction(3.0, function()
+            if Group.getByName(self.droneConfig.groupName) then
+                -- Paint map tracking markpoint readouts onto the player's F10 layer
+                self:createGroundTargetMarkpoint(finalX, finalY)
+                self:assignDroneToTarget(self.droneConfig.groupName, self.groupName)
+                self:addDroneRadioMenu()
+            end
+        end)
+    end)
 end
 
 function MissionDirector:isPlayerInZone(zoneName)
