@@ -16,7 +16,7 @@ local GlobalTheaterAssets = {
 
         -- BULLSEYE STANDOFF VECTOR
         offsetHeading = 240, -- Heading from Bullseye to safe orbit zone (SW)
-        offsetDistance = 90 -- Stay 90 kilometers away from Bullseye center
+        offsetDistance = 50 -- Stay 50nm away from Bullseye center
     }
 }
 -- ==============================================================================

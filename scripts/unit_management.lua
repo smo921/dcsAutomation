@@ -1,3 +1,7 @@
+local function nm2Meters(distanceNm) 
+    return distanceNm * 1.852 * 1000
+end
+
 SpatialSolver = {}
 
 function SpatialSolver.getBullseye(coalition)
@@ -122,7 +126,7 @@ end
 -- Calculate the straight‑line distance (nm) between two DCS units.
 -- Works even if one of the units has been destroyed – the function will
 -- simply return nil in that case.
-function RadarHandler.getDistance(unitA, unitB)
+function RadarHandler.getDistanceInNM(unitA, unitB)
     if not (unitA and unitB) then return nil end
 
     local posA = unitA:getPosition().p
@@ -141,7 +145,7 @@ end
 -- Helper: Pretty‑print a single detection ------------------------------------
 function RadarHandler.formatDetection(radar, target)
     local name   = target.object:getName() or "Unknown"
-    local dist   = RadarHandler.getDistance(radar, target.object) or 0
+    local dist   = RadarHandler.getDistanceInNM(radar, target.object) or 0
     local range  = string.format("%.1f nm", dist)
     return string.format("%s - %s", name, range)
 end
@@ -176,7 +180,7 @@ function RadarHandler.checkRadar(radarSector)
             -- Optional: ignore very far detections
             -- det.distance is a boolean not a number
             if det.distance then
-                local distance = RadarHandler.getDistance(radarUnit, det.object)
+                local distance = RadarHandler.getDistanceInNM(radarUnit, det.object)
                 if distance and distance > radarSector.maxDetectRange then
                     threatFound = false
                     local message = "[RadarCheck]  Skipping – beyond max range (" .. radarSector.maxDetectRange .. " nm)."
@@ -335,9 +339,6 @@ end
 function TriggerRegistry._checkRadarDetection(radarSector)
     env.info("Check radar for unit " .. radarSector.groupName)
     local threatFound = RadarHandler.checkRadar(radarSector)
-    if threatFound then
-        env.info("Found a threat")
-    end
 end
 
 function TriggerRegistry._checkGroupDestroyed(parentGroupName)
@@ -418,10 +419,10 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
     
     if bullseyePos then
         local headingDeg = awacsData.offsetHeading or 180
-        local distanceKm = awacsData.offsetDistance or 60
+        local distanceNm = awacsData.offsetDistance or 60
         
         local headingRad = math.rad(headingDeg)
-        local distanceMeters = distanceKm * 1000
+        local distanceMeters = nm2Meters(distanceNm)
         
         -- Vector Projection away from Bullseye center
         local safeX = bullseyePos.x + (math.cos(headingRad) * distanceMeters)
@@ -647,31 +648,33 @@ end
 
 function MissionDirector:deployRadarStation()
     if not self.groupName or not self.unitType then return end
-    
+    local zoneName = self.placement.zoneName
     local finalX, finalY
     
     -- 1. Grab a random point inside the specified ME Trigger Zone
-    if self.placement.zoneName then
-        local zoneData = trigger.misc.getZone(self.placement.zoneName)
+    if zoneName then
+        local zoneData = trigger.misc.getZone(zoneName)
         
         if zoneData then
-            local randomZonePoint = mist.getRandomPointInZone(self.placement.zoneName)
-            
-            if randomZonePoint then
-                local surfaceCheckPoint = { 
-                    x = randomZonePoint.x, 
-                    z = randomZonePoint.y 
-                }
-                
-                if land.getSurfaceType(surfaceCheckPoint) ~= 3 then 
-                    finalX = randomZonePoint.x
-                    finalY = randomZonePoint.y
-                    env.info("[Director] Radar " .. self.radarGroupName .. " successfully randomized inside zone: " .. self.radarZoneName)
-                else
-                    finalX = zoneData.point.x
-                    finalY = zoneData.point.z
-                    env.info("[Director Warning] Random zone point landed in water. Centering radar safety fallback inside zone.")
+            local randomZonePoint = mist.getRandomPointInZone(zoneName)
+            local surfaceType = land.getSurfaceType(randomZonePoint)
+
+            for str, ind in pairs(land.SurfaceType) do
+                if ind == surfaceType then
+                    env.info('point is type ' .. surfaceType .. ' String: ' .. str)			
                 end
+            end
+
+
+            if surfaceType ~= 3 then 
+                finalX = randomZonePoint.x
+                finalY = randomZonePoint.y
+                env.info("[Director] Radar " .. self.groupName .. " successfully randomized inside zone: " .. zoneName)
+            else
+                finalX = zoneData.point.x
+                finalY = zoneData.point.z
+                env.info(": x, y: " .. randomZonePoint.x .. "," .. randomZonePoint.z)
+                env.info("[Director Warning] Random zone point landed in water. Centering radar safety fallback inside zone.")
             end
         else
             env.info("[Director Error] Named zone '" .. self.radarZoneName .. "' completely missing from the Mission Editor! Defaulting to profile offsets.")
