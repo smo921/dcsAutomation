@@ -545,10 +545,15 @@ function MissionDirector:executeSectorSpawn()
         })
     end
 
+
+    
     -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
     if self.units then
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
+        table.insert(unitsPayload, AssetFactories.buildPlatoon(self, finalX, finalY))
+
+
         for i, unitType in ipairs(self.units) do
-            finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
             table.insert(unitsPayload, {
                 ["type"]    = unitType,
                 ["name"]    = self.groupName .. "_Unit_" .. i,
@@ -558,6 +563,7 @@ function MissionDirector:executeSectorSpawn()
                 ["skill"]   = "High"
             })
         end
+
     end
     
     -- 1C. Assemble the structural master group wrapper for the MIST database
@@ -702,60 +708,6 @@ function MissionDirector:createGroundTargetMarkpoint(targetX, targetY)
     end
 end
 
-function MissionDirector:deployPlatoon()
-    if self.hasSpawned then return end
-
-    local blueBullseye = SpatialSolver.getBullseye("blue")
-    local bx, by = blueBullseye.x, blueBullseye.y
-    
-    -- Calculate our baseline center anchor
-    local centerPoint = { x = bx + self.placement.offsetX, y = by + self.placement.offsetY }
-    local spawnOrigin = { x = centerPoint.x, y = centerPoint.y }
-    
-    -- If a radius is defined, shift our spawn point randomly within that boundary circle
-    if self.spawnRadius and self.spawnRadius > 0 then
-        local randomPoint = mist.getRandPointInCircle(centerPoint, self.spawnRadius)
-        
-        if land.getSurfaceType(randomPoint) ~= 3 then -- 3 = Open Water
-            spawnOrigin.x = randomPoint.x
-            spawnOrigin.y = randomPoint.y
-            env.info("[Director] Group '" .. self.groupName .. "' shifted by random radius generator.")
-        else
-            env.info("[Director] Random point landed in deep water. Defaulting to center anchor for safety.")
-        end
-    end
-    
-    -- Compile Waypoints
-    local points = {}
-    for _, wp in ipairs(self.routeConfig) do
-        local node = { ["x"] = bx + wp.offsetX, ["y"] = by + wp.offsetY, ["type"] = "Turning Point", ["action"] = wp.type or "Off Road", ["speed"] = wp.speed / 3.6 }
-        local opts = {}
-        if wp.roe and MissionDirector.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["ROE"], ["value"] = MissionDirector.ROE[wp.roe] } }) end
-        if wp.threat and MissionDirector.THREAT_REACTION[wp.threat] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["THREAT_REACTION"], ["value"] = MissionDirector.THREAT_REACTION[wp.threat] } }) end
-        if #opts > 0 then node["task"] = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = opts } } end
-        table.insert(points, node)
-    end
-    
-    -- Compile Safe Units Layout (Maintains linear convoy line trailing back from the random origin point)
-    local unitPool = {}
-    local currentYOffset = 0
-    for idx, unitType in ipairs(self.units) do
-        local checkX, checkY = spawnOrigin.x, spawnOrigin.y + currentYOffset
-        local attempts = 0
-        while attempts < 20 do
-            attempts = attempts + 1
-            local surf = land.getSurfaceType({x = checkX, y = checkY})
-            if (surf == 1 or surf == 4 or surf == 5) and not findStaticObstructions(checkX, checkY, 12) then break end
-            checkY = checkY - 20
-        end
-        table.insert(unitPool, { ["type"] = unitType, ["name"] = self.groupName .. "_Unit_" .. idx, ["x"] = checkX, ["y"] = checkY, ["heading"] = self.placement.heading * (math.pi / 180) })
-        currentYOffset = (checkY - spawnOrigin.y) - 25
-    end
-    
-    mist.dynAdd({ ["visible"] = true, ["task"] = "Ground Nothing", ["category"] = "GROUND", ["country"] = self.country, ["name"] = self.groupName, ["route"] = { ["points"] = points }, ["units"] = unitPool })
-    self.hasSpawned = true
-    env.info("[Director] Successfully spawned group: " .. self.groupName)
-end
 
 function MissionDirector:checkOwnUnitsDead()
     local g = Group.getByName(self.groupName)

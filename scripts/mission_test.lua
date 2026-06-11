@@ -182,7 +182,7 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
     units = {"T-72B", "BMP-2"},
     placement = {
         groupName = "Aerial-1",
-        waypoint = 5,
+        waypoint = 2, -- waypoints start at 1
         heading = 90
     }
 }}

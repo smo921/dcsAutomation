@@ -208,7 +208,7 @@ end
 function AssetFactories.buildPlatoon(config, x, y)
     -- Compile Waypoints
     local points = {}
-    for _, wp in ipairs(self.routeConfig) do
+    for _, wp in ipairs(config.routeConfig) do
         local node = { ["x"] = x + wp.offsetX, ["y"] = y + wp.offsetY, ["type"] = "Turning Point", ["action"] = wp.type or "Off Road", ["speed"] = wp.speed / 3.6 }
         local opts = {}
         if wp.roe and MissionDirector.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["ROE"], ["value"] = MissionDirector.ROE[wp.roe] } }) end
@@ -217,7 +217,15 @@ function AssetFactories.buildPlatoon(config, x, y)
         table.insert(points, node)
     end
     local unitPool = UnitFormationBuilder.Linear(config, x, y)
-
+    return {
+        ["visible"] = true,
+        ["task"] = "Ground Nothing",
+        ["category"] = "GROUND",
+        ["country"] = config.country,
+        ["name"] = config.groupName,
+        ["route"] = { ["points"] = points },
+        ["units"] = unitPool
+    }
 end
 
 function AssetFactories.buildPointDefense(config, x, y)
