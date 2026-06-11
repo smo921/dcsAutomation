@@ -44,6 +44,46 @@ local function printSurfaceType(surfaceType)
     end
 end
 
+MapMarkerRegistry = {
+    activeMarkers = {}, -- Keys: sector/group name, Value: { id = Int, lastPos = vec3, text = String }
+    activeRadios = {} -- Key: groupName, Value: menuRef
+}
+
+-- Generate a unique marker ID or update an existing one safely
+function MapMarkerRegistry.drawTacticalMark(trackingKey, textMessage, positionVector)
+    -- 1. Clean up old marker if one already exists for this track
+    MapMarkerRegistry.clearMark(trackingKey)
+
+    -- 2. Generate a random ID that won't collide with other systems
+    local newMarkerId = math.random(100000, 999999)
+    
+    -- 3. Draw to all players in the coalition
+    trigger.action.markToAll(newMarkerId, textMessage, positionVector, true)
+    
+    -- 4. Store state internally
+    MapMarkerRegistry.activeMarkers[trackingKey] = {
+        id = newMarkerId,
+        pos = positionVector,
+        text = textMessage,
+        updatedAt = timer.getTime()
+    }
+    
+    env.info(string.format("[MarkerRegistry] Rendered tactical mark ID %d for track '%s'", newMarkerId, trackingKey))
+    return newMarkerId
+end
+
+-- Safely remove a marker from the F10 map layout
+function MapMarkerRegistry.clearMark(trackingKey)
+    local markerData = MapMarkerRegistry.activeMarkers[trackingKey]
+    if markerData then
+        -- Native DCS World API hook to yank it from everyone's map screens
+        trigger.action.removeMark(markerData.id)
+        MapMarkerRegistry.activeMarkers[trackingKey] = nil
+        -- env.info("[MarkerRegistry] Successfully purged marker for track: " .. trackingKey)
+    end
+end
+
+
 UnitFormationBuilder = {}
 
 function UnitFormationBuilder.Linear(coalition, groupName, units, placement)
@@ -294,29 +334,22 @@ function RadarHandler.checkRadar(radarSector)
             --end
 
             -- log all threats identified
-            if threatFound then
-                local message = "[RadarCheck] Detected: " .. RadarHandler.formatDetection(radarUnit, det)
-                trigger.action.outText(message, 10)
-                -- env.info(message)
-            end
+            --if threatFound then
+            --    local message = "[RadarCheck] Detected: " .. RadarHandler.formatDetection(radarUnit, det)
+            --    trigger.action.outText(message, 10)
+            --    env.info(message)
+            --end
         end
         -- Your custom logic here – e.g. trigger a client message, change AI state, etc.
         -- For example: env.mission.setWaypoint(1, "DetectedEnemy")
     else
-        local message = "[RadarCheck] Radar '" .. groupName .. "' found NO targets."
-        trigger.action.outText(message, 10)
+        -- local message = "[RadarCheck] Radar '" .. groupName .. "' found NO targets."
+        -- trigger.action.outText(message, 10)
         -- env.info(message)
     end
 
     return threatFound
 end
-
-
-
-
-
-
-
 
 -- ==============================================================================
 -- CENTRALIZED TRIGGER REGISTRY ENGINE
@@ -398,6 +431,11 @@ end
 
 
 function TriggerRegistry.evaluate(sector)
+    if sector.droneConfig then
+        -- return true if drone is dead to signal TriggerRegistry to stop monitoring sector
+        return sector:checkDroneDead()
+    end
+
     -- If the sector has somehow already spawned out of band, flag it for immediate cleanup
     if sector.hasSpawned then return true end
 
@@ -409,9 +447,9 @@ function TriggerRegistry.evaluate(sector)
         return TriggerRegistry._checkRadarDetection(sector)
         
     elseif sector.triggerType == "OBJECTIVE_COMPLETE" then
-        return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName)
-        
+        return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName) 
     end
+
 
     -- Unrecognized or faulty trigger logic drops safe fallback logging
     env.info(string.format("[TriggerRegistry Warning] Unknown trigger type '%s' on group %s", sector.triggerType, sector.groupName))
@@ -529,6 +567,8 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
 end
 
 function MissionDirector:executeSectorSpawn()
+    if self.hasSpawned then return end
+
     -- ========================================================================
     -- SPATIAL CORRECTION MATRIX: Translate Relative Offsets to Absolute Map Space
     -- ========================================================================
@@ -607,7 +647,7 @@ function MissionDirector:executeSectorSpawn()
                         
             -- FIX: Only spawn the drone here if it hasn't already been spawned by deployRadarStation!
             if not Group.getByName(self.droneConfig.groupName) then
-                self:spawnDynamicDrone(self.droneConfig, targetX, targetY)
+                self:spawnDynamicDrone(targetX, targetY)
             end
             
             -- Wait 3 seconds for the airframe to register before assigning its search task
@@ -615,31 +655,118 @@ function MissionDirector:executeSectorSpawn()
                 if Group.getByName(self.droneConfig.groupName) then
                     -- Paint map tracking markpoint readouts onto the player's F10 layer
                     self:createGroundTargetMarkpoint(self.groupName, targetX, targetY)
-                    
-                    -- Fire the autonomous zone search we built
                     self:assignDroneToTarget(self.droneConfig.groupName, self.groupName)
+                    self:addDroneRadioMenu()
                 end
             end)
         end)
     end
+
+    self.hasSpawned = true
 end
 
-function MissionDirector:createGroundTargetMarkpoint(groupName, targetX, targetY)
-    local groundGroup = Group.getByName(groupName)
-    if groundGroup and groundGroup:getUnit(1) then
+function MissionDirector:addDroneRadioMenu()
+    if not self.droneConfig then 
+        env.info("Not adding radio menu, no drone config found")    
+        return
+    end
+    
+    local droneName = self.droneConfig.groupName
+    
+    -- Ensure the F10 framework root parent commands exist
+    if not MapMarkerRegistry.rootMenu then
+        MapMarkerRegistry.rootMenu = missionCommands.addSubMenu("Recon Drone Feeds")
+    end
+
+    -- Prevent creating duplicate menus if this function is called multiple times
+    if MapMarkerRegistry.activeRadios and MapMarkerRegistry.activeRadios[droneName] then
+        missionCommands.removeItem(MapMarkerRegistry.activeRadios[droneName])
+    end
+
+    -- Add an action button specific to this sector drone instance
+    local cmdPath = missionCommands.addCommand(
+        string.format("Request Update: %s", droneName),
+        MapMarkerRegistry.rootMenu,
+        function()
+            local liveDrone = Group.getByName(droneName)
+            if liveDrone and liveDrone:getSize() > 0 and liveDrone:getUnit(1):getLife() > 1 then
+                -- Player clicked the menu item! Notify them over radio text:
+                trigger.action.outText(string.format("[Radio] %s acknowledging request. Scanning theater area...", droneName), 5)
+            
+                -- Route asynchronously into your heartbeat engine loop to simulate an execution sweep delay
+                TriggerRegistry.scheduleAction(2.0, function()
+                    local liveDrone = Group.getByName(droneName)
+                    if liveDrone and liveDrone:getSize() > 0 and liveDrone:getUnit(1):getLife() > 1 then
+                        
+                        -- Fetch fresh coordinates of the target asset from the world matrix map
+                        local targetGroup = Group.getByName(self.groupName)
+                        if targetGroup and targetGroup:getUnit(1) then
+                            local currentPos = targetGroup:getUnit(1):getPosition().p
+                            
+                            -- Fire mark point recalculation & refresh
+                            self:createGroundTargetMarkpoint(currentPos.x, currentPos.z)
+                            trigger.action.outText(string.format("[Radio] %s: Data updated. Check F10 tactical marks map.", droneName), 7)
+                        else
+                            trigger.action.outText(string.format("[Radio] %s: Scanned target sector area. Target appears completely neutralized.", droneName), 7)
+                            MapMarkerRegistry.clearMark(self.groupName)
+                        end
+                    end
+                end)
+            else
+                -- drone is dead, wait and notify offline
+                TriggerRegistry.scheduleAction(2.0, function()
+                    trigger.action.outText(string.format("[Radio] Communication failed. Recon drone '%s' is offline or shot down.", droneName), 10)
+                    
+                    
+                    -- Pull the saved menu path from our registry and delete it from the F10 map
+                    local activeMenuPath = MapMarkerRegistry.activeRadios[droneName]
+                    if activeMenuPath then
+                        missionCommands.removeItem(activeMenuPath)
+                        MapMarkerRegistry.activeRadios[droneName] = nil -- clear tracking reference
+                    end
+
+                    -- clear map marker after 5 minutes of drone being shot down
+                    TriggerRegistry.scheduleAction(300, function()
+                        MapMarkerRegistry.clearMark(self.groupName)    
+                    end)
+                    
+
+                end)
+            end
+        end
+    )
+
+    -- cache the returned menu path token
+    MapMarkerRegistry.activeRadios[droneName] = cmdPath
+end
+
+
+function MissionDirector:createGroundTargetMarkpoint(targetX, targetY)
+    local groundGroup = Group.getByName(self.groupName)
+    if groundGroup and groundGroup:getUnit(1) and groundGroup:getUnit(1):isExist() then
         local pos = groundGroup:getUnit(1):getPosition().p
         local lat, lon, alt = coord.LOtoLL(pos)
         local mgrs = coord.LLtoMGRS(lat, lon)
         
-        -- Adapt the text readout based on whether it's a radar or mechanized unit
         local targetType = self.radarUnitType or "Mechanized Armor Platoon"
         
+        env.info(string.format("MGRS: %d %d", mgrs.Easting, mgrs.Northing))
+        local x = mgrs.Easting / 100
+        local y = mgrs.Northing / 100
+        x = x - (math.floor(x / 100) * 100)
+        y = y - (math.floor(y / 100) * 100)
+        local grid = string.format("%s%-1d%-1d %2d %2d", mgrs.MGRSDigraph, mgrs.Easting/10000, mgrs.Northing/10000, x, y)
         local report = string.format(
-            "== RECON DRONE COORD SHARE ==\nTRACK ID: %s\nINTEL TYPE: %s\nMGRS GRID: %s\nALTITUDE: %d ft\n=============================",
-            groupName, targetType, mgrs.MGRSDigraph, math.floor(alt * 3.28084)
+            "== RECON INTEL UPDATE ==\nTRACK KEY: %s\nINTEL TYPE: %s\nMGRS GRID: %s\nALTITUDE: %d ft\nLAST UPDATE: %s\n=============================",
+            self.groupName, targetType, grid, math.floor(alt * 3.28084),
+            string.format("%02d:%02d", math.floor(timer.getTime() / 3600), math.floor((timer.getTime() % 3600) / 60))
         )
         
-        trigger.action.markToAll(math.random(10000, 99999), report, pos, true)
+        -- Hand off drawing and updating rules cleanly to the registry!
+        MapMarkerRegistry.drawTacticalMark(self.groupName, report, pos)
+    else
+        -- If the group is entirely dead, clear out its old operational tracks from the map
+        MapMarkerRegistry.clearMark(self.groupName)
     end
 end
 
@@ -736,7 +863,33 @@ function MissionDirector:assignDroneToTarget(droneGroupName, targetGroupName)
     end
 end
 
+
+function MissionDirector:checkDroneDead()
+    local droneName = self.droneConfig.groupName
+    local liveDrone = Group.getByName(droneName)
+    
+    -- If the sector has spawned, but the drone attached to it is now missing/dead
+    if self.hasSpawned and (not liveDrone or liveDrone:getSize() == 0) then
+        env.info("Drone " .. droneName .. " is dead")
+        -- clear map marker after 5 minutes of drone being shot down
+        TriggerRegistry.scheduleAction(300, function()
+            MapMarkerRegistry.clearMark(self.groupName)    
+        end)
+
+        trigger.action.outText(string.format("[Radio] Communication failed. Recon drone '%s' is offline or shot down.", droneName), 10)
+
+        -- Clean up F10 item instantly
+        if MapMarkerRegistry.activeRadios[droneName] then
+            missionCommands.removeItem(MapMarkerRegistry.activeRadios[droneName])
+            MapMarkerRegistry.activeRadios[droneName] = nil
+        end
+        return true
+    end
+    return false
+end
+
 function MissionDirector:deployRadarStation()
+    if self.hasSpawned then return end
     if not self.groupName or not self.unitType then return end
     local zoneName = self.placement.zoneName
     local finalX, finalY
@@ -849,7 +1002,18 @@ function MissionDirector:deployRadarStation()
         }
         TriggerRegistry.scheduleAction(2.0, function(args)
             local sector = args.directorRef
-            sector:spawnDynamicDrone(sector.droneConfig, args.targetX, args.targetY)
+            sector:spawnDynamicDrone(args.targetX, args.targetY)
+
+            -- Wait 3 seconds for the airframe to register before assigning its search task
+            TriggerRegistry.scheduleAction(3.0, function()
+                if Group.getByName(sector.droneConfig.groupName) then
+                    -- Paint map tracking markpoint readouts onto the player's F10 layer
+                    sector:createGroundTargetMarkpoint(args.targetX, args.targetY)
+                    sector:assignDroneToTarget(sector.droneConfig.groupName, sector.groupName)
+                    sector:addDroneRadioMenu()
+                end
+            end)
+
         end, droneContext)
     end
 end
@@ -914,23 +1078,21 @@ function MissionDirector:spawnDynamicAWACS(awacsConfig, spawnX, spawnY)
     env.info(string.format("[Director] Dynamic AWACS %s (%s) spawned via configuration.", awacsConfig.groupName, awacsConfig.unitType))
 end
 
-function MissionDirector:spawnDynamicDrone(droneConfig, spawnX, spawnY)
-    local x = spawnX
-    local y = spawnY
-    local altitude = FeetToMeters(droneConfig.altitude) or 4572 
-    local speed = (KnotsPerHourToKmPerHour(droneConfig.speed) or 200) / 3.6 
+function MissionDirector:spawnDynamicDrone(spawnX, spawnY)
+    local altitude = FeetToMeters(self.droneConfig.altitude) or 4572 
+    local speed = (KnotsPerHourToKmPerHour(self.droneConfig.speed) or 200) / 3.6 
 
     local dronePayload = {
         ["visible"]  = true,
         ["category"] = "AIRPLANE",
-        ["country"]  = droneConfig.country or "USA",
-        ["name"]     = droneConfig.groupName,
+        ["country"]  = self.droneConfig.country or "USA",
+        ["name"]     = self.droneConfig.groupName,
         ["units"]    = {
             [1] = {
-                ["type"]     = droneConfig.unitType or "MQ-9 Reaper",
-                ["name"]     = droneConfig.groupName .. "_Unit_1",
-                ["x"]        = x,
-                ["y"]        = y,
+                ["type"]     = self.droneConfig.unitType or "MQ-9 Reaper",
+                ["name"]     = self.droneConfig.groupName .. "_Unit_1",
+                ["x"]        = spawnX,
+                ["y"]        = spawnY,
                 ["alt"]      = altitude,
                 ["alt_type"] = "BARO",
                 ["speed"]    = speed,
@@ -941,8 +1103,8 @@ function MissionDirector:spawnDynamicDrone(droneConfig, spawnX, spawnY)
         ["route"] = {
             ["points"] = {
                 [1] = {
-                    ["x"]        = x,
-                    ["y"]        = y,
+                    ["x"]        = spawnX,
+                    ["y"]        = spawnY,
                     ["alt"]      = altitude,
                     ["alt_type"] = "BARO",
                     ["speed"]    = speed,
@@ -969,7 +1131,7 @@ function MissionDirector:spawnDynamicDrone(droneConfig, spawnX, spawnY)
     }
 
     mist.dynAdd(dronePayload)
-    env.info("[Director] Dynamic Overwatch Drone spawned directly over target coordinates: " .. droneConfig.groupName)
+    env.info("[Director] Dynamic Overwatch Drone spawned directly over target coordinates: " .. self.droneConfig.groupName)
 end
 
 function MissionDirector:isPlayerInZone(zoneName)
@@ -1036,12 +1198,10 @@ function MissionDirector:startEngineLoop()
     -- IMMEDIATE SECTORS: Fire instantly without scheduling background checks
     if self.triggerType == "IMMEDIATE" then
         env.info("[Director] Booting Immediate Sector: " .. self.groupName)
-        self:executeSectorSpawn() 
-    else
-        if self.triggerType == "RADAR" then
-            self:deployRadarStation()
-        end
-        -- Hand off tracking responsibility directly to the master ticker registry
-        TriggerRegistry.register(self)
+        self:executeSectorSpawn()
+    elseif self.triggerType == "RADAR" then
+        self:deployRadarStation()
     end
+    -- Hand off tracking responsibility directly to the master ticker registry
+    TriggerRegistry.register(self)
 end
