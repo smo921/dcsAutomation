@@ -112,6 +112,254 @@ function SpatialSolver.findStaticObstructions(x, y, radius)
     return hasObstruction
 end
 
+
+RadarHandler = {}
+
+function RadarHandler.KmToNm(km)
+    return km / 1.852
+end
+
+-- Calculate the straight‑line distance (nm) between two DCS units.
+-- Works even if one of the units has been destroyed – the function will
+-- simply return nil in that case.
+function RadarHandler.getDistance(unitA, unitB)
+    if not (unitA and unitB) then return nil end
+
+    local posA = unitA:getPosition().p
+    local posB = unitB:getPosition().p
+
+    if not (posA and posB) then return nil end
+
+    local dx = posA.x - posB.x
+    local dy = posA.y - posB.y
+    local dz = posA.z - posB.z
+
+    distanceKM = math.sqrt(dx * dx + dy * dy + dz * dz) / 1000
+    return RadarHandler.KmToNm(distanceKM)
+end
+
+-- Helper: Pretty‑print a single detection ------------------------------------
+function RadarHandler.formatDetection(radar, target)
+    local name   = target.object:getName() or "Unknown"
+    local dist   = RadarHandler.getDistance(radar, target.object) or 0
+    local range  = string.format("%.1f nm", dist)
+    return string.format("%s - %s", name, range)
+end
+
+-- Main routine that queries the radar ---------------------------------------
+function RadarHandler.checkRadar(radarSector)
+    local groupName = radarSector.groupName
+    local radarGroup = Group.getByName(radarSector.groupName)
+    if not radarGroup then return false end
+
+    local radarUnit = radarGroup:getUnit(1)
+    if not radarUnit then return false end
+
+    local controller = radarUnit:getController()
+    if not controller then
+        local message = "[RadarCheck] ERROR: Radar unit '" .. radarUnit:getName() .. "' has no controller. Is it alive and active?"
+        trigger.action.outText(message, 10)
+        env.error(message)
+        return false
+    end
+
+    local detections = controller:getDetectedTargets()
+    local threatFound = false
+
+    if detections and #detections > 0 then
+        -- env.info("[RadarCheck] Radar '" .. groupName .. "' detected " .. #detections .. " target(s).")
+
+        for _, det in ipairs(detections) do
+            -- Flag to decide whether target is found
+            threatFound = true
+
+            -- Optional: ignore very far detections
+            -- det.distance is a boolean not a number
+            if det.distance then
+                local distance = RadarHandler.getDistance(radarUnit, det.object)
+                if distance and distance > radarSector.maxDetectRange then
+                    threatFound = false
+                    local message = "[RadarCheck]  Skipping – beyond max range (" .. radarSector.maxDetectRange .. " nm)."
+                    trigger.action.outText(message, 10)
+                    -- env.info(message)
+                end
+            end
+
+            -- Optional: filter by aircraft type
+            --if filterByAircraft and threatFound then
+            --   local aircraft = det.aircraftName or det.objectName or det.unitName or ""
+            --    if not string.find(aircraft, filterByAircraft, 1, true) then
+            --        threatFound = false
+            --        local message = "[RadarCheck]  Skipping – not a " .. filterByAircraft .. "."
+            --        trigger.action.outText(message, 10)
+            --        env.info(message)
+            --    end
+            --end
+
+            -- log all threats identified
+            if threatFound then
+                local message = "[RadarCheck] Detected: " .. RadarHandler.formatDetection(radarUnit, det)
+                trigger.action.outText(message, 10)
+                -- env.info(message)
+            end
+        end
+        -- Your custom logic here – e.g. trigger a client message, change AI state, etc.
+        -- For example: env.mission.setWaypoint(1, "DetectedEnemy")
+    else
+        local message = "[RadarCheck] Radar '" .. groupName .. "' found NO targets."
+        trigger.action.outText(message, 10)
+        -- env.info(message)
+    end
+
+    return threatFound
+end
+
+
+
+
+
+
+
+
+-- ==============================================================================
+-- CENTRALIZED TRIGGER REGISTRY ENGINE
+-- ==============================================================================
+TriggerRegistry = {
+    monitoredSectors = {},
+    actionQueue = {},
+    isActive = false,
+    tickInterval = 3.0 -- Evaluation heartbeat frequency in seconds
+}
+
+-- Add a sector to the tracking pool
+function TriggerRegistry.register(sectorInstance)
+    table.insert(TriggerRegistry.monitoredSectors, sectorInstance)
+    env.info(string.format("[TriggerRegistry] Registered sector '%s' for monitoring.", sectorInstance.groupName))
+    TriggerRegistry._ensureHeartbeat()
+end
+
+function TriggerRegistry.scheduleAction(delaySeconds, callbackFunction, contextArgs)
+    local actionPayload = {
+        executeAt = timer.getTime() + delaySeconds,
+        callback  = callbackFunction,
+        args      = contextArgs or {}
+    }
+    table.insert(TriggerRegistry.actionQueue, actionPayload)
+    TriggerRegistry._ensureHeartbeat()
+end
+
+function TriggerRegistry._ensureHeartbeat()
+    if not TriggerRegistry.isActive then
+        TriggerRegistry.isActive = true
+        timer.scheduleFunction(TriggerRegistry._heartbeat, {}, timer.getTime() + TriggerRegistry.tickInterval)
+    end
+end
+
+-- The private master loop handler
+function TriggerRegistry._heartbeat(args, time)
+    local currentTime = timer.getTime()
+
+    -- --------------------------------------------------------------------------
+    -- JOB 1: PROCESS DELAYED FUNCTIONS (ACTION QUEUE)
+    -- --------------------------------------------------------------------------
+    for i = #TriggerRegistry.actionQueue, 1, -1 do
+        local action = TriggerRegistry.actionQueue[i]
+        
+        if currentTime >= action.executeAt then
+            -- Safely execute the function passing its context arguments
+            local success, err = pcall(action.callback, action.args)
+            if not success then
+                env.info(string.format("[TriggerRegistry Error] Action callback failed: %s", tostring(err)))
+            end
+            
+            table.remove(TriggerRegistry.actionQueue, i)
+        end
+    end
+
+    -- --------------------------------------------------------------------------
+    -- JOB 2: PROCESS SECTOR MONITORING TRIGGERS
+    -- --------------------------------------------------------------------------
+    for i = #TriggerRegistry.monitoredSectors, 1, -1 do
+        local sector = TriggerRegistry.monitoredSectors[i]
+        
+        if TriggerRegistry.evaluate(sector) then
+            sector:executeSectorSpawn()
+            table.remove(TriggerRegistry.monitoredSectors, i)
+        end
+    end
+
+    -- Sleep the loop if there's absolutely nothing left to do
+    if #TriggerRegistry.monitoredSectors == 0 and #TriggerRegistry.actionQueue == 0 then
+        TriggerRegistry.isActive = false
+        env.info("[TriggerRegistry] All queues cleared. Sleeping heartbeat loop.")
+        return nil
+    end
+
+    return time + TriggerRegistry.tickInterval
+end
+
+
+
+function TriggerRegistry.evaluate(sector)
+    -- If the sector has somehow already spawned out of band, flag it for immediate cleanup
+    if sector.hasSpawned then return true end
+
+    env.info("Trigger Registry evaluate loop: " .. sector.groupName )
+    if sector.triggerType == "TRIGGER_ZONE" then
+        return TriggerRegistry._checkZone(sector.zoneName)
+        
+    elseif sector.triggerType == "RADAR" then
+        return TriggerRegistry._checkRadarDetection(sector)
+        
+    elseif sector.triggerType == "OBJECTIVE_COMPLETE" then
+        return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName)
+        
+    end
+
+    -- Unrecognized or faulty trigger logic drops safe fallback logging
+    env.info(string.format("[TriggerRegistry Warning] Unknown trigger type '%s' on group %s", sector.triggerType, sector.groupName))
+    return false
+end
+
+-- ==============================================================================
+-- INDIVIDUAL ISOLATED EVALUATORS (Easy to expand later!)
+-- ==============================================================================
+
+function TriggerRegistry._checkZone(zoneName)
+    if not zoneName or not trigger.misc.getZone(zoneName) then return false end
+    -- Wrap MIST utility checks safely
+    local playersInZone = mist.getPlayersInZone(zoneName)
+    return playersInZone ~= nil and #playersInZone > 0
+end
+
+function TriggerRegistry._checkRadarDetection(radarSector)
+    env.info("Check radar for unit " .. radarSector.groupName)
+    local threatFound = RadarHandler.checkRadar(radarSector)
+    if threatFound then
+        env.info("Found a threat")
+    end
+end
+
+function TriggerRegistry._checkGroupDestroyed(parentGroupName)
+    if not parentGroupName then return true end
+    local gp = Group.getByName(parentGroupName)
+    
+    -- If the group reference returns nil or contains no active airframes/hulls
+    if gp == nil or gp:isExist() == false or gp:getSize() == 0 then
+        return true
+    end
+    
+    -- Double check if units have structural lifepoints remaining
+    for i = 1, gp:getSize() do
+        local unit = gp:getUnit(i)
+        if unit and unit:isActive() and unit:getLife() > 1 then 
+            return false -- At least one asset is still fighting
+        end
+    end
+    return true
+end
+
+
 -- ==============================================================================
 -- 2. AUTOMATION CORE ENGINE LOGIC
 -- ==============================================================================
@@ -508,12 +756,15 @@ function MissionDirector:deployRadarStation()
 
     -- Sector Drone Deployment Phase
     if self.droneConfig then
-        timer.scheduleFunction(function()
-            self.droneConfig.targetX = finalX
-            self.droneConfig.targetY = finalY
-            
-            self:spawnDynamicDrone(self.droneConfig, finalX, finalY)
-        end, {}, timer.getTime() + 2.0)
+        local droneContext = {
+            directorRef = self,
+            targetX = finalX,
+            targetY = finalY
+        }
+        TriggerRegistry.scheduleAction(2.0, function(args)
+            local sector = args.directorRef
+            sector:spawnDynamicDrone(sector.droneConfig, args.targetX, args.targetY)
+        end, droneContext)
     end
 end
 
@@ -699,21 +950,12 @@ function MissionDirector:startEngineLoop()
     -- IMMEDIATE SECTORS: Fire instantly without scheduling background checks
     if self.triggerType == "IMMEDIATE" then
         env.info("[Director] Booting Immediate Sector: " .. self.groupName)
-        self:executeSectorSpawn(nil, nil) 
-
-    -- CONDITIONAL SECTORS: Kick off their self-scheduling polling check loops
-    elseif self.triggerType == "RADAR" or 
-           self.triggerType == "TRIGGER_ZONE" or 
-           self.triggerType == "OBJECTIVE_COMPLETE" then
-           
-        env.info(string.format("[Director] Initializing Monitoring Loop for %s (%s)", self.groupName, self.triggerType))
-        
-        -- FIX: If this is a RADAR sector, deploy the physical radar station right now 
-        -- so it exists in the world and can actually scan for players!
+        self:executeSectorSpawn() 
+    else
         if self.triggerType == "RADAR" then
             self:deployRadarStation()
         end
-        
-        self:checkTriggerCondition()
+        -- Hand off tracking responsibility directly to the master ticker registry
+        TriggerRegistry.register(self)
     end
 end

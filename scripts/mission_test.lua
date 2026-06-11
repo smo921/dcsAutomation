@@ -83,7 +83,7 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
         }
     },
 
-    maxDetectRange = 150000.0,
+    maxDetectRangeNM = 80.0,
     checkInterval = 5.0,
 
     -- DEDICATED RECON DRONE: Tied strictly to this localized sector target
