@@ -97,8 +97,7 @@ function SpatialSolver.terrainIsClear(x, y, radius)
     return true
 end
 
-function SpatialSolver.getCoordinates(coalition, placementConfig)
-    local bullseye = SpatialSolver.getBullseye(coalition)
+function SpatialSolver.getCoordinates(bullseye, placementConfig)
     if placementConfig.offsetX and placementConfig.offsetY then
         return bullseye.x + placementConfig.offsetX, bullseye.y + placementConfig.offsetY
     elseif placementConfig.groupName and placementConfig.waypoint then
@@ -110,8 +109,40 @@ function SpatialSolver.getCoordinates(coalition, placementConfig)
     end
 end
 
-function SpatialSolver.findSafeGroundCoordinates(coalition, placementConfig)
-    local blueBullseye = SpatialSolver.getBullseye(coalition)
+
+function SpatialSolver.searchArea(x, y, radius)
+    local safeFound = false
+    local attempts = 0
+    local finalX, finalY
+    -- Keep trying to find a clear spot up to 20 times per unit
+    while not safeFound and attempts < 20 do
+        attempts = attempts + 1
+        
+        local randomAngle = math.random() * 2 * math.pi
+        local randomDist  = math.random() * (radius or 25)
+        
+        local checkX = x + (math.cos(randomAngle) * randomDist)
+        local checkY = y + (math.sin(randomAngle) * randomDist)
+        
+        if SpatialSolver.terrainIsClear(checkX, checkX, 50) == true then
+            finalX = checkX
+            finalY = checkY
+            safeFound = true            
+        end
+    end
+    
+    -- Fallback: If 20 attempts all hit dense forest, fall back to random offset
+    if not safeFound then
+        finalX = x + (math.random(-50, 50))
+        finalY = y + (math.random(-50, 50))
+        env.info(string.format("[Director Warning] Could not find clear clearing for %s Unit %d after 20 attempts. Defaulting near center.", self.groupName, i))
+    end
+
+    return finalX, finalY
+end
+
+-- finds a safe place inside a trigger zone, or based on startingPosition.x,y and placementConfig
+function SpatialSolver.findSafeGroundCoordinates(startingPosition, placementConfig)
     local startX, startY
     local finalX, finalY
 
@@ -128,38 +159,10 @@ function SpatialSolver.findSafeGroundCoordinates(coalition, placementConfig)
             startY = zoneData.point.z
         end
     else
-        startX, startY = SpatialSolver.getCoordinates(coalition, placementConfig)
+        startX, startY = SpatialSolver.getCoordinates(startingPosition, placementConfig)
     end
     
-    local safeFound = false
-    local attempts = 0
-    local scatterRadius = placementConfig.spawnRadius or 1000
-
-    -- Keep trying to find a clear spot up to 20 times per unit
-    while not safeFound and attempts < 20 do
-        attempts = attempts + 1
-        
-        local randomAngle = math.random() * 2 * math.pi
-        local randomDist  = math.random() * scatterRadius
-        
-        local checkX = startX + (math.cos(randomAngle) * randomDist)
-        local checkY = startY + (math.sin(randomAngle) * randomDist)
-        
-        if SpatialSolver.terrainIsClear(checkX, checkX, 50) == true then
-            finalX = checkX
-            finalY = checkY
-            safeFound = true            
-        end
-    end
-    
-    -- Fallback: If 20 attempts all hit dense forest, fall back to random offset
-    if not safeFound then
-        finalX = startX + (math.random(-50, 50))
-        finalY = startY + (math.random(-50, 50))
-        env.info(string.format("[Director Warning] Could not find clear clearing for %s Unit %d after 20 attempts. Defaulting near center.", self.groupName, i))
-    end
-
-    return finalX, finalY
+    return SpatialSolver.searchArea(startX, startY, placementConfig.spawnRadius)
 end
 
 
@@ -528,10 +531,10 @@ function MissionDirector:executeSectorSpawn()
     -- ========================================================================
     local finalX, finalY
     local unitsPayload = {}
-    
+    local bullseye = SpatialSolver.getBullseye("blue")
     -- 1A. If this is a RADAR sector, insert the master emitting radar unit first
     if self.triggerType == "RADAR" and self.radarUnitType then
-        finalX, finalY = SpatialSolver.findSafeGroundCoordinates("blue", self.placement)
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
         table.insert(unitsPayload, {
             ["type"]    = self.unitType,
             ["name"]    = self.groupName .. "_Master_Unit",
@@ -545,7 +548,7 @@ function MissionDirector:executeSectorSpawn()
     -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
     if self.units then
         for i, unitType in ipairs(self.units) do
-            finalX, finalY = SpatialSolver.findSafeGroundCoordinates("blue", self.placement)
+            finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
             table.insert(unitsPayload, {
                 ["type"]    = unitType,
                 ["name"]    = self.groupName .. "_Unit_" .. i,
@@ -589,7 +592,7 @@ function MissionDirector:executeSectorSpawn()
     -- STEP 2: PROCESS THE DATA-DRIVEN DRONE OVERWATCH ASSETS
     -- ========================================================================
     if self.droneConfig then
-        self:spawnDynamicDrone(SpatialSolver.getCoordinates("blue", self.placement))
+        self:spawnDynamicDrone(SpatialSolver.getCoordinates(SpatialSolver.getBullseye("blue"), self.placement))
     end
 
     self.hasSpawned = true
@@ -848,7 +851,7 @@ function MissionDirector:deployRadarStation()
     
     -- 2. Explicit Fallback: If zone logic fails or isn't specified, use your profile offsets
     if not finalX or not finalY then
-        finalX, finalY = SpatialSolver.findSafeGroundCoordinates("blue", self.placement)
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(SpatialSolver.getBullseye("blue"), self.placement)
         env.info("[Director Fallback] Anchoring radar " .. self.radarGroupName .. " to configured profile offsets.")
     end
 
@@ -903,7 +906,7 @@ function MissionDirector:spawnDynamicDrone(spawnX, spawnY)
         TriggerRegistry.scheduleAction(3.0, function()
             if Group.getByName(self.droneConfig.groupName) then
                 -- Paint map tracking markpoint readouts onto the player's F10 layer
-                self:createGroundTargetMarkpoint(finalX, finalY)
+                self:createGroundTargetMarkpoint(spawnX, spawnY)
                 self:assignDroneToTarget(self.droneConfig.groupName, self.groupName)
                 self:addDroneRadioMenu()
             end
@@ -965,9 +968,9 @@ function MissionDirector:checkTriggerCondition()
         
         self:executeSectorSpawn()
     else
-        timer.scheduleFunction(function() 
+        TriggerRegistry.scheduleAction(self.checkInterval or 5.0, function() 
             self:checkTriggerCondition() 
-        end, {}, timer.getTime() + (self.checkInterval or 5.0))
+        end)
     end
 end
 

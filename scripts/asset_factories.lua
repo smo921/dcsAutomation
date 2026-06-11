@@ -9,12 +9,14 @@ end
 
 UnitFormationBuilder = {}
 
-function UnitFormationBuilder.Linear(coalition, groupName, units, placement)
+function UnitFormationBuilder.Linear(config, x, y)
     local unitPayload = {}
     local currentYOffset = 0
-    local startX, startY = SpatialSolver.findSafeGroundCoordinates(coalition, placement)
-    for idx, unitType in ipairs(units) do
-        local checkX, checkY = startX, startY + currentYOffset
+    local startX, startY = SpatialSolver.findSafeGroundCoordinates({x = x, y = y}, config.placementConfig)
+    for idx, unitType in ipairs(config.units) do
+        local startingPosition = {x = x, y = y}
+        local checkX, checkY = SpatialSolver.findSafeGroundCoordinates(startingPosition, startX, startY + currentYOffset)
+
         local attempts = 0
         while attempts < 20 do
             attempts = attempts + 1
@@ -24,7 +26,7 @@ function UnitFormationBuilder.Linear(coalition, groupName, units, placement)
         end
         table.insert(unitPayload, {
             ["type"] = unitType,
-            ["name"] = groupName .. "_Unit_" .. idx,
+            ["name"] = config.groupName .. "_Unit_" .. idx,
             ["x"] = checkX,
             ["y"] = checkY,
             ["heading"] = self.placement.heading * (math.pi / 180) })
@@ -201,6 +203,21 @@ function AssetFactories.buildDrone(config, x, y)
         }
     }
     return payload
+end
+
+function AssetFactories.buildPlatoon(config, x, y)
+    -- Compile Waypoints
+    local points = {}
+    for _, wp in ipairs(self.routeConfig) do
+        local node = { ["x"] = x + wp.offsetX, ["y"] = y + wp.offsetY, ["type"] = "Turning Point", ["action"] = wp.type or "Off Road", ["speed"] = wp.speed / 3.6 }
+        local opts = {}
+        if wp.roe and MissionDirector.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["ROE"], ["value"] = MissionDirector.ROE[wp.roe] } }) end
+        if wp.threat and MissionDirector.THREAT_REACTION[wp.threat] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["THREAT_REACTION"], ["value"] = MissionDirector.THREAT_REACTION[wp.threat] } }) end
+        if #opts > 0 then node["task"] = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = opts } } end
+        table.insert(points, node)
+    end
+    local unitPool = UnitFormationBuilder.Linear(config, x, y)
+
 end
 
 function AssetFactories.buildPointDefense(config, x, y)
