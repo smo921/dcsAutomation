@@ -2,6 +2,14 @@ local function nm2Meters(distanceNm)
     return distanceNm * 1.852 * 1000
 end
 
+local function printSurfaceType(surfaceType)
+    for str, ind in pairs(land.SurfaceType) do
+        if ind == surfaceType then
+            env.info('point is type ' .. surfaceType .. ' String: ' .. str)			
+        end
+    end
+end
+
 SpatialSolver = {}
 
 function SpatialSolver.getBullseye(coalition)
@@ -308,7 +316,7 @@ function TriggerRegistry.evaluate(sector)
     -- If the sector has somehow already spawned out of band, flag it for immediate cleanup
     if sector.hasSpawned then return true end
 
-    env.info("Trigger Registry evaluate loop: " .. sector.groupName )
+    -- env.info("Trigger Registry evaluate loop: " .. sector.groupName )
     if sector.triggerType == "TRIGGER_ZONE" then
         return TriggerRegistry._checkZone(sector.zoneName)
         
@@ -337,7 +345,7 @@ function TriggerRegistry._checkZone(zoneName)
 end
 
 function TriggerRegistry._checkRadarDetection(radarSector)
-    env.info("Check radar for unit " .. radarSector.groupName)
+    -- env.info("Check radar for unit " .. radarSector.groupName)
     local threatFound = RadarHandler.checkRadar(radarSector)
 end
 
@@ -658,13 +666,6 @@ function MissionDirector:deployRadarStation()
         if zoneData then
             local randomZonePoint = mist.getRandomPointInZone(zoneName)
             local surfaceType = land.getSurfaceType(randomZonePoint)
-
-            for str, ind in pairs(land.SurfaceType) do
-                if ind == surfaceType then
-                    env.info('point is type ' .. surfaceType .. ' String: ' .. str)			
-                end
-            end
-
 
             if surfaceType ~= 3 then 
                 finalX = randomZonePoint.x
