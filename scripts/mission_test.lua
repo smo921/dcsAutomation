@@ -10,8 +10,8 @@ local GlobalTheaterAssets = {
         modulation = "AM",
         callsign = 2, -- Magic
         callsignNumber = 1, -- Magic 1-1
-        altitude = 9500, -- Meters (~31,000 ft) for maximum radar horizon
-        speed = 540, -- km/h
+        altitude = 31000, -- Feet
+        speed = 290, -- knots
         orbitLength = 60000, -- 60km wide racetrack pattern
 
         -- BULLSEYE STANDOFF VECTOR
@@ -55,8 +55,8 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
         country = "USA",
         frequency = 133.1,
         callsign = 1,
-        altitude = 4500,
-        speed = 200
+        altitude = 15000,
+        speed = 110
     }
 }, -- SECTOR 2: Traditional Radar Intercept Gate
 {
@@ -93,8 +93,8 @@ local SectorManifest = { -- SECTOR 1: Spawned instantly at mission start
         country = "USA",
         frequency = 133.0, -- MHz AM
         callsign = 1, -- Darkstar
-        altitude = 5000, -- Meters
-        speed = 220 -- km/h
+        altitude = 16500, -- feet
+        speed = 120 -- knots
     },
 
     triggeredUnits = {

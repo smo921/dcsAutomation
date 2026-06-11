@@ -1,3 +1,11 @@
+local function FeetToMeters(feet)
+    return feet * 0.3048
+end
+
+local function KnotsPerHourToKmPerHour(knots)
+    return knots * 1.852
+end
+
 local function nm2Meters(distanceNm) 
     return distanceNm * 1.852 * 1000
 end
@@ -593,8 +601,7 @@ function MissionDirector:executeSectorSpawn()
     -- ========================================================================
     if self.droneConfig then
         -- Give the ground payload 3 full seconds to completely stabilize in the world database
-        timer.scheduleFunction(function()
-            
+        TriggerRegistry.scheduleAction(3.0, function()            
             -- Establish the final anchor coordinates for the drone's station
             local targetX, targetY = SpatialSolver.getCoordinates("blue", self.placement)
                         
@@ -604,7 +611,7 @@ function MissionDirector:executeSectorSpawn()
             end
             
             -- Wait 3 seconds for the airframe to register before assigning its search task
-            timer.scheduleFunction(function()
+            TriggerRegistry.scheduleAction(3.0, function()
                 if Group.getByName(self.droneConfig.groupName) then
                     -- Paint map tracking markpoint readouts onto the player's F10 layer
                     self:createGroundTargetMarkpoint(self.groupName, targetX, targetY)
@@ -612,9 +619,8 @@ function MissionDirector:executeSectorSpawn()
                     -- Fire the autonomous zone search we built
                     self:assignDroneToTarget(self.droneConfig.groupName, self.groupName)
                 end
-            end, {}, timer.getTime() + 3.0)
-
-        end, {}, timer.getTime() + 3.0)
+            end)
+        end)
     end
 end
 
@@ -785,12 +791,12 @@ function MissionDirector:deployRadarStation()
     mist.dynAdd(radarGroupPayload)
     
     -- Force radar power state to Red (Active Scan)
-    timer.scheduleFunction(function(args)
+    TriggerRegistry.scheduleAction(1.0, function(args)
         local g = Group.getByName(args.name)
         if g and g:getController() then
             g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
         end
-    end, {name = self.groupName}, timer.getTime() + 1.0)
+    end, {name = self.groupName})
 
     -- 3. Deploy Air Defense Ring Escorts if configured
     if self.pointDefense and type(self.pointDefense.units) == "table" and #self.pointDefense.units > 0 then
@@ -824,12 +830,12 @@ function MissionDirector:deployRadarStation()
                 }
                 mist.dynAdd(adPayload)
                 
-                timer.scheduleFunction(function(args)
+                TriggerRegistry.scheduleAction(1.5, function(args)
                     local g = Group.getByName(args.name)
                     if g and g:getController() then
                         g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
                     end
-                end, {name = adGroupName}, timer.getTime() + 1.5)
+                end, {name = adGroupName})
             end
         end
     end
@@ -849,8 +855,8 @@ function MissionDirector:deployRadarStation()
 end
 
 function MissionDirector:spawnDynamicAWACS(awacsConfig, spawnX, spawnY)
-    local altitude    = awacsConfig.altitude or 8000 
-    local speed    = awacsConfig.speed or 550
+    local altitude    = FeetToMeters(awacsConfig.altitude) or 8000 
+    local speed    = KnotsPerHourToKmPerHour(awacsConfig.speed) or 550
     
     local wp1_x = spawnX
     local wp1_y = spawnY
@@ -911,8 +917,8 @@ end
 function MissionDirector:spawnDynamicDrone(droneConfig, spawnX, spawnY)
     local x = spawnX
     local y = spawnY
-    local altitude = droneConfig.altitude or 4572 
-    local speed = (droneConfig.speed or 200) / 3.6 
+    local altitude = FeetToMeters(droneConfig.altitude) or 4572 
+    local speed = (KnotsPerHourToKmPerHour(droneConfig.speed) or 200) / 3.6 
 
     local dronePayload = {
         ["visible"]  = true,
@@ -1018,7 +1024,7 @@ function MissionDirector:checkTriggerCondition()
             -- For now, falling back to standard offsets calculation inside executeSectorSpawn.
         end
         
-        self:executeSectorSpawn(self.placement)
+        self:executeSectorSpawn()
     else
         timer.scheduleFunction(function() 
             self:checkTriggerCondition() 
