@@ -366,7 +366,7 @@ function TriggerRegistry._heartbeat(args, time)
         local sector = TriggerRegistry.monitoredSectors[i]
         
         if TriggerRegistry.evaluate(sector) then
-            sector:executeSectorSpawn()
+            sector:spawnUnits()
             table.remove(TriggerRegistry.monitoredSectors, i)
         end
     end
@@ -444,50 +444,267 @@ function TriggerRegistry._checkGroupDestroyed(parentGroupName)
 end
 
 
+UnitPlacementConfig = {}
+
+function UnitPlacementConfig.new(placementConfig)
+    local self = setmetatable({}, UnitPlacementConfig)
+
+    self.heading = placementConfig.heading
+    self.offsetX = placementConfig.offsetX
+    self.offsetY = placementConfig.offsetY
+    self.spawnRadius = placementConfig.spawnRadius
+    self.strategy = placementConfig.strategy or ""
+    self.zoneName = placementConfig.zoneName
+
+    self.groupName = placementConfig.groupName
+    self.waypoint = placementConfig.waypoint
+    
+    return self
+end
+
+
+
+Sector = {}
+Sector.__index = Sector
+local GlobalUnitGroupRegistry = {}
+
+function Sector.new(sectorConfig)
+    local self = setmetatable({}, Sector)
+
+    -- Activation Rules Configuration
+    self.triggerType     = sectorConfig.triggerType or "IMMEDIATE"
+    self.checkInterval   = sectorConfig.checkInterval or 5.0
+
+    -- Conditional Triggers parameters
+    self.groupName  = sectorConfig.groupName
+    self.unitType   = sectorConfig.unitType
+    self.pointDefense    = sectorConfig.pointDefense
+    self.maxDetectRange  = sectorConfig.maxDetectRange or 200000.0
+        
+    self.parentGroupName = sectorConfig.parentGroupName
+    
+    -- Spawning Layout Parameters
+    self.country         = sectorConfig.country or "Russia"
+    self.units     = sectorConfig.units
+
+    self.placement = UnitPlacementConfig.new(sectorConfig.placement)
+
+    self.routeConfig     = sectorConfig.route or {}
+    
+    -- self.awacsConfig     = sectorConfig.awacs   -- Stores the nested awacs sub-table
+    self.droneConfig     = sectorConfig.drone   -- Stores the nested drone sub-table
+
+    -- State Lifecycles
+    self.hasSpawned      = false
+    self.isCleared       = false
+    
+    GlobalUnitGroupRegistry[self.groupName] = self
+    return self
+end
+
+function Sector:assignDroneToTarget(droneGroupName, targetGroupName)
+    local droneGroup = Group.getByName(droneGroupName)
+    
+    if droneGroup then
+        local droneController = droneGroup:getController()
+        
+        -- Pull final coordinates bound during spawn tracking
+        local searchX = self.droneConfig.targetX or self.offsetX
+        local searchY = self.droneConfig.targetY or self.offsetY
+        
+        -- FIX: Structured format for EngageTargetsInZone with correct data parameters
+        local engageZoneTask = {
+            id = 'EngageTargetsInZone',
+            params = {
+                point = { searchX, searchY }, 
+                zoneRadius = self.spawnRadius or 5000, 
+                targetTypes = { "Vehicles", "Air Defense" }, 
+                priority = 1
+            }
+        }
+        
+        droneController:pushTask(engageZoneTask)
+        env.info(string.format("[Director] EngageTargetsInZone pushed cleanly to Drone %s over absolute center.", droneGroupName))
+    else
+        env.info(string.format("[Director Warning] Drone %s missing for zone engagement routing.", droneGroupName))
+    end
+end
+
+function Sector:spawnDynamicDrone(spawnX, spawnY)
+    TriggerRegistry.scheduleAction(2.0, function()
+        mist.dynAdd(AssetFactories.buildDrone(self.droneConfig, spawnX, spawnY))
+        env.info("[Director] Dynamic Overwatch Drone spawned directly over target coordinates: " .. self.droneConfig.groupName)
+
+        -- Wait 3 seconds for the airframe to register before assigning its search task
+        TriggerRegistry.scheduleAction(3.0, function()
+            if Group.getByName(self.droneConfig.groupName) then
+                -- Paint map tracking markpoint readouts onto the player's F10 layer
+                self:createGroundTargetMarkpoint(spawnX, spawnY)
+                self:assignDroneToTarget(self.droneConfig.groupName, self.groupName)
+                self:addDroneRadioMenu()
+            end
+        end)
+    end)
+end
+
+function Sector:spawnRadarStation()
+    if self.hasSpawned then return end
+    if not self.groupName or not self.unitType then return end
+    local zoneName = self.placement.zoneName
+    local finalX, finalY
+    
+    -- 1. Grab a random point inside the specified ME Trigger Zone
+    if zoneName then
+        local zoneData = trigger.misc.getZone(zoneName)
+        
+        if zoneData then
+            local randomZonePoint = mist.getRandomPointInZone(zoneName)
+            local surfaceType = land.getSurfaceType(randomZonePoint)
+
+            if surfaceType ~= 3 then 
+                finalX = randomZonePoint.x
+                finalY = randomZonePoint.y
+                env.info("[Director] Radar " .. self.groupName .. " successfully randomized inside zone: " .. zoneName)
+            else
+                finalX = zoneData.point.x
+                finalY = zoneData.point.z
+                env.info(": x, y: " .. randomZonePoint.x .. "," .. randomZonePoint.z)
+                env.info("[Director Warning] Random zone point landed in water. Centering radar safety fallback inside zone.")
+            end
+        else
+            env.info("[Director Error] Named zone '" .. self.radarZoneName .. "' completely missing from the Mission Editor! Defaulting to profile offsets.")
+        end
+    end    
+    
+    -- 2. Explicit Fallback: If zone logic fails or isn't specified, use your profile offsets
+    if not finalX or not finalY then
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(SpatialSolver.getBullseye("blue"), self.placement)
+        env.info("[Director Fallback] Anchoring radar " .. self.radarGroupName .. " to configured profile offsets.")
+    end
+
+    -- Construct and deploy the dynamic radar group
+    local radarGroupPayload = {
+        ["visible"] = true,
+        ["task"] = "EWR",
+        ["category"] = "GROUND",
+        ["country"] = self.country,
+        ["name"] = self.groupName,
+        ["route"] = { ["points"] = { { ["x"] = finalX, ["y"] = finalY, ["type"] = "Turning Point", ["action"] = "From Ground Area", ["speed"] = 0 } } },
+        ["units"] = {
+            {
+                ["type"] = self.unitType,
+                ["name"] = self.groupName .. "_Sensor_Unit",
+                ["x"] = finalX, ["y"] = finalY,
+                ["heading"] = (self.placement.heading or 0) * (math.pi / 180)
+            }
+        }
+    }
+    
+    mist.dynAdd(radarGroupPayload)
+    
+    -- Force radar power state to Red (Active Scan)
+    TriggerRegistry.scheduleAction(1.0, function(args)
+        local g = Group.getByName(args.name)
+        if g and g:getController() then
+            g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
+        end
+    end, {name = self.groupName})
+
+    -- 3. Deploy Air Defense Ring Escorts if configured
+    if self.pointDefense and type(self.pointDefense.units) == "table" and #self.pointDefense.units > 0 then
+        local adPayload = AssetFactories.buildPointDefense(self, finalX, finalY)
+        mist.dynAdd(adPayload)        
+        activatePointDefense(adPayload)
+    end
+
+    -- Sector Drone Deployment Phase
+    if self.droneConfig then
+        self:spawnDynamicDrone(finalX, finalY)
+    end
+    self.hasSpawned = true
+end
+
+
+function Sector:spawnUnits()
+    if self.hasSpawned then return end
+    -- ========================================================================
+    -- SPATIAL CORRECTION MATRIX: Translate Relative Offsets to Absolute Map Space
+    -- ========================================================================
+    -- local blueBullseye = SpatialSolver.getBullseye("blue")
+    
+    -- ========================================================================
+    -- STEP 1: CONSTRUCT AND DEPLOY GROUND ELEMENTS VIA MIST
+    -- ========================================================================
+    local finalX, finalY
+    local unitsPayload = {}
+    local bullseye = SpatialSolver.getBullseye("blue")
+    -- 1A. If this is a RADAR sector, insert the master emitting radar unit first
+    if self.triggerType == "RADAR" then        
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
+        table.insert(unitsPayload, AssetFactories.buildRadar(self, finalX, finalY))
+    end
+    
+    -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
+    if self.units then
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
+        table.insert(unitsPayload, AssetFactories.buildPlatoon(self, finalX, finalY))
+
+
+        for i, unitType in ipairs(self.units) do
+            table.insert(unitsPayload, AssetFactories.buildGroundUnit({
+                ["name"] = self.groupName .. "_Unit_" .. i,
+                ["unitType"] = unitType,
+                ["heading"] = self.placement.heading
+            }, finalX, finalY))
+        end
+
+    end
+    
+    -- 1C. Assemble the structural master group wrapper for the MIST database
+    local groundGroupPayload = {
+        ["visible"]  = true,
+        ["category"] = "GROUND",
+        ["country"]  = self.country or "Russia",
+        ["name"]     = self.groupName,
+        ["units"]    = unitsPayload,
+        ["route"]    = { ["points"] = {} }
+    }
+
+    -- 1D. Inject waypoint nodes relative to the new absolute center point
+    if self.routeConfig then
+        groundGroupPayload.route.points = UnitFormationBuilder.BuildRoute(finalX, finalY, self.routeConfig)
+    end
+
+    -- Inject ground elements directly into the DCS engine environment
+    mist.dynAdd(groundGroupPayload)
+    env.info("[Director] Successfully deployed ground group array for sector: " .. self.groupName)
+
+    -- ========================================================================
+    -- STEP 2: PROCESS THE DATA-DRIVEN DRONE OVERWATCH ASSETS
+    -- ========================================================================
+    if self.droneConfig then
+        self:spawnDynamicDrone(SpatialSolver.getCoordinates(bullseye, self.placement))
+    end
+
+    self.hasSpawned = true 
+end
+
 -- ==============================================================================
 -- 2. AUTOMATION CORE ENGINE LOGIC
 -- ==============================================================================
 MissionDirector = {}
 MissionDirector.__index = MissionDirector
 
-MissionDirector.ROE = { WEAPON_HOLD = 0, RETURN_FIRE = 1, OPEN_FIRE = 2, WEAPON_FREE = 3 }
-MissionDirector.THREAT_REACTION = { PASSIVE_DEFENSE = 0, NO_REACTION = 1, EVADE_FIRE = 2, BYPASS_PASSIVE = 3 }
-local OPTION_IDS = { ROE = 0, THREAT_REACTION = 1 }
-
 -- Shared lookup tracking cache allowing instances to check if other instances finished
 local GlobalDirectorRegistry = {}
 
-function MissionDirector.new(configProfile)
+function MissionDirector.new(coalitionConfig)
     local self = setmetatable({}, MissionDirector)
-    
-    -- Activation Rules Configuration
-    self.triggerType     = configProfile.triggerType or "IMMEDIATE"
-    self.checkInterval   = configProfile.checkInterval or 5.0
-
-    -- Conditional Triggers parameters
-    self.groupName  = configProfile.groupName
-    self.unitType   = configProfile.unitType
-    self.pointDefense    = configProfile.pointDefense
-    self.maxDetectRange  = configProfile.maxDetectRange or 200000.0
-        
-    self.parentGroupName = configProfile.parentGroupName
-    
-    -- Spawning Layout Parameters
-    self.country         = configProfile.country or "Russia"
-    self.units     = configProfile.units
-
-    self.placement = configProfile.placement
-
-    self.routeConfig     = configProfile.route
-    
-    self.awacsConfig     = configProfile.awacs   -- Stores the nested awacs sub-table
-    self.droneConfig     = configProfile.drone   -- Stores the nested drone sub-table
-
-    -- State Lifecycles
-    self.hasSpawned      = false
-    self.isCleared       = false
-    
-    GlobalDirectorRegistry[self.groupName] = self
+    self.sectors = {}
+    for _, sector in ipairs(coalitionConfig) do
+        local s = Sector.new(sector)
+        table.insert(self.sectors, s)
+    end
     return self
 end
 
@@ -533,16 +750,9 @@ function MissionDirector:executeSectorSpawn()
     local unitsPayload = {}
     local bullseye = SpatialSolver.getBullseye("blue")
     -- 1A. If this is a RADAR sector, insert the master emitting radar unit first
-    if self.triggerType == "RADAR" and self.radarUnitType then
+    if self.triggerType == "RADAR" and self.radarUnitType then        
         finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
-        table.insert(unitsPayload, {
-            ["type"]    = self.unitType,
-            ["name"]    = self.groupName .. "_Master_Unit",
-            ["x"]       = finalX,
-            ["y"]       = finalY,
-            ["heading"] = math.rad(self.placement.heading or 0),
-            ["skill"]   = "Excellent"
-        })
+        table.insert(unitsPayload, AssetFactories.buildRadar(self, finalX, finalY))
     end
 
 
@@ -554,14 +764,11 @@ function MissionDirector:executeSectorSpawn()
 
 
         for i, unitType in ipairs(self.units) do
-            table.insert(unitsPayload, {
-                ["type"]    = unitType,
-                ["name"]    = self.groupName .. "_Unit_" .. i,
-                ["x"]       = finalX,
-                ["y"]       = finalY,
-                ["heading"] = math.rad(self.placement.heading or 0),
-                ["skill"]   = "High"
-            })
+            table.insert(unitsPayload, AssetFactories.buildGroundUnit({
+                ["name"] = self.groupName .. "_Unit_" .. i,
+                ["unitType"] = unitType,
+                ["heading"] = self.placement.heading
+            }, finalX, finalY))
         end
 
     end
@@ -578,16 +785,7 @@ function MissionDirector:executeSectorSpawn()
 
     -- 1D. Inject waypoint nodes relative to the new absolute center point
     if self.routeConfig then
-        for _, wp in ipairs(self.routeConfig) do
-            table.insert(groundGroupPayload.route.points, {
-                ["x"]      = finalX + wp.offsetX,
-                ["y"]      = finalY + wp.offsetY,
-                ["action"] = "Turning Point",
-                ["type"]   = wp.type or "Off Road",
-                ["speed"]  = (wp.speed or 30) / 3.6, -- Convert km/h to m/s
-                ["task"]   = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = {} } }
-            })
-        end
+        groundGroupPayload.route.points = UnitFormationBuilder.BuildRoute(finalX, finalY, self.routeConfig)
     end
 
     -- Inject ground elements directly into the DCS engine environment
@@ -748,7 +946,7 @@ function MissionDirector:assignDroneToTarget(droneGroupName, targetGroupName)
 end
 
 
-function MissionDirector:checkDroneDead()
+function Sector:checkDroneDead()
     local droneName = self.droneConfig.groupName
     local liveDrone = Group.getByName(droneName)
     
@@ -770,83 +968,6 @@ function MissionDirector:checkDroneDead()
         return true
     end
     return false
-end
-
-function MissionDirector:deployRadarStation()
-    if self.hasSpawned then return end
-    if not self.groupName or not self.unitType then return end
-    local zoneName = self.placement.zoneName
-    local finalX, finalY
-    
-    -- 1. Grab a random point inside the specified ME Trigger Zone
-    if zoneName then
-        local zoneData = trigger.misc.getZone(zoneName)
-        
-        if zoneData then
-            local randomZonePoint = mist.getRandomPointInZone(zoneName)
-            local surfaceType = land.getSurfaceType(randomZonePoint)
-
-            if surfaceType ~= 3 then 
-                finalX = randomZonePoint.x
-                finalY = randomZonePoint.y
-                env.info("[Director] Radar " .. self.groupName .. " successfully randomized inside zone: " .. zoneName)
-            else
-                finalX = zoneData.point.x
-                finalY = zoneData.point.z
-                env.info(": x, y: " .. randomZonePoint.x .. "," .. randomZonePoint.z)
-                env.info("[Director Warning] Random zone point landed in water. Centering radar safety fallback inside zone.")
-            end
-        else
-            env.info("[Director Error] Named zone '" .. self.radarZoneName .. "' completely missing from the Mission Editor! Defaulting to profile offsets.")
-        end
-    end    
-    
-    -- 2. Explicit Fallback: If zone logic fails or isn't specified, use your profile offsets
-    if not finalX or not finalY then
-        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(SpatialSolver.getBullseye("blue"), self.placement)
-        env.info("[Director Fallback] Anchoring radar " .. self.radarGroupName .. " to configured profile offsets.")
-    end
-
-    -- Construct and deploy the dynamic radar group
-    local radarGroupPayload = {
-        ["visible"] = true,
-        ["task"] = "EWR",
-        ["category"] = "GROUND",
-        ["country"] = self.country,
-        ["name"] = self.groupName,
-        ["route"] = { ["points"] = { { ["x"] = finalX, ["y"] = finalY, ["type"] = "Turning Point", ["action"] = "From Ground Area", ["speed"] = 0 } } },
-        ["units"] = {
-            {
-                ["type"] = self.unitType,
-                ["name"] = self.groupName .. "_Sensor_Unit",
-                ["x"] = finalX, ["y"] = finalY,
-                ["heading"] = (self.placement.heading or 0) * (math.pi / 180)
-            }
-        }
-    }
-    
-    mist.dynAdd(radarGroupPayload)
-    
-    -- Force radar power state to Red (Active Scan)
-    TriggerRegistry.scheduleAction(1.0, function(args)
-        local g = Group.getByName(args.name)
-        if g and g:getController() then
-            g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
-        end
-    end, {name = self.groupName})
-
-    -- 3. Deploy Air Defense Ring Escorts if configured
-    if self.pointDefense and type(self.pointDefense.units) == "table" and #self.pointDefense.units > 0 then
-        local adPayload = AssetFactories.buildPointDefense(self, finalX, finalY)
-        mist.dynAdd(adPayload)        
-        activatePointDefense(adPayload)
-    end
-
-    -- Sector Drone Deployment Phase
-    if self.droneConfig then
-        self:spawnDynamicDrone(finalX, finalY)
-    end
-    self.hasSpawned = true
 end
 
 function MissionDirector:spawnDynamicDrone(spawnX, spawnY)
@@ -927,13 +1048,15 @@ function MissionDirector:checkTriggerCondition()
 end
 
 function MissionDirector:startEngineLoop()
-    -- IMMEDIATE SECTORS: Fire instantly without scheduling background checks
-    if self.triggerType == "IMMEDIATE" then
-        env.info("[Director] Booting Immediate Sector: " .. self.groupName)
-        self:executeSectorSpawn()
-    elseif self.triggerType == "RADAR" then
-        self:deployRadarStation()
+    for _, sector in ipairs(self.sectors) do
+        -- IMMEDIATE SECTORS: Fire instantly without scheduling background checks
+        if sector.triggerType == "IMMEDIATE" then
+            env.info("[Director] Booting Immediate Sector: " .. sector.groupName)
+            sector:spawnUnits()
+        elseif sector.triggerType == "RADAR" then
+            sector:spawnRadarStation()
+        end
+        -- Hand off tracking responsibility directly to the master ticker registry
+        TriggerRegistry.register(sector)
     end
-    -- Hand off tracking responsibility directly to the master ticker registry
-    TriggerRegistry.register(self)
 end

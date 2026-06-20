@@ -12,10 +12,10 @@ UnitFormationBuilder = {}
 function UnitFormationBuilder.Linear(config, x, y)
     local unitPayload = {}
     local currentYOffset = 0
-    local startX, startY = SpatialSolver.findSafeGroundCoordinates({x = x, y = y}, config.placementConfig)
+    local startX, startY = SpatialSolver.findSafeGroundCoordinates({x = x, y = y}, config.placement)
     for idx, unitType in ipairs(config.units) do
-        local startingPosition = {x = x, y = y}
-        local checkX, checkY = SpatialSolver.findSafeGroundCoordinates(startingPosition, startX, startY + currentYOffset)
+        local startingPosition = {x = startX, y = startY + currentYOffset}
+        local checkX, checkY = SpatialSolver.findSafeGroundCoordinates(startingPosition, config.placement)
 
         local attempts = 0
         while attempts < 20 do
@@ -29,7 +29,7 @@ function UnitFormationBuilder.Linear(config, x, y)
             ["name"] = config.groupName .. "_Unit_" .. idx,
             ["x"] = checkX,
             ["y"] = checkY,
-            ["heading"] = self.placement.heading * (math.pi / 180) })
+            ["heading"] = config.placement.heading * (math.pi / 180) })
         currentYOffset = (checkY - startY) - 25
     end
     return unitPayload
@@ -64,11 +64,34 @@ function UnitFormationBuilder.RadialScatter(config, x, y)
     return unitPayload
 end
 
-
+function UnitFormationBuilder.BuildRoute(startX, startY, waypoints)
+    local points = {}
+    for _, wp in ipairs(waypoints) do
+        table.insert(points, {
+            ["x"]      = startX + wp.offsetX,
+            ["y"]      = startY + wp.offsetY,
+            ["action"] = "Turning Point",
+            ["type"]   = wp.type or "Off Road",
+            ["speed"]  = (wp.speed or 30) / 3.6, -- Convert km/h to m/s
+            ["task"]   = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = {} } }
+        })
+    end
+    return points
+end
 
 
 AssetFactories = {}
 
+function AssetFactories.buildRadar(config, x, y)
+    return {
+        ["type"]    = config.unitType,
+        ["name"]    = config.groupName .. "_Master_Unit",
+        ["x"]       = x,
+        ["y"]       = y,
+        ["heading"] = math.rad(config.placement.heading or 0),
+        ["skill"]   = "Excellent"
+    }    
+end
 
 function AssetFactories.buildStatic(config, x, y)
     local staticPayload = {
@@ -87,8 +110,10 @@ function AssetFactories.buildGroundUnit(config, x, y)
     return {
         ["type"] = config.unitType,
         ["name"] = config.name,
-        ["x"] = x, ["y"] = y,
-        ["heading"] = config.heading or math.random(0, 359) * (math.pi / 180)
+        ["x"] = x,
+        ["y"] = y,
+        ["heading"] = config.heading or math.random(0, 359) * (math.pi / 180),
+        ["skill"] = "High"
     }
 end
 
@@ -205,14 +230,18 @@ function AssetFactories.buildDrone(config, x, y)
     return payload
 end
 
+AssetFactories.ROE = { WEAPON_HOLD = 0, RETURN_FIRE = 1, OPEN_FIRE = 2, WEAPON_FREE = 3 }
+AssetFactories.THREAT_REACTION = { PASSIVE_DEFENSE = 0, NO_REACTION = 1, EVADE_FIRE = 2, BYPASS_PASSIVE = 3 }
+AssetFactories.OPTION_IDS = { ROE = 0, THREAT_REACTION = 1 }
+
 function AssetFactories.buildPlatoon(config, x, y)
     -- Compile Waypoints
     local points = {}
     for _, wp in ipairs(config.routeConfig) do
         local node = { ["x"] = x + wp.offsetX, ["y"] = y + wp.offsetY, ["type"] = "Turning Point", ["action"] = wp.type or "Off Road", ["speed"] = wp.speed / 3.6 }
         local opts = {}
-        if wp.roe and MissionDirector.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["ROE"], ["value"] = MissionDirector.ROE[wp.roe] } }) end
-        if wp.threat and MissionDirector.THREAT_REACTION[wp.threat] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["THREAT_REACTION"], ["value"] = MissionDirector.THREAT_REACTION[wp.threat] } }) end
+        if wp.roe and AssetFactories.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = AssetFactories.OPTION_IDS["ROE"], ["value"] = AssetFactories.ROE[wp.roe] } }) end
+        if wp.threat and AssetFactories.THREAT_REACTION[wp.threat] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["THREAT_REACTION"], ["value"] = AssetFactories.THREAT_REACTION[wp.threat] } }) end
         if #opts > 0 then node["task"] = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = opts } } end
         table.insert(points, node)
     end
