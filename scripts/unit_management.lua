@@ -645,6 +645,7 @@ function Sector:createGroundTargetMarkpoint(targetX, targetY)
         local lat, lon, alt = coord.LOtoLL(pos)
         local mgrs = coord.LLtoMGRS(lat, lon)
 
+        local targetType = groundGroup:getUnit(1):getTypeName() or "Unknown"
 
         local x = mgrs.Easting / 100
         local y = mgrs.Northing / 100
