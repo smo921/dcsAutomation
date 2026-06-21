@@ -3,6 +3,7 @@
 -- ============================================================================
 local GlobalTheaterAssets = {
     awacs = {
+        enabled = false,
         groupName = "Magic_Global_Sentry",
         unitType = "E-3A",
         country = "USA",
@@ -26,6 +27,7 @@ local GlobalTheaterAssets = {
 local SectorManifest = {
     ["red"] = { -- SECTOR 1: Spawned instantly at mission start
     {
+        enabled = false,
         triggerType = "IMMEDIATE",
         groupName = "Border_Patrol_Alpha",
         country = "Russia",
@@ -61,8 +63,10 @@ local SectorManifest = {
         }
     }, -- SECTOR 2: Traditional Radar Intercept Gate
     {
+        enabled = true,
         triggerType = "RADAR",
         groupName = "EW Radar Alpha",
+        country = "Russia",
         unitType = "1L13 EWR",
 
         placement = {
@@ -89,6 +93,7 @@ local SectorManifest = {
 
         -- DEDICATED RECON DRONE: Tied strictly to this localized sector target
         drone = {
+            enabled = false,
             groupName = "Reaper_Eye_Bravo",
             unitType = "MQ-9 Reaper",
             country = "USA",
@@ -123,6 +128,7 @@ local SectorManifest = {
         }
     }, -- SECTOR 3: Triggered when a player enters a Mission Editor Trigger Zone
     {
+        enabled = false,
         triggerType = "TRIGGER_ZONE",
         checkInterval = 2.0,
 
@@ -150,6 +156,7 @@ local SectorManifest = {
         }}
     }, -- SECTOR 4: Chain reaction. Spawns ONLY after Sector 2's objectives are cleared!
     {
+        enabled = false,
         triggerType = "OBJECTIVE_COMPLETE",
         parentGroupName = "North_Vanguard_Platoon", -- Watches the group state of Sector 2
         checkInterval = 5.0,
@@ -176,6 +183,7 @@ local SectorManifest = {
             roe = "OPEN_FREE"
         }}
     }, {
+        enabled = false,
         triggerType = "IMMEDIATE",
         groupName = "Waypoint_Patrol",
         country = "Russia",
