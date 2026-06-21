@@ -1,3 +1,32 @@
+local function printTable(t, indent)
+    indent = indent or ""
+    for key, value in pairs(t) do
+        if type(value) == "table" then
+            env.info(indent .. tostring(key) .. ":")
+            printTable(value, indent .. "  ")
+        else
+            env.info(indent .. tostring(key) .. ": " .. tostring(value))
+        end
+    end
+end
+
+local function printGroup(groupName)
+    local group = Group.getByName(groupName)
+
+    if group then
+        local units = group:getUnits()
+        for i, unit in pairs(units) do
+            env.info("Unit #" .. i)
+            env.info("  Name: " .. Unit.getName(unit))
+            env.info("  Type: " .. unit:getTypeName()) -- e.g., "F-16C" or "T-72"
+
+            -- Pull raw descriptor table (mass, speed, category, etc.)
+            local desc = unit:getDesc()
+            printTable(desc)
+        end
+    end
+end
+
 local function nm2Meters(distanceNm)
     return distanceNm * 1.852 * 1000
 end
@@ -101,7 +130,8 @@ function SpatialSolver.getCoordinates(bullseye, placementConfig)
     if placementConfig.offsetX and placementConfig.offsetY then
         return bullseye.x + placementConfig.offsetX, bullseye.y + placementConfig.offsetY
     elseif placementConfig.groupName and placementConfig.waypoint then
-        env.info("Placing unit near group: " .. placementConfig.groupName .. "waypoint: " .. placementConfig.waypoint)
+        env.info("[SpatialSolver] Placing unit near group: " .. placementConfig.groupName .. " waypoint: " ..
+                     placementConfig.waypoint)
         local wp = getWaypointFromFlight(placementConfig.groupName, placementConfig.waypoint)
         return wp.x, wp.y
     else
@@ -285,7 +315,7 @@ function RadarHandler.checkRadar(radarSector)
     local threatFound = false
 
     if detections and #detections > 0 then
-        -- env.info("[RadarCheck] Radar '" .. groupName .. "' detected " .. #detections .. " target(s).")
+        env.info("[RadarCheck] Radar '" .. groupName .. "' detected " .. #detections .. " target(s).")
 
         for _, det in ipairs(detections) do
             -- Flag to decide whether target is found
@@ -304,6 +334,18 @@ function RadarHandler.checkRadar(radarSector)
                 end
             end
 
+            if threatFound and det.object and det.object:isExist() then
+                -- Pull the actual vehicle/aircraft type name (e.g., "F-16C_50" or "AH-64D_BLK_II")
+                local typeName = det.object:getTypeName() or "Unknown Type"
+                
+                -- Pull the specific unit designation name assigned in the Mission Editor
+                local unitName = det.object:getName() or "Unknown Unit"
+                
+                -- Calculate distance for a highly descriptive telemetry printout
+                local distance = RadarHandler.getDistanceInNM(radarUnit, det.object) or 0
+                
+                env.info(string.format("[CheckRadar] Found Target -> Type: %s | Unit Name: %s | Range: %.1f nm", typeName, unitName, distance))
+            end
             -- Optional: filter by aircraft type
             -- if filterByAircraft and threatFound then
             --   local aircraft = det.aircraftName or det.objectName or det.unitName or ""
@@ -340,7 +382,7 @@ TriggerRegistry = {
     monitoredSectors = {},
     actionQueue = {},
     isActive = false,
-    tickInterval = 3.0 -- Evaluation heartbeat frequency in seconds
+    tickInterval = 15.0 -- Evaluation heartbeat frequency in seconds
 }
 
 -- Add a sector to the tracking pool
@@ -393,9 +435,9 @@ function TriggerRegistry._heartbeat(args, time)
     -- --------------------------------------------------------------------------
     for i = #TriggerRegistry.monitoredSectors, 1, -1 do
         local sector = TriggerRegistry.monitoredSectors[i]
-
+        env.info(string.format("[TriggerRegistry] evaluating: %s", sector.groupName))
         if TriggerRegistry.evaluate(sector) then
-            sector:spawnUnits()
+            -- sector:spawnUnits()
             table.remove(TriggerRegistry.monitoredSectors, i)
         end
     end
@@ -412,22 +454,22 @@ end
 
 -- Process the sector.  Return true to signal that all processing is complete
 function TriggerRegistry.evaluate(sector)
-    if sector.droneConfig then
-        -- return true if drone is dead to signal TriggerRegistry to stop monitoring sector
-        return sector:checkDroneDead()
-    end
-
-    -- If the sector has somehow already spawned out of band, flag it for immediate cleanup
-    if sector.hasSpawned then
-        return true
+    if sector.droneConfig and sector.droneConfig.enabled then
+        -- check if drone is dead and cleanup
+        local isDead = sector:checkDroneDead()
+        if isDead then sector.dronConfig.enabled = false end
     end
 
     -- env.info("Trigger Registry evaluate loop: " .. sector.groupName )
     if sector.triggerType == "TRIGGER_ZONE" then
-        return TriggerRegistry._checkZone(sector.zoneName)
+        local triggered = TriggerRegistry._checkZone(sector.zoneName)
+        if triggered then
+            sector:spawnUnits()
+        end
+        return triggered
 
     elseif sector.triggerType == "RADAR" then
-        return TriggerRegistry._checkRadarDetection(sector)
+        TriggerRegistry._checkRadarDetection(sector)
 
     elseif sector.triggerType == "OBJECTIVE_COMPLETE" then
         return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName)
@@ -448,12 +490,11 @@ function TriggerRegistry._checkZone(zoneName)
         return false
     end
     -- Wrap MIST utility checks safely
-    local playersInZone = mist.getPlayersInZone(zoneName)
+    local playersInZone = mist.getUnitsInZones(zoneName)
     return playersInZone ~= nil and #playersInZone > 0
 end
 
 function TriggerRegistry._checkRadarDetection(radarSector)
-    -- env.info("Check radar for unit " .. radarSector.groupName)
     local threatFound = RadarHandler.checkRadar(radarSector)
 end
 
@@ -503,9 +544,12 @@ local GlobalUnitGroupRegistry = {}
 function Sector.new(sectorConfig)
     local self = setmetatable({}, Sector)
 
+    self.enabled = sectorConfig.enabled
+    -- if self.enable == nil then self.enabled = true end
+
     -- Activation Rules Configuration
     self.triggerType = sectorConfig.triggerType or "IMMEDIATE"
-    self.checkInterval = sectorConfig.checkInterval or 5.0
+    -- self.checkInterval = sectorConfig.checkInterval or 5.0
 
     -- Conditional Triggers parameters
     self.groupName = sectorConfig.groupName
@@ -692,6 +736,10 @@ function Sector:checkDroneDead()
 end
 
 function Sector:spawnDynamicDrone(spawnX, spawnY)
+    if self.droneConfig.enabled == false then
+        return
+    end
+
     TriggerRegistry.scheduleAction(2.0, function()
         mist.dynAdd(AssetFactories.buildDrone(self.droneConfig, spawnX, spawnY))
         env.info("[Director] Dynamic Overwatch Drone spawned directly over target coordinates: " ..
@@ -739,7 +787,7 @@ function Sector:spawnRadarStation()
                     "[Director Warning] Random zone point landed in water. Centering radar safety fallback inside zone.")
             end
         else
-            env.info("[Director Error] Named zone '" .. self.radarZoneName ..
+            env.info("[Director Error] Named zone '" .. zoneName ..
                          "' completely missing from the Mission Editor! Defaulting to profile offsets.")
         end
     end
@@ -747,34 +795,11 @@ function Sector:spawnRadarStation()
     -- 2. Explicit Fallback: If zone logic fails or isn't specified, use your profile offsets
     if not finalX or not finalY then
         finalX, finalY = SpatialSolver.findSafeGroundCoordinates(SpatialSolver.getBullseye("blue"), self.placement)
-        env.info("[Director Fallback] Anchoring radar " .. self.radarGroupName .. " to configured profile offsets.")
+        env.info("[Director Fallback] Anchoring radar " .. self.groupName .. " to configured profile offsets.")
     end
 
     -- Construct and deploy the dynamic radar group
-    local radarGroupPayload = {
-        ["visible"] = true,
-        ["task"] = "EWR",
-        ["category"] = "GROUND",
-        ["country"] = self.country,
-        ["name"] = self.groupName,
-        ["route"] = {
-            ["points"] = {{
-                ["x"] = finalX,
-                ["y"] = finalY,
-                ["type"] = "Turning Point",
-                ["action"] = "From Ground Area",
-                ["speed"] = 0
-            }}
-        },
-        ["units"] = {{
-            ["type"] = self.unitType,
-            ["name"] = self.groupName .. "_Sensor_Unit",
-            ["x"] = finalX,
-            ["y"] = finalY,
-            ["heading"] = (self.placement.heading or 0) * (math.pi / 180)
-        }}
-    }
-
+    local radarGroupPayload = AssetFactories.buildRadar(self, finalX, finalY)
     mist.dynAdd(radarGroupPayload)
 
     -- Force radar power state to Red (Active Scan)
@@ -818,6 +843,7 @@ function Sector:spawnUnits()
     local bullseye = SpatialSolver.getBullseye("blue")
     -- 1A. If this is a RADAR sector, insert the master emitting radar unit first
     if self.triggerType == "RADAR" then
+        env.error("This probably should never run and should be removed but if we see this then it is being used and that is odd")
         finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
         table.insert(unitsPayload, AssetFactories.buildRadar(self, finalX, finalY))
     end
@@ -881,8 +907,12 @@ function MissionDirector.new(coalitionConfig)
     local self = setmetatable({}, MissionDirector)
     self.sectors = {}
     for _, sector in ipairs(coalitionConfig) do
-        local s = Sector.new(sector)
-        table.insert(self.sectors, s)
+        env.info("[Director] Sector " .. sector.groupName .. " enabled: " .. tostring(sector.enabled))
+
+        if sector.enabled == true then
+            local s = Sector.new(sector)
+            table.insert(self.sectors, s)
+        end
     end
     return self
 end
@@ -893,6 +923,10 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
     end
 
     local awacsData = globalConfig.awacs
+
+    if awacsData.enabled == false then
+        return
+    end
 
     -- Fetch the exact coalition Bullseye coordinates from the DCS environment
     local bullseyePos = SpatialSolver.getBullseye("blue")
@@ -916,7 +950,7 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
     end
 end
 
-function MissionDirector:checkOwnUnitsDead()
+function Sector:_checkOwnUnitsDead()
     local g = Group.getByName(self.groupName)
     if not g or g:getSize() == 0 then
         return true
@@ -928,29 +962,6 @@ function MissionDirector:checkOwnUnitsDead()
         end
     end
     return true
-end
-
-function MissionDirector:isPlayerInZone(zoneName)
-    return trigger.misc.getZone(zoneName) and #mist.getPlayersInZone(zoneName) > 0
-end
-
-function MissionDirector:isPlayerDetectedByRadar()
-    return false
-end
-
-function MissionDirector:isParentGroupDestroyed()
-    local gp = Group.getByName(self.parentGroupName)
-    local parentDirector = GlobalDirectorRegistry[self.parentGroupName]
-
-    if parentDirector and not parentDirector.hasSpawned then
-        return false
-    end
-
-    if gp == nil or gp:isExist() == false or gp:getSize() == 0 then
-        return true
-    end
-
-    return false
 end
 
 function MissionDirector:startEngineLoop()
