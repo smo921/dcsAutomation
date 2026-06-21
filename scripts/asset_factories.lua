@@ -83,14 +83,28 @@ end
 AssetFactories = {}
 
 function AssetFactories.buildRadar(config, x, y)
-    return {
-        ["type"]    = config.unitType,
-        ["name"]    = config.groupName .. "_Master_Unit",
-        ["x"]       = x,
-        ["y"]       = y,
-        ["heading"] = math.rad(config.placement.heading or 0),
-        ["skill"]   = "Excellent"
-    }    
+    env.info("[AssetFactory] Building Radar " .. config.groupName)
+    local payload = {
+        ["visible"] = true,
+        ["category"] = "GROUND",
+        ["country"] = config.country,
+        ["name"] = config.groupName,
+        ["route"] = {
+            ["points"] = {}
+        },
+        ["units"] = {
+            [1] = {
+                ["type"] = config.unitType,
+                ["name"] = config.groupName .. "_Sensor_Unit",
+                ["x"] = x,
+                ["y"] = y,
+                ["speed"] = 0,
+                ["heading"] = (config.placement.heading or 0) * (math.pi / 180),
+                ["skill"] = "High"
+            }
+        }
+    }
+    return payload
 end
 
 function AssetFactories.buildStatic(config, x, y)
@@ -260,7 +274,7 @@ end
 function AssetFactories.buildPointDefense(config, x, y)
     local pdConfig = {
         ["country"] = config.country,
-        ["groupName"] = config.groupName,
+        ["groupName"] = config.groupName .. "_Point_Defense",
         ["minR"] = config.pointDefense.minRadius or 100,
         ["maxR"] = config.pointDefense.maxRadius or 300,
         ["units"] = config.pointDefense.units,
