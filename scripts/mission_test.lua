@@ -2,8 +2,9 @@
 -- GLOBAL THEATER ASSETS (Spawned relative to Bullseye at Mission Start)
 -- ============================================================================
 local GlobalTheaterAssets = {
-    awacs = {
-        enabled = false,
+    [1] = {
+        enabled = true,
+        task = "AWACS",
         groupName = "Magic_Global_Sentry",
         unitType = "E-3A",
         country = "USA",
@@ -17,6 +18,25 @@ local GlobalTheaterAssets = {
 
         -- BULLSEYE STANDOFF VECTOR
         offsetHeading = 240, -- Heading from Bullseye to safe orbit zone (SW)
+        offsetDistance = 50 -- Stay 50nm away from Bullseye center
+    },
+    [2] = {
+        enabled = true,
+        groupName = "Texaco_Global_Refueling",
+        task = "Refueling",
+        unitType = "KC-135",
+        country = "USA",
+
+        frequency = 253.0, -- MHz AM
+        modulation = "AM",
+        callsign = 1, -- Texaco
+        callsignNumber = 1, -- Texaco 1-1
+        altitude = 31000, -- Feet
+        speed = 290, -- knots
+        orbitLength = 60000, -- 60km wide racetrack pattern
+
+        -- BULLSEYE STANDOFF VECTOR
+        offsetHeading = 330, -- Heading from Bullseye to safe orbit zone (SW)
         offsetDistance = 50 -- Stay 50nm away from Bullseye center
     }
 }

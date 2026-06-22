@@ -145,7 +145,9 @@ function AssetFactories.buildGroundUnit(config, x, y)
     }
 end
 
-function AssetFactories.buildAWACS(config, x, y)
+function AssetFactories.buildAWACSorTanker(originPoint, config)
+    local x, y = SpatialSolver.getCoordinates(originPoint, config)    
+
     local altitude = FeetToMeters(config.altitude) or 8000 
     local speed = KnotsPerHourToKmPerHour(config.speed) or 550
     
@@ -181,7 +183,7 @@ function AssetFactories.buildAWACS(config, x, y)
                         ["id"] = "ComboTask",
                         ["params"] = {
                             ["tasks"] = {
-                                [1] = { ["id"] = "AWACS", ["params"] = {} },
+                                [1] = { ["id"] = config.task, ["params"] = {} },
                                 [2] = {
                                     ["id"] = "Orbit",
                                     ["params"] = { ["pattern"] = "Racetrack", ["altitude"] = altitude, ["speed"] = speed }

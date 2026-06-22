@@ -161,9 +161,13 @@ function SpatialSolver.terrainIsClear(x, y, radius)
     return true
 end
 
-function SpatialSolver.getCoordinates(bullseye, placementConfig)
+function SpatialSolver.getCoordinates(origin, placementConfig)
+    local x, y = origin.x, origin.y
+
     if placementConfig.offsetX and placementConfig.offsetY then
-        return bullseye.x + placementConfig.offsetX, bullseye.y + placementConfig.offsetY
+        return x + placementConfig.offsetX, y + placementConfig.offsetY
+    elseif placementConfig.offsetHeading and placementConfig.offsetDistance then
+        return SpatialSolver.getVector(origin, placementConfig.offsetHeading, placementConfig.offsetDistance)
     elseif placementConfig.groupName and placementConfig.waypoint then
         env.info("[SpatialSolver] Placing unit near group: " .. placementConfig.groupName .. " waypoint: " ..
                      placementConfig.waypoint)
@@ -172,6 +176,20 @@ function SpatialSolver.getCoordinates(bullseye, placementConfig)
     else
         return bullseye.x, bullseye.y
     end
+end
+
+function SpatialSolver.getVector(origin, heading, distance)
+    local x, y
+    local headingDeg = heading or 180
+    local distanceNm = distance or 60
+
+    local headingRad = math.rad(headingDeg)
+    local distanceMeters = nm2Meters(distanceNm)
+
+    -- Vector Projection away from Bullseye center
+    x = origin.x + (math.cos(headingRad) * distanceMeters)
+    y = origin.y + (math.sin(headingRad) * distanceMeters)
+    return x, y
 end
 
 function SpatialSolver.searchArea(x, y, radius)
@@ -941,35 +959,17 @@ function MissionDirector.new(coalitionConfig)
 end
 
 function MissionDirector:initializeGlobalAssets(globalConfig)
-    if not globalConfig or not globalConfig.awacs then
+    if not globalConfig then
         return
     end
 
-    local awacsData = globalConfig.awacs
+    local bullseye = SpatialSolver.getBullseye("blue")
 
-    if awacsData.enabled == false then
-        return
-    end
-
-    -- Fetch the exact coalition Bullseye coordinates from the DCS environment
-    local bullseyePos = SpatialSolver.getBullseye("blue")
-
-    if bullseyePos then
-        local headingDeg = awacsData.offsetHeading or 180
-        local distanceNm = awacsData.offsetDistance or 60
-
-        local headingRad = math.rad(headingDeg)
-        local distanceMeters = nm2Meters(distanceNm)
-
-        -- Vector Projection away from Bullseye center
-        local safeX = bullseyePos.x + (math.cos(headingRad) * distanceMeters)
-        local safeY = bullseyePos.y + (math.sin(headingRad) * distanceMeters)
-
-        -- Fire execution
-        mist.dynAdd(AssetFactories.buildAWACS(awacsData, safeX, safeY))
-        env.info("[Director] Global AWACS established relative to Theater Bullseye coordinates.")
-    else
-        env.info("[Director Error] Failed to retrieve Blue coalition Bullseye from the environment map!")
+    for _, unit in ipairs(globalConfig) do
+        if unit.enabled then
+            mist.dynAdd(AssetFactories.buildAWACSorTanker(bullseye, unit))
+            env.info("[Director] Global " .. unit.groupName .. " established relative to Theater Bullseye coordinates.")        
+        end
     end
 end
 
