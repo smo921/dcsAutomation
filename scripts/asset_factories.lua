@@ -67,14 +67,19 @@ end
 function UnitFormationBuilder.BuildRoute(startX, startY, waypoints)
     local points = {}
     for _, wp in ipairs(waypoints) do
-        table.insert(points, {
+        local node = {
             ["x"]      = startX + wp.offsetX,
             ["y"]      = startY + wp.offsetY,
             ["action"] = "Turning Point",
             ["type"]   = wp.type or "Off Road",
             ["speed"]  = (wp.speed or 30) / 3.6, -- Convert km/h to m/s
             ["task"]   = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = {} } }
-        })
+        }
+        local opts = {}
+        if wp.roe and AssetFactories.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = AssetFactories.OPTION_IDS["ROE"], ["value"] = AssetFactories.ROE[wp.roe] } }) end
+        if wp.threat and AssetFactories.THREAT_REACTION[wp.threat] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["THREAT_REACTION"], ["value"] = AssetFactories.THREAT_REACTION[wp.threat] } }) end
+        if #opts > 0 then node["task"] = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = opts } } end
+        table.insert(points, node)
     end
     return points
 end
@@ -251,18 +256,13 @@ AssetFactories.OPTION_IDS = { ROE = 0, THREAT_REACTION = 1 }
 function AssetFactories.buildPlatoon(config, x, y)
     -- Compile Waypoints
     local points = {}
-    for _, wp in ipairs(config.routeConfig) do
-        local node = { ["x"] = x + wp.offsetX, ["y"] = y + wp.offsetY, ["type"] = "Turning Point", ["action"] = wp.type or "Off Road", ["speed"] = wp.speed / 3.6 }
-        local opts = {}
-        if wp.roe and AssetFactories.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = AssetFactories.OPTION_IDS["ROE"], ["value"] = AssetFactories.ROE[wp.roe] } }) end
-        if wp.threat and AssetFactories.THREAT_REACTION[wp.threat] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["THREAT_REACTION"], ["value"] = AssetFactories.THREAT_REACTION[wp.threat] } }) end
-        if #opts > 0 then node["task"] = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = opts } } end
-        table.insert(points, node)
+    if config.route then
+        points = UnitFormationBuilder.BuildRoute(x, y, config.route)
     end
+
     local unitPool = UnitFormationBuilder.Linear(config, x, y)
     return {
         ["visible"] = true,
-        ["task"] = "Ground Nothing",
         ["category"] = "GROUND",
         ["country"] = config.country,
         ["name"] = config.groupName,

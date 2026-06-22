@@ -109,9 +109,9 @@ local SectorManifest = {
             units = {"T-72B", "BMP-2", "ZSU-23-4 Shilka"},
             placement = {
                 heading = 0,
-                offsetX = 15000,
-                offsetY = 10000,
-                spawnRadius = 2000
+                offsetX = 1000,
+                offsetY = 0,
+                spawnRadius = 200
             },
             route = {{
                 type = "On Road",

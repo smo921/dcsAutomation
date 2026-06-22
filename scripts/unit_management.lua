@@ -1,3 +1,7 @@
+local function is_nil_or_empty(t)
+    return not t or next(t) == nil
+end
+
 local function printTable(t, indent)
     indent = indent or ""
     for key, value in pairs(t) do
@@ -65,6 +69,37 @@ local function printSurfaceType(surfaceType)
             env.info('point is type ' .. surfaceType .. ' String: ' .. str)
         end
     end
+end
+
+--- Determines whether a group is eligible to be spawned.
+-- Prevents duplicate spawning of active assets and unwanted re-spawning of destroyed ones.
+-- @param groupName string The tracking name of the group.
+-- @return boolean true if it is safe and valid to spawn the group; false otherwise.
+local function shouldGroupSpawn(groupName)
+    if not groupName then return false end
+    
+    local gp = Group.getByName(groupName)
+    
+    -- STATE 1: Group object does not exist anywhere in the active simulation database.
+    -- This means it has never been spawned yet. Safe to deploy!
+    if gp == nil or gp:isExist() == false then
+        return true
+    end
+    
+    -- STATE 2: The group container exists. Check if any units are still breathing.
+    for i = 1, gp:getSize() do
+        local unit = gp:getUnit(i)
+        if unit and unit:isExist() and unit:isActive() and unit:getLife() > 1 then
+            -- Found alive units. The asset is active in the world right now.
+            env.info(string.format("[SpawnGuard] Blocked spawn for '%s': Group is already active in theater.", groupName))
+            return false 
+        end
+    end
+    
+    -- STATE 3: The group container exists, but every single unit has been destroyed.
+    -- This prevents dead units from popping back into existence.
+    env.info(string.format("[SpawnGuard] Blocked spawn for '%s': Group was already deployed and neutralized.", groupName))
+    return false
 end
 
 MapMarkerRegistry = {
@@ -330,7 +365,7 @@ function RadarHandler.checkRadar(radarSector)
                     local message = "[RadarCheck]  Skipping – beyond max range (" .. radarSector.maxDetectRange ..
                                         " nm)."
                     trigger.action.outText(message, 10)
-                    -- env.info(message)
+                    env.info(message)
                 end
             end
 
@@ -463,7 +498,7 @@ function TriggerRegistry.evaluate(sector)
     -- env.info("Trigger Registry evaluate loop: " .. sector.groupName )
     if sector.triggerType == "TRIGGER_ZONE" then
         local triggered = TriggerRegistry._checkZone(sector.zoneName)
-        if triggered then
+        if triggered and shouldGroupSpawn(sector.groupName) then
             sector:spawnUnits()
         end
         return triggered
@@ -496,6 +531,9 @@ end
 
 function TriggerRegistry._checkRadarDetection(radarSector)
     local threatFound = RadarHandler.checkRadar(radarSector)
+    if threatFound and shouldGroupSpawn(radarSector.triggeredUnits.groupName) then
+        radarSector:spawnTriggeredUnits()
+    end
 end
 
 function TriggerRegistry._checkGroupDestroyed(parentGroupName)
@@ -562,10 +600,10 @@ function Sector.new(sectorConfig)
     -- Spawning Layout Parameters
     self.country = sectorConfig.country or "Russia"
     self.units = sectorConfig.units
-
     self.placement = UnitPlacementConfig.new(sectorConfig.placement)
+    self.route = sectorConfig.route or {}
 
-    self.routeConfig = sectorConfig.route or {}
+    self.triggeredUnits = sectorConfig.triggeredUnits
 
     -- self.awacsConfig     = sectorConfig.awacs   -- Stores the nested awacs sub-table
     self.droneConfig = sectorConfig.drone -- Stores the nested drone sub-table
@@ -826,64 +864,42 @@ function Sector:spawnRadarStation()
     self.hasSpawned = true
 end
 
-function Sector:spawnUnits()
-    if self.hasSpawned then
-        return
-    end
-    -- ========================================================================
-    -- SPATIAL CORRECTION MATRIX: Translate Relative Offsets to Absolute Map Space
-    -- ========================================================================
-    -- local blueBullseye = SpatialSolver.getBullseye("blue")
+local function spawnUnitsFromConfig(config)
+    if is_nil_or_empty(config) or is_nil_or_empty(config.units) then return end
 
-    -- ========================================================================
-    -- STEP 1: CONSTRUCT AND DEPLOY GROUND ELEMENTS VIA MIST
-    -- ========================================================================
     local finalX, finalY
     local unitsPayload = {}
     local bullseye = SpatialSolver.getBullseye("blue")
-    -- 1A. If this is a RADAR sector, insert the master emitting radar unit first
-    if self.triggerType == "RADAR" then
-        env.error("This probably should never run and should be removed but if we see this then it is being used and that is odd")
-        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
-        table.insert(unitsPayload, AssetFactories.buildRadar(self, finalX, finalY))
-    end
 
-    -- 1B. Dynamic Radial Scatter for Ground Columns (Forest-Proofed)
-    if self.units then
-        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, self.placement)
-        table.insert(unitsPayload, AssetFactories.buildPlatoon(self, finalX, finalY))
+    finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, config.placement)
+    local units = AssetFactories.buildPlatoon(config, finalX, finalY)
 
-        for i, unitType in ipairs(self.units) do
-            table.insert(unitsPayload, AssetFactories.buildGroundUnit({
-                ["name"] = self.groupName .. "_Unit_" .. i,
-                ["unitType"] = unitType,
-                ["heading"] = self.placement.heading
-            }, finalX, finalY))
-        end
-
-    end
-
-    -- 1C. Assemble the structural master group wrapper for the MIST database
     local groundGroupPayload = {
         ["visible"] = true,
         ["category"] = "GROUND",
-        ["country"] = self.country or "Russia",
-        ["name"] = self.groupName,
+        ["country"] = config.country or "Russia",
+        ["name"] = config.groupName,
         ["units"] = unitsPayload,
         ["route"] = {
             ["points"] = {}
         }
     }
 
-    -- 1D. Inject waypoint nodes relative to the new absolute center point
-    if self.routeConfig then
-        groundGroupPayload.route.points = UnitFormationBuilder.BuildRoute(finalX, finalY, self.routeConfig)
-    end
+    --if config.route then
+    --    groundGroupPayload.route.points = UnitFormationBuilder.BuildRoute(finalX, finalY, config.route)
+    --end
 
     -- Inject ground elements directly into the DCS engine environment
-    mist.dynAdd(groundGroupPayload)
-    env.info("[Director] Successfully deployed ground group array for sector: " .. self.groupName)
+    mist.dynAdd(units)
+    env.info("[Director] Successfully deployed ground group array for sector: " .. config.groupName)
+end
 
+function Sector:spawnUnits()
+    if self.hasSpawned then
+        return
+    end
+
+    spawnUnitsFromConfig(self)
     -- ========================================================================
     -- STEP 2: PROCESS THE DATA-DRIVEN DRONE OVERWATCH ASSETS
     -- ========================================================================
@@ -892,6 +908,10 @@ function Sector:spawnUnits()
     end
 
     self.hasSpawned = true
+end
+
+function Sector:spawnTriggeredUnits()
+    spawnUnitsFromConfig(self.triggeredUnits)
 end
 
 -- ==============================================================================
