@@ -210,7 +210,6 @@ end
 -- finds a safe place inside a trigger zone, or based on startingPosition.x,y and placementConfig
 function SpatialSolver.findSafeGroundCoordinates(startingPosition, placementConfig)
     local startX, startY
-    local finalX, finalY
 
     -- Strategy 1: Zone Randomization
     if placementConfig.strategy == "ZONE_RANDOM" then
@@ -562,16 +561,29 @@ UnitPlacementConfig = {}
 function UnitPlacementConfig.new(placementConfig)
     local self = setmetatable({}, UnitPlacementConfig)
 
-    self.heading = placementConfig.heading
-    self.offsetX = placementConfig.offsetX
-    self.offsetY = placementConfig.offsetY
-    self.spawnRadius = placementConfig.spawnRadius
+    self.heading = placementConfig.heading -- degrees
+    self.offsetX = nm2Meters(placementConfig.offsetX) -- nm
+    self.offsetY = nm2Meters(placementConfig.offsetY) -- nm
+    self.spawnRadius = nm2Meters(placementConfig.spawnRadius) -- nm
+    
     self.strategy = placementConfig.strategy or ""
     self.zoneName = placementConfig.zoneName
 
     self.groupName = placementConfig.groupName
     self.waypoint = placementConfig.waypoint
 
+    return self
+end
+
+UnitRouteWaypoint = {}
+
+function UnitRouteWaypoint.new(routeConfig)
+    local self = setmetatable({}, UnitRouteConfig)
+    self.type = routeConfig.type
+    self.speed = routeConfig.speed
+    self.offsetX = nm2Meters(routeConfig.offsetX)
+    self.offsetY = nm2Meters(routeConfig.offsetY)
+    self.roe = routeConfig.roe or ""
     return self
 end
 
@@ -601,9 +613,17 @@ function Sector.new(sectorConfig)
     self.country = sectorConfig.country or "Russia"
     self.units = sectorConfig.units
     self.placement = UnitPlacementConfig.new(sectorConfig.placement)
-    self.route = sectorConfig.route or {}
 
-    self.triggeredUnits = sectorConfig.triggeredUnits
+    if sectorConfig.route then
+        self.route = {}
+        for idx, wpConfig in ipairs(sectorConfig.route) do
+            table.insert(self.route, UnitRouteWaypoint.new(wpConfig))
+        end
+    end
+
+    if sectorConfig.triggeredUnits then
+        self.triggeredUnits = Sector.new(sectorConfig.triggeredUnits)
+    end
 
     -- self.awacsConfig     = sectorConfig.awacs   -- Stores the nested awacs sub-table
     self.droneConfig = sectorConfig.drone -- Stores the nested drone sub-table
@@ -868,28 +888,11 @@ local function spawnUnitsFromConfig(config)
     if is_nil_or_empty(config) or is_nil_or_empty(config.units) then return end
 
     local finalX, finalY
-    local unitsPayload = {}
     local bullseye = SpatialSolver.getBullseye("blue")
 
     finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, config.placement)
     local units = AssetFactories.buildPlatoon(config, finalX, finalY)
 
-    local groundGroupPayload = {
-        ["visible"] = true,
-        ["category"] = "GROUND",
-        ["country"] = config.country or "Russia",
-        ["name"] = config.groupName,
-        ["units"] = unitsPayload,
-        ["route"] = {
-            ["points"] = {}
-        }
-    }
-
-    --if config.route then
-    --    groundGroupPayload.route.points = UnitFormationBuilder.BuildRoute(finalX, finalY, config.route)
-    --end
-
-    -- Inject ground elements directly into the DCS engine environment
     mist.dynAdd(units)
     env.info("[Director] Successfully deployed ground group array for sector: " .. config.groupName)
 end

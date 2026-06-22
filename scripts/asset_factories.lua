@@ -12,10 +12,18 @@ UnitFormationBuilder = {}
 function UnitFormationBuilder.Linear(config, x, y)
     local unitPayload = {}
     local currentYOffset = 0
-    local startX, startY = SpatialSolver.findSafeGroundCoordinates({x = x, y = y}, config.placement)
+    local startX, startY = x, y
+    local placementConfig = UnitPlacementConfig.new({
+        heading = config.heading,
+        offsetX = 0,
+        offsetY = 0,
+        spawnRadius = 0
+    })
+    placementConfig.spawnRadius = config.placement.spawnRadius -- skip nm to meters conversion performed by .new()
+
     for idx, unitType in ipairs(config.units) do
         local startingPosition = {x = startX, y = startY + currentYOffset}
-        local checkX, checkY = SpatialSolver.findSafeGroundCoordinates(startingPosition, config.placement)
+        local checkX, checkY = SpatialSolver.findSafeGroundCoordinates(startingPosition, placementConfig)
 
         local attempts = 0
         while attempts < 20 do
@@ -24,6 +32,7 @@ function UnitFormationBuilder.Linear(config, x, y)
             if (surf == 1 or surf == 4 or surf == 5) and not SpatialSolver.findStaticObstructions(checkX, checkY, 12) then break end
             checkY = checkY - 20
         end
+
         table.insert(unitPayload, {
             ["type"] = unitType,
             ["name"] = config.groupName .. "_Unit_" .. idx,

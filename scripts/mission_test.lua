@@ -35,21 +35,21 @@ local SectorManifest = {
 
         placement = {
             heading = 90,
-            offsetX = 5000,
-            offsetY = 5000,
-            spawnRadius = 2000
+            offsetX = 2.7,
+            offsetY = 2.7,
+            spawnRadius = 1.0
         },
 
         route = {{
             type = "On Road",
             speed = 30,
-            offsetX = 5000,
-            offsetY = 5000
+            offsetX = 2.7,
+            offsetY = 2.7
         }, {
             type = "On Road",
             speed = 30,
-            offsetX = 8000,
-            offsetY = 12000
+            offsetX = 4.3,
+            offsetY = 6.5
         }},
         -- NEW: Drone assigned to track this ground movement profile right at mission start
         drone = {
@@ -71,9 +71,9 @@ local SectorManifest = {
 
         placement = {
             heading = 135,
-            offsetX = 1500, -- fallback offset from bullseye if zone not found
-            offsetY = 2500,
-            spawnRadius = 1000,
+            offsetX = 0.9, -- fallback offset from bullseye if zone not found
+            offsetY = 1.4,
+            spawnRadius = 0.5,
             strategy = "ZONE_RANDOM",
             zoneName = "Alpha_Radar_Clearing"
         },
@@ -109,20 +109,20 @@ local SectorManifest = {
             units = {"T-72B", "BMP-2", "ZSU-23-4 Shilka"},
             placement = {
                 heading = 0,
-                offsetX = 1000,
-                offsetY = 0,
-                spawnRadius = 200
+                offsetX = -1.0,
+                offsetY = 16,
+                spawnRadius = 0.1
             },
             route = {{
                 type = "On Road",
                 speed = 40,
-                offsetX = 15000,
-                offsetY = 10000
+                offsetX = 8.0,
+                offsetY = 6.0
             }, {
                 type = "Off Road",
                 speed = 25,
-                offsetX = 30000,
-                offsetY = 10000,
+                offsetX = 16.0,
+                offsetY = 5.4,
                 roe = "OPEN_FIRE"
             }}
         }
@@ -138,20 +138,20 @@ local SectorManifest = {
         placement = {
             zoneName = "Valley_Breach_Zone", -- Must match your exact ME Trigger Zone Name
             heading = 180,
-            offsetX = -2000,
-            offsetY = 15000,
-            spawnRadius = 2000
+            offsetX = -1.2,
+            offsetY = 8.5,
+            spawnRadius = 1.0
         },
         route = {{
             type = "Off Road",
             speed = 40,
-            offsetX = -2000,
-            offsetY = 15000
+            offsetX = -1.2,
+            offsetY = 8.5
         }, {
             type = "Off Road",
             speed = 30,
-            offsetX = -5000,
-            offsetY = 8000,
+            offsetX = -3.0,
+            offsetY = 4.0,
             roe = "OPEN_FIRE"
         }}
     }, -- SECTOR 4: Chain reaction. Spawns ONLY after Sector 2's objectives are cleared!
@@ -166,20 +166,20 @@ local SectorManifest = {
         units = {"T-72B", "T-72B", "BMP-2"},
         placement = {
             heading = 45,
-            offsetX = 32000,
-            offsetY = 12000,
-            spawnRadius = 2000
+            offsetX = 17.3,
+            offsetY = 6.5,
+            spawnRadius = 1.2
         },
         route = {{
             type = "Off Road",
             speed = 50,
-            offsetX = 32000,
-            offsetY = 12000
+            offsetX = 17.3,
+            offsetY = 6.5
         }, {
             type = "Off Road",
             speed = 30,
-            offsetX = 30000,
-            offsetY = 10000,
+            offsetX = 16.2,
+            offsetY = 5.4,
             roe = "OPEN_FREE"
         }}
     }, {
