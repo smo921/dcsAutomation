@@ -1,9 +1,27 @@
-local function FeetToMeters(feet)
+Utils = {}
+
+function Utils.PrintTable(t, indent)
+    indent = indent or ""
+    for key, value in pairs(t) do
+        if type(value) == "table" then
+            env.info(indent .. tostring(key) .. ":")
+            Utils.PrintTable(value, indent .. "  ")
+        else
+            env.info(indent .. tostring(key) .. ": " .. tostring(value))
+        end
+    end
+end
+
+function Utils.FeetToMeters(feet)
     return feet * 0.3048
 end
 
-local function KnotsPerHourToKmPerHour(knots)
+function Utils.KnotsPerHourToKmPerHour(knots)
     return knots * 1.852
+end
+
+function Utils.nm2Meters(distanceNm)
+    return distanceNm * 1.852 * 1000
 end
 
 
@@ -29,7 +47,9 @@ function UnitFormationBuilder.Linear(config, x, y)
         while attempts < 20 do
             attempts = attempts + 1
             local surf = land.getSurfaceType({x = checkX, y = checkY})
-            if (surf == 1 or surf == 4 or surf == 5) and not SpatialSolver.findStaticObstructions(checkX, checkY, 12) then break end
+            if SpatialSolver.VALID_LAND_TYPES[surf] and not SpatialSolver.findStaticObstructions(checkX, checkY, SpatialSolver.DEFAULT_CLEARANCE_RADIUS) then
+                break
+            end
             checkY = checkY - 20
         end
 
@@ -75,23 +95,44 @@ end
 
 function UnitFormationBuilder.BuildRoute(startX, startY, waypoints)
     local points = {}
-    for _, wp in ipairs(waypoints) do
+    
+    for _, wp in ipairs(waypoints or {}) do
+        -- 1. Create the base DCS waypoint node topology
         local node = {
-            ["x"]      = startX + wp.offsetX,
-            ["y"]      = startY + wp.offsetY,
+            ["x"]      = startX + (wp.offsetX or 0),
+            ["y"]      = startY + (wp.offsetY or 0),
             ["action"] = "Turning Point",
             ["type"]   = wp.type or "Off Road",
             ["speed"]  = (wp.speed or 30) / 3.6, -- Convert km/h to m/s
             ["task"]   = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = {} } }
         }
-        local opts = {}
-        if wp.roe and AssetFactories.ROE[wp.roe] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = AssetFactories.OPTION_IDS["ROE"], ["value"] = AssetFactories.ROE[wp.roe] } }) end
-        if wp.threat and AssetFactories.THREAT_REACTION[wp.threat] then table.insert(opts, { ["id"] = "Option", ["params"] = { ["name"] = OPTION_IDS["THREAT_REACTION"], ["value"] = AssetFactories.THREAT_REACTION[wp.threat] } }) end
-        if #opts > 0 then node["task"] = { ["id"] = "ComboTask", ["params"] = { ["tasks"] = opts } } end
+
+        -- 2. Define our lookups inline to clean up the logic
+        local optionDefinitions = {
+            { name = "ROE",             val = wp.roe,    map = AssetFactories.ROE },
+            { name = "THREAT_REACTION", val = wp.threat, map = AssetFactories.THREAT_REACTION }
+        }
+
+        -- 3. Dynamically inject valid options directly into the task payload
+        for _, opt in ipairs(optionDefinitions) do
+            if opt.val and opt.map[opt.val] then
+                table.insert(node.task.params.tasks, {
+                    ["id"] = "Option",
+                    ["params"] = {
+                        ["name"]  = AssetFactories.OPTION_IDS[opt.name],
+                        ["value"] = opt.map[opt.val]
+                    }
+                })
+            end
+        end
+
         table.insert(points, node)
     end
+    
     return points
 end
+
+
 
 
 AssetFactories = {}
@@ -148,8 +189,8 @@ end
 function AssetFactories.buildAWACSorTanker(originPoint, config)
     local x, y = SpatialSolver.getCoordinates(originPoint, config)    
 
-    local altitude = FeetToMeters(config.altitude) or 8000 
-    local speed = KnotsPerHourToKmPerHour(config.speed) or 550
+    local altitude = Utils.FeetToMeters(config.altitude) or 8000 
+    local speed = Utils.KnotsPerHourToKmPerHour(config.speed) or 550
     
     local wp1_x = x
     local wp1_y = y
@@ -207,8 +248,8 @@ end
 
 
 function AssetFactories.buildDrone(config, x, y)
-    local altitude = FeetToMeters(config.altitude) or 4572 
-    local speed = (KnotsPerHourToKmPerHour(config.speed) or 200) / 3.6 
+    local altitude = Utils.FeetToMeters(config.altitude) or 4572 
+    local speed = (Utils.KnotsPerHourToKmPerHour(config.speed) or 200) / 3.6 
 
     local payload = {
         ["visible"]  = true,
@@ -260,9 +301,42 @@ function AssetFactories.buildDrone(config, x, y)
     return payload
 end
 
-AssetFactories.ROE = { WEAPON_HOLD = 0, RETURN_FIRE = 1, OPEN_FIRE = 2, WEAPON_FREE = 3 }
-AssetFactories.THREAT_REACTION = { PASSIVE_DEFENSE = 0, NO_REACTION = 1, EVADE_FIRE = 2, BYPASS_PASSIVE = 3 }
+-- Consolidate directly into your core tables using the configuration string keys
+AssetFactories.ROE = { 
+    WEAPON_FREE            = 0,
+    OPEN_FIRE_WEAPON_FREE  = 1,
+    OPEN_FIRE              = 2,
+    RETURN_FIRE            = 3,
+    WEAPON_HOLD            = 4
+}
+
+AssetFactories.THREAT_REACTION = { 
+    NO_REACTION          = 0,
+    PASSIVE_DEFENCE      = 1,
+    EVADE_FIRE           = 2,
+    BYPASS_AND_ESCAPE    = 3,
+    ALLOW_ABORT_MISSION  = 4,
+    AAA_EVADE_FIRE       = 5 -- Note: Does not actually exist in the enum table
+}
+
 AssetFactories.OPTION_IDS = { ROE = 0, THREAT_REACTION = 1 }
+
+
+-- Encapsulates task formatting to hide complex nested tables from the router logic
+function AssetFactories.buildOptionCommand(optionId, optionValue)
+    return {
+        ["id"] = "WrappedAction",
+        ["params"] = {
+            ["action"] = {
+                ["id"] = "SetOption",
+                ["params"] = {
+                    ["value"] = optionValue,
+                    ["name"] = optionId
+                }
+            }
+        }
+    }
+end
 
 function AssetFactories.buildPlatoon(config, x, y)
     -- Compile Waypoints

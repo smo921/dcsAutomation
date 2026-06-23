@@ -2,18 +2,6 @@ local function is_nil_or_empty(t)
     return not t or next(t) == nil
 end
 
-local function printTable(t, indent)
-    indent = indent or ""
-    for key, value in pairs(t) do
-        if type(value) == "table" then
-            env.info(indent .. tostring(key) .. ":")
-            printTable(value, indent .. "  ")
-        else
-            env.info(indent .. tostring(key) .. ": " .. tostring(value))
-        end
-    end
-end
-
 local function printGroup(groupName)
     local group = Group.getByName(groupName)
 
@@ -26,13 +14,8 @@ local function printGroup(groupName)
 
             -- Pull raw descriptor table (mass, speed, category, etc.)
             local desc = unit:getDesc()
-            printTable(desc)
         end
     end
-end
-
-local function nm2Meters(distanceNm)
-    return distanceNm * 1.852 * 1000
 end
 
 local function getWaypointFromFlight(flightName, waypoint)
@@ -142,6 +125,12 @@ function MapMarkerRegistry.clearMark(trackingKey)
 end
 
 SpatialSolver = {}
+SpatialSolver.VALID_LAND_TYPES = {
+    [1] = true, -- Land / Fields
+    [4] = true, -- Runway / Pavement
+    [5] = true  -- Grass / Shorelines
+}
+SpatialSolver.DEFAULT_CLEARANCE_RADIUS = 12 -- meters
 
 function SpatialSolver.getBullseye(coalition)
     return mist.DBs.missionData["bullseye"][coalition]
@@ -149,7 +138,7 @@ end
 
 function SpatialSolver.terrainIsClear(x, y, radius)
     -- Check surface type (not water)
-    if land.getSurfaceType({x, y}) == 3 then
+    if land.getSurfaceType({x = x, y = y}) == 3 then
         return false -- surface type is water
     elseif SpatialSolver.findStaticObstructions(x, y, radius) == true then
         return false
@@ -184,7 +173,7 @@ function SpatialSolver.getVector(origin, heading, distance)
     local distanceNm = distance or 60
 
     local headingRad = math.rad(headingDeg)
-    local distanceMeters = nm2Meters(distanceNm)
+    local distanceMeters = Utils.nm2Meters(distanceNm)
 
     -- Vector Projection away from Bullseye center
     x = origin.x + (math.cos(headingRad) * distanceMeters)
@@ -206,7 +195,7 @@ function SpatialSolver.searchArea(x, y, radius)
         local checkX = x + (math.cos(randomAngle) * randomDist)
         local checkY = y + (math.sin(randomAngle) * randomDist)
 
-        if SpatialSolver.terrainIsClear(checkX, checkX, 50) == true then
+        if SpatialSolver.terrainIsClear(checkX, checkY, 50) == true then
             finalX = checkX
             finalY = checkY
             safeFound = true
@@ -600,9 +589,9 @@ function UnitPlacementConfig.new(placementConfig)
     local self = setmetatable({}, UnitPlacementConfig)
 
     self.heading = placementConfig.heading -- degrees
-    self.offsetX = nm2Meters(placementConfig.offsetX) -- nm
-    self.offsetY = nm2Meters(placementConfig.offsetY) -- nm
-    self.spawnRadius = nm2Meters(placementConfig.spawnRadius) -- nm
+    self.offsetX = Utils.nm2Meters(placementConfig.offsetX) -- nm
+    self.offsetY = Utils.nm2Meters(placementConfig.offsetY) -- nm
+    self.spawnRadius = Utils.nm2Meters(placementConfig.spawnRadius) -- nm
     
     self.strategy = placementConfig.strategy or ""
     self.zoneName = placementConfig.zoneName
@@ -616,11 +605,11 @@ end
 UnitRouteWaypoint = {}
 
 function UnitRouteWaypoint.new(routeConfig)
-    local self = setmetatable({}, UnitRouteConfig)
+    local self = setmetatable({}, UnitRouteWaypoint)
     self.type = routeConfig.type
     self.speed = routeConfig.speed
-    self.offsetX = nm2Meters(routeConfig.offsetX)
-    self.offsetY = nm2Meters(routeConfig.offsetY)
+    self.offsetX = Utils.nm2Meters(routeConfig.offsetX)
+    self.offsetY = Utils.nm2Meters(routeConfig.offsetY)
     self.roe = routeConfig.roe or ""
     return self
 end
