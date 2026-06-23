@@ -85,6 +85,7 @@ local SectorManifest = {
     {
         enabled = true,
         triggerType = "RADAR",
+        radarFilterEnabled = true,
         groupName = "EW Radar Alpha",
         country = "Russia",
         unitType = "1L13 EWR",

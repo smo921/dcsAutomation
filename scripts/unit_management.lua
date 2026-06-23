@@ -341,6 +341,43 @@ function RadarHandler.formatDetection(radar, target)
     return string.format("%s - %s", name, range)
 end
 
+
+RadarHandler.filterByAircraft = { "KC-135", "E-3A", "MQ-9 Reaper" }
+
+function RadarHandler.isThreat(aircraft)
+    -- Optional: filter by aircraft type
+    local threat = false
+    if aircraft and aircraft.object:isExist() then
+        -- Pull the actual vehicle/aircraft type name (e.g., "F-16C_50" or "AH-64D_BLK_II")
+        local typeName = aircraft.object:getTypeName() or "Unknown Type"
+        for _, filterType in ipairs(RadarHandler.filterByAircraft) do
+            if string.find(typeName, filterType, 1, true) then
+                local message = "[RadarCheck] Skipping " .. typeName .. " not a threat."
+                -- env.info(message)
+                return false -- return not threat immediately
+            else
+                threat = true        
+            end
+        end
+    end
+    return threat
+end
+
+function RadarHandler.logThreat(radarUnit, det)
+    if det.object and det.object:isExist() then
+        -- Pull the actual vehicle/aircraft type name (e.g., "F-16C_50" or "AH-64D_BLK_II")
+        local typeName = det.object:getTypeName() or "Unknown Type"
+        
+        -- Pull the specific unit designation name assigned in the Mission Editor
+        local unitName = det.object:getName() or "Unknown Unit"
+        
+        -- Calculate distance for a highly descriptive telemetry printout
+        local distance = RadarHandler.getDistanceInNM(radarUnit, det.object) or 0
+        
+        env.info(string.format("[CheckRadar] Found Target -> Type: %s | Unit Name: %s | Range: %.1f nm", typeName, unitName, distance))
+    end
+end
+
 -- Main routine that queries the radar ---------------------------------------
 function RadarHandler.checkRadar(radarSector)
     local groupName = radarSector.groupName
@@ -367,15 +404,19 @@ function RadarHandler.checkRadar(radarSector)
     local threatFound = false
 
     if detections and #detections > 0 then
-        env.info("[RadarCheck] Radar '" .. groupName .. "' detected " .. #detections .. " target(s).")
+        -- env.info("[RadarCheck] Radar '" .. groupName .. "' detected " .. #detections .. " target(s).")
 
         for _, det in ipairs(detections) do
             -- Flag to decide whether target is found
             threatFound = true
 
+            if radarSector.radarFilterEnabled then
+                threatFound = RadarHandler.isThreat(det)
+            end
+
             -- Optional: ignore very far detections
             -- det.distance is a boolean not a number
-            if det.distance then
+            if threatFound and det.distance then
                 local distance = RadarHandler.getDistanceInNM(radarUnit, det.object)
                 if distance and distance > radarSector.maxDetectRange then
                     threatFound = false
@@ -386,35 +427,10 @@ function RadarHandler.checkRadar(radarSector)
                 end
             end
 
-            if threatFound and det.object and det.object:isExist() then
-                -- Pull the actual vehicle/aircraft type name (e.g., "F-16C_50" or "AH-64D_BLK_II")
-                local typeName = det.object:getTypeName() or "Unknown Type"
-                
-                -- Pull the specific unit designation name assigned in the Mission Editor
-                local unitName = det.object:getName() or "Unknown Unit"
-                
-                -- Calculate distance for a highly descriptive telemetry printout
-                local distance = RadarHandler.getDistanceInNM(radarUnit, det.object) or 0
-                
-                env.info(string.format("[CheckRadar] Found Target -> Type: %s | Unit Name: %s | Range: %.1f nm", typeName, unitName, distance))
+            if threatFound then
+                -- RadarHandler.logThreat(radarUnit, det)
+                return threatFound
             end
-            -- Optional: filter by aircraft type
-            -- if filterByAircraft and threatFound then
-            --   local aircraft = det.aircraftName or det.objectName or det.unitName or ""
-            --    if not string.find(aircraft, filterByAircraft, 1, true) then
-            --        threatFound = false
-            --        local message = "[RadarCheck]  Skipping – not a " .. filterByAircraft .. "."
-            --        trigger.action.outText(message, 10)
-            --        env.info(message)
-            --    end
-            -- end
-
-            -- log all threats identified
-            -- if threatFound then
-            --    local message = "[RadarCheck] Detected: " .. RadarHandler.formatDetection(radarUnit, det)
-            --    trigger.action.outText(message, 10)
-            --    env.info(message)
-            -- end
         end
         -- Your custom logic here – e.g. trigger a client message, change AI state, etc.
         -- For example: env.mission.setWaypoint(1, "DetectedEnemy")
@@ -526,11 +542,12 @@ function TriggerRegistry.evaluate(sector)
 
     elseif sector.triggerType == "OBJECTIVE_COMPLETE" then
         return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName)
+    else
+        -- Unrecognized or faulty trigger logic drops safe fallback logging
+        env.info(string.format("[TriggerRegistry Warning] Unknown trigger type '%s' on group %s", sector.triggerType,
+            sector.groupName))
     end
 
-    -- Unrecognized or faulty trigger logic drops safe fallback logging
-    env.info(string.format("[TriggerRegistry Warning] Unknown trigger type '%s' on group %s", sector.triggerType,
-        sector.groupName))
     return false
 end
 
@@ -612,8 +629,11 @@ Sector = {}
 Sector.__index = Sector
 local GlobalUnitGroupRegistry = {}
 
-function Sector.new(sectorConfig)
+function Sector:new(sectorConfig)
     local self = setmetatable({}, Sector)
+    self.__index = self
+
+    if is_nil_or_empty(sectorConfig) then return self end
 
     self.enabled = sectorConfig.enabled
     -- if self.enable == nil then self.enabled = true end
@@ -621,13 +641,10 @@ function Sector.new(sectorConfig)
     -- Activation Rules Configuration
     self.triggerType = sectorConfig.triggerType or "IMMEDIATE"
     self.zoneName = sectorConfig.zoneName
-    -- self.checkInterval = sectorConfig.checkInterval or 5.0
 
     -- Conditional Triggers parameters
     self.groupName = sectorConfig.groupName
     self.unitType = sectorConfig.unitType
-    self.pointDefense = sectorConfig.pointDefense
-    self.maxDetectRange = sectorConfig.maxDetectRange or 200000.0
 
     self.parentGroupName = sectorConfig.parentGroupName
 
@@ -643,11 +660,6 @@ function Sector.new(sectorConfig)
         end
     end
 
-    if sectorConfig.triggeredUnits then
-        self.triggeredUnits = Sector.new(sectorConfig.triggeredUnits)
-    end
-
-    -- self.awacsConfig     = sectorConfig.awacs   -- Stores the nested awacs sub-table
     self.droneConfig = sectorConfig.drone -- Stores the nested drone sub-table
 
     -- State Lifecycles
@@ -939,6 +951,24 @@ function Sector:spawnTriggeredUnits()
     spawnUnitsFromConfig(self.triggeredUnits)
 end
 
+RadarSector = {}
+RadarSector.__index = RadarSector
+setmetatable(RadarSector, { __index = Sector }) -- inherit from Sector
+
+function RadarSector:new(config)
+    local s = Sector:new(config)
+    setmetatable(s, self)
+
+    s.radarFilterEnabled = config.radarFilterEnabled
+    s.pointDefense = config.pointDefense
+    s.maxDetectRange = config.maxDetectRange or 200000.0
+
+    if config.triggeredUnits then
+        s.triggeredUnits = Sector:new(config.triggeredUnits)
+    end
+
+    return s
+end
 -- ==============================================================================
 -- 2. AUTOMATION CORE ENGINE LOGIC
 -- ==============================================================================
@@ -955,7 +985,12 @@ function MissionDirector.new(coalitionConfig)
         env.info("[Director] Sector " .. sector.groupName .. " enabled: " .. tostring(sector.enabled))
 
         if sector.enabled == true then
-            local s = Sector.new(sector)
+            local s
+            if sector.triggerType == "RADAR" then
+               s = RadarSector:new(sector) 
+            else
+                s = Sector:new(sector)
+            end
             table.insert(self.sectors, s)
         end
     end
