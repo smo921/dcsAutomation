@@ -515,7 +515,8 @@ function TriggerRegistry.evaluate(sector)
     -- env.info("Trigger Registry evaluate loop: " .. sector.groupName )
     if sector.triggerType == "TRIGGER_ZONE" then
         local triggered = TriggerRegistry._checkZone(sector.zoneName)
-        if triggered and shouldGroupSpawn(sector.groupName) then
+        local shouldSpawn = shouldGroupSpawn(sector.groupName)
+        if triggered and shouldSpawn then
             sector:spawnUnits()
         end
         return triggered
@@ -539,10 +540,12 @@ end
 
 function TriggerRegistry._checkZone(zoneName)
     if not zoneName or not trigger.misc.getZone(zoneName) then
+        env.info("[TriggerRegistry] Zone not found.")
         return false
     end
     -- Wrap MIST utility checks safely
-    local playersInZone = mist.getUnitsInZones(zoneName)
+    local blueUnits = mist.makeUnitTable({'[blue]'})
+    local playersInZone = mist.getUnitsInZones(blueUnits, {zoneName})
     return playersInZone ~= nil and #playersInZone > 0
 end
 
@@ -617,6 +620,7 @@ function Sector.new(sectorConfig)
 
     -- Activation Rules Configuration
     self.triggerType = sectorConfig.triggerType or "IMMEDIATE"
+    self.zoneName = sectorConfig.zoneName
     -- self.checkInterval = sectorConfig.checkInterval or 5.0
 
     -- Conditional Triggers parameters

@@ -148,15 +148,15 @@ local SectorManifest = {
         }
     }, -- SECTOR 3: Triggered when a player enters a Mission Editor Trigger Zone
     {
-        enabled = false,
+        enabled = true,
         triggerType = "TRIGGER_ZONE",
+        zoneName = "Valley_Breach_Zone", -- Must match your exact ME Trigger Zone Name
         checkInterval = 2.0,
 
         groupName = "Ambush_Team_Bravo",
         country = "Russia",
         units = {"BMP-2", "BRDM-2"},
         placement = {
-            zoneName = "Valley_Breach_Zone", -- Must match your exact ME Trigger Zone Name
             heading = 180,
             offsetX = -1.2,
             offsetY = 8.5,
