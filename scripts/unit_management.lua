@@ -492,7 +492,7 @@ function TriggerRegistry._heartbeat(args, time)
     -- --------------------------------------------------------------------------
     for i = #TriggerRegistry.monitoredSectors, 1, -1 do
         local sector = TriggerRegistry.monitoredSectors[i]
-        env.info(string.format("[TriggerRegistry] evaluating: %s", sector.groupName))
+        -- env.info(string.format("[TriggerRegistry] evaluating: %s", sector.groupName))
         if TriggerRegistry.evaluate(sector) then
             -- sector:spawnUnits()
             table.remove(TriggerRegistry.monitoredSectors, i)
@@ -533,8 +533,7 @@ function TriggerRegistry.evaluate(sector)
         return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName)
     else
         -- Unrecognized or faulty trigger logic drops safe fallback logging
-        env.info(string.format("[TriggerRegistry Warning] Unknown trigger type '%s' on group %s", sector.triggerType,
-            sector.groupName))
+        -- env.info(string.format("[TriggerRegistry Warning] Unknown trigger type '%s' on group %s", sector.triggerType, sector.groupName))
     end
 
     return false
