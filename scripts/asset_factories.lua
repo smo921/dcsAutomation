@@ -530,7 +530,6 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
             }
         }
     }
-    Utils.PrintTable(payload)
     return payload
 end
 
@@ -659,7 +658,7 @@ function AssetFactories.buildPointDefense(config, x, y)
     return UnitFormationBuilder.RadialScatter(pdConfig, x, y)
 end
 
-function activatePointDefense(adGroup)
+function AssetFactories.activatePointDefense(adGroup)
     for idx, unit in ipairs(adGroup.units) do
         TriggerRegistry.scheduleAction(1.5, function()
             local g = Group.getByName(adGroup.name)

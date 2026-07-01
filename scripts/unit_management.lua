@@ -906,7 +906,7 @@ function Sector:spawnRadarStation()
     if self.pointDefense and type(self.pointDefense.units) == "table" and #self.pointDefense.units > 0 then
         local adPayload = AssetFactories.buildPointDefense(self, finalX, finalY)
         mist.dynAdd(adPayload)
-        activatePointDefense(adPayload)
+        AssetFactories.activatePointDefense(adPayload)
     end
 
     -- Sector Drone Deployment Phase
