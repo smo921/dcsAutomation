@@ -390,8 +390,7 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
 end
 
 function AssetFactories.buildRadar(config, x, y)
-    env.info("[AssetFactory] Building Radar " .. config.groupName)
-    local payload = {
+        local payload = {
         ["visible"] = true,
         ["category"] = "GROUND",
         ["country"] = config.country,

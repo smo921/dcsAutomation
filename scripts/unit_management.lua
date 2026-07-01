@@ -629,8 +629,7 @@ TriggerRegistry = {
 -- Add a sector to the tracking pool
 function TriggerRegistry.register(sectorInstance)
     table.insert(TriggerRegistry.monitoredSectors, sectorInstance)
-    env.info(string.format("[TriggerRegistry] Registered sector '%s' for monitoring.", sectorInstance.groupName))
-    TriggerRegistry._ensureHeartbeat()
+        TriggerRegistry._ensureHeartbeat()
 end
 
 function TriggerRegistry.scheduleAction(delaySeconds, callbackFunction, contextArgs)
@@ -963,9 +962,7 @@ function Sector:assignDroneToTarget(droneGroupName, targetGroupName)
         }
 
         droneController:pushTask(engageZoneTask)
-        env.info(string.format("[Director] EngageTargetsInZone pushed cleanly to Drone %s over absolute center.",
-            droneGroupName))
-    else
+            else
         env.info(string.format("[Director Warning] Drone %s missing for zone engagement routing.", droneGroupName))
     end
 end
@@ -1030,9 +1027,7 @@ function Sector:spawnDynamicDrone(spawnX, spawnY)
 
     TriggerRegistry.scheduleAction(2.0, function()
         mist.dynAdd(AssetFactories.buildDrone(self.droneConfig, spawnX, spawnY))
-        env.info("[Director] Dynamic Overwatch Drone spawned directly over target coordinates: " ..
-                     self.droneConfig.groupName)
-
+        
         -- Wait 3 seconds for the airframe to register before assigning its search task
         TriggerRegistry.scheduleAction(3.0, function()
             if Group.getByName(self.droneConfig.groupName) then
@@ -1066,7 +1061,6 @@ function Sector:spawnRadarStation()
             if surfaceType ~= 3 then
                 finalX = randomZonePoint.x
                 finalY = randomZonePoint.y
-                env.info("[Director] Radar " .. self.groupName .. " successfully randomized inside zone: " .. zoneName)
             else
                 finalX = zoneData.point.x
                 finalY = zoneData.point.z
@@ -1083,7 +1077,6 @@ function Sector:spawnRadarStation()
     -- 2. Explicit Fallback: If zone logic fails or isn't specified, use your profile offsets
     if not finalX or not finalY then
         finalX, finalY = SpatialSolver.findSafeGroundCoordinates(SpatialSolver.getBullseye("blue"), self.placement)
-        env.info("[Director Fallback] Anchoring radar " .. self.groupName .. " to configured profile offsets.")
     end
 
     -- Construct and deploy the dynamic radar group
@@ -1127,11 +1120,10 @@ local function spawnUnitsFromConfig(config)
         if config.placement.airbaseName then
             airbaseObj = Airbase.getByName(config.placement.airbaseName)
             if airbaseObj then
-                env.info("Airbase position being calculated")
                 local basePos = airbaseObj:getPosition().p
                 finalX, finalY = basePos.x, basePos.z
             else
-                env.info("Airbase object not found for: " .. config.airbaseName)
+                env.info("Airbase object not found for: " .. config.placement.airbaseName)
             end
         end
 
@@ -1148,7 +1140,6 @@ local function spawnUnitsFromConfig(config)
         local units = AssetFactories.buildAirGroup(config, finalX, finalY, airbaseObj)
         if units then
             mist.dynAdd(units)
-            env.info("[Director] Successfully deployed air group array for sector: " .. config.groupName)
         end
     else
         -- Fallback to original Ground Platoon construction engine
@@ -1159,7 +1150,6 @@ local function spawnUnitsFromConfig(config)
         local units = AssetFactories.buildPlatoon(config, finalX, finalY)
 
         mist.dynAdd(units)
-        env.info("[Director] Successfully deployed ground group array for sector: " .. config.groupName)
     end
 end
 
@@ -1223,8 +1213,7 @@ function MissionDirector.new(coalitionConfig)
     local self = setmetatable({}, MissionDirector)
     self.sectors = {}
     for _, sector in ipairs(coalitionConfig) do
-        env.info("[Director] Sector " .. sector.groupName .. " enabled: " .. tostring(sector.enabled))
-
+        
         if sector.enabled == true then
             local s
             if sector.triggerType == "RADAR" then
@@ -1248,7 +1237,6 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
     for _, unit in ipairs(globalConfig) do
         if unit.enabled then
             mist.dynAdd(AssetFactories.buildAWACSorTanker(bullseye, unit))
-            env.info("[Director] Global " .. unit.groupName .. " established relative to Theater Bullseye coordinates.")        
         end
     end
 end
@@ -1271,7 +1259,6 @@ function MissionDirector:startEngineLoop()
     for _, sector in ipairs(self.sectors) do
         -- IMMEDIATE SECTORS: Fire instantly without scheduling background checks
         if sector.triggerType == "IMMEDIATE" then
-            env.info("[Director] Booting Immediate Sector: " .. sector.groupName)
             sector:spawnUnits()
         elseif sector.triggerType == "RADAR" then
             sector:spawnRadarStation()

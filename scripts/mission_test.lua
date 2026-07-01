@@ -380,8 +380,7 @@ function startDynamicTheatre()
         blueSectors:startEngineLoop()
     end
 
-    env.info("[Orchestrator] All dynamic theatre environments successfully initialized.")
-end
+    end
 
 -- Delay processing initialization execution by 3 seconds
 timer.scheduleFunction(startDynamicTheatre, {}, timer.getTime() + 3.0)
