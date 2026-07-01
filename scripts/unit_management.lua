@@ -173,7 +173,7 @@ function SpatialSolver.getVector(origin, heading, distance)
     local distanceNm = distance or 60
 
     local headingRad = math.rad(headingDeg)
-    local distanceMeters = Utils.nm2Meters(distanceNm)
+    local distanceMeters = mist.utils.NMToMeters(distanceNm)
 
     -- Vector Projection away from Bullseye center
     x = origin.x + (math.cos(headingRad) * distanceMeters)
@@ -588,10 +588,10 @@ UnitPlacementConfig = {}
 function UnitPlacementConfig.new(placementConfig)
     local self = setmetatable({}, UnitPlacementConfig)
 
-    self.heading = placementConfig.heading -- degrees
-    self.offsetX = Utils.nm2Meters(placementConfig.offsetX) -- nm
-    self.offsetY = Utils.nm2Meters(placementConfig.offsetY) -- nm
-    self.spawnRadius = Utils.nm2Meters(placementConfig.spawnRadius) -- nm
+    self.heading = placementConfig.heading or 0 -- degrees
+    self.offsetX = mist.utils.NMToMeters(placementConfig.offsetX or 0) -- nm
+    self.offsetY = mist.utils.NMToMeters(placementConfig.offsetY or 0) -- nm
+    self.spawnRadius = mist.utils.NMToMeters(placementConfig.spawnRadius or 0) -- nm
     
     self.strategy = placementConfig.strategy or ""
     self.zoneName = placementConfig.zoneName
@@ -599,6 +599,8 @@ function UnitPlacementConfig.new(placementConfig)
     self.groupName = placementConfig.groupName
     self.waypoint = placementConfig.waypoint
 
+    self.startType = placementConfig.startType
+    self.airbaseName = placementConfig.airbaseName
     return self
 end
 
@@ -607,10 +609,12 @@ UnitRouteWaypoint = {}
 function UnitRouteWaypoint.new(routeConfig)
     local self = setmetatable({}, UnitRouteWaypoint)
     self.type = routeConfig.type
-    self.speed = routeConfig.speed
-    self.offsetX = Utils.nm2Meters(routeConfig.offsetX)
-    self.offsetY = Utils.nm2Meters(routeConfig.offsetY)
+    self.speed = mist.utils.knotsToMps(routeConfig.speed or 200)
+    self.alt = mist.utils.feetToMeters(routeConfig.alt or 3000)
+    self.offsetX = mist.utils.NMToMeters(routeConfig.offsetX or 0)
+    self.offsetY = mist.utils.NMToMeters(routeConfig.offsetY or 0)
     self.roe = routeConfig.roe or ""
+    self.airbaseName = routeConfig.airbaseName
     return self
 end
 
@@ -628,6 +632,7 @@ function Sector:new(sectorConfig)
     -- if self.enable == nil then self.enabled = true end
 
     -- Activation Rules Configuration
+    self.category = sectorConfig.category or "GROUND"
     self.triggerType = sectorConfig.triggerType or "IMMEDIATE"
     self.zoneName = sectorConfig.zoneName
 
@@ -640,7 +645,10 @@ function Sector:new(sectorConfig)
     -- Spawning Layout Parameters
     self.country = sectorConfig.country or "Russia"
     self.units = sectorConfig.units
-    self.placement = UnitPlacementConfig.new(sectorConfig.placement)
+
+    if sectorConfig.placement then 
+        self.placement = UnitPlacementConfig.new(sectorConfig.placement)
+    end
 
     if sectorConfig.route then
         self.route = {}
@@ -648,6 +656,8 @@ function Sector:new(sectorConfig)
             table.insert(self.route, UnitRouteWaypoint.new(wpConfig))
         end
     end
+
+    self.task = sectorConfig.task
 
     self.droneConfig = sectorConfig.drone -- Stores the nested drone sub-table
 
@@ -907,18 +917,57 @@ function Sector:spawnRadarStation()
     self.hasSpawned = true
 end
 
+
+
+
 local function spawnUnitsFromConfig(config)
     if is_nil_or_empty(config) or is_nil_or_empty(config.units) then return end
 
-    local finalX, finalY
-    local bullseye = SpatialSolver.getBullseye("blue")
+    if config.category == "AIRPLANE" or config.category == "HELICOPTER" then
+        local finalX, finalY
+        local airbaseObj = nil
 
-    finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, config.placement)
-    local units = AssetFactories.buildPlatoon(config, finalX, finalY)
+        if config.placement.airbaseName then
+            airbaseObj = Airbase.getByName(config.placement.airbaseName)
+            if airbaseObj then
+                env.info("Airbase position being calculated")
+                local basePos = airbaseObj:getPosition().p
+                finalX, finalY = basePos.x, basePos.z
+            else
+                env.info("Airbase object not found for: " .. config.airbaseName)
+            end
+        end
 
-    mist.dynAdd(units)
-    env.info("[Director] Successfully deployed ground group array for sector: " .. config.groupName)
+        -- Air start fallback if no airbase is bound
+        if not finalX or not finalY then
+            local bullseye = SpatialSolver.getBullseye("blue")
+            if bullseye then
+                finalX, finalY = bullseye.x, bullseye.y
+            else
+                finalX, finalY = 0, 0
+            end
+        end
+
+        local units = AssetFactories.buildAirGroup(config, finalX, finalY, airbaseObj)
+        if units then
+            mist.dynAdd(units)
+            env.info("[Director] Successfully deployed air group array for sector: " .. config.groupName)
+        end
+    else
+        -- Fallback to original Ground Platoon construction engine
+        local finalX, finalY
+        local bullseye = SpatialSolver.getBullseye("blue")
+
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, config.placement)
+        local units = AssetFactories.buildPlatoon(config, finalX, finalY)
+
+        mist.dynAdd(units)
+        env.info("[Director] Successfully deployed ground group array for sector: " .. config.groupName)
+    end
 end
+
+
+
 
 function Sector:spawnUnits()
     if self.hasSpawned then

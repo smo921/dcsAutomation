@@ -14,7 +14,7 @@ local GlobalTheaterAssets = {
         callsignNumber = 1, -- Magic 1-1
         altitude = 31000, -- Feet
         speed = 290, -- knots
-        orbitLength = 60000, -- 60km wide racetrack pattern
+        orbitLength = 32, -- 32nm wide racetrack pattern
 
         -- BULLSEYE STANDOFF VECTOR
         offsetHeading = 240, -- Heading from Bullseye to safe orbit zone (SW)
@@ -33,7 +33,7 @@ local GlobalTheaterAssets = {
         callsignNumber = 1, -- Texaco 1-1
         altitude = 31000, -- Feet
         speed = 290, -- knots
-        orbitLength = 60000, -- 60km wide racetrack pattern
+        orbitLength = 32, -- 32nm wide racetrack pattern
 
         -- BULLSEYE STANDOFF VECTOR
         offsetHeading = 330, -- Heading from Bullseye to safe orbit zone (SW)
@@ -45,6 +45,92 @@ local GlobalTheaterAssets = {
 -- ==============================================================================
 
 local SectorManifest = {
+    ["blue"] = {{
+        enabled = true,
+        triggerType = "IMMEDIATE", -- Runs inside your existing startEngineLoop()
+        category = "AIRPLANE", -- Routes execution flows through the new factory branch
+        groupName = "Enroute_CAP_Falcon",
+        country = "USA",
+        task = "CAP",
+        placement = {
+            startType = "takeoff_hot", -- "takeoff_cold", "takeoff_hot", "takeoff_ramp", or "air_start"
+            airbaseName = "Kutaisi" -- Anchor airbase for taxi nodes and initial translation points
+        },
+
+        -- Heterogeneous unit arrays are supported out-of-the-box
+        units = {{
+            unitType = "F-16C_50",
+            name = "Falcon_1_1",
+            groundSpot = 22
+        }, {
+            unitType = "F-16C_50",
+            name = "Falcon_1_2",
+            groundSpot = 23
+        }},
+
+        route = {{
+            type = "Turning Point",
+            alt = 19000, -- Flight altitude in feet
+            speed = 450, -- Velocity in knots
+            offsetX = 8, -- NM offset from departure airfield center
+            offsetY = 16
+        }, {
+            type = "Turning Point",
+            alt = 19000,
+            speed = 450,
+            offsetX = -6,
+            offsetY = 25,
+            roe = "OPEN_FIRE" -- Hooks straight into AssetFactories.ROE mapping
+        }, {
+            type = "landing", -- Routes safely back to the base specified below
+            airbaseName = "Kutaisi"
+        }}
+    }, -- Add this directly into your SectorManifest["blue"] array inside mission_test.lua
+    {
+        enabled = true,
+        triggerType = "IMMEDIATE", -- Boots up immediately when startEngineLoop() runs
+        category = "HELICOPTER", -- Routes the group through the new air factory code
+        groupName = "Hunter_Killer_Flight",
+        country = "USA",
+        task = "CAS", -- Close Air Support role
+
+        placement = {
+            startType = "takeoff_cold", -- Spawns cold on the ramp slots at the airbase
+            airbaseName = "Kutaisi" -- Airfield anchor for parsing coordinates & parking IDs
+        },
+
+        -- Heterogeneous flight: Mixing asymmetric airframes within a single tactical group
+        units = {{
+            unitType = "AH-64D_BLK_II",
+            name = "Hunter_Lead",
+            groundSpot = 15
+        }, -- Apache Lead
+        {
+            unitType = "OH-58D",
+            name = "Killer_Wingman",
+            groundSpot = 16
+        } -- Kiowa Scout
+        },
+
+        -- Flight path using metric offsets relative to the Kutaisi airbase origin
+        route = {{
+            type = "Turning Point",
+            alt = 100, -- Low altitude ingress (feet)
+            speed = 115, -- ~115 knots ground speed (m/s)
+            offsetX = 5, -- 5nm North of Kutaisi
+            offsetY = 12 -- 12nm East of Kutaisi
+        }, {
+            type = "Turning Point",
+            alt = 50, -- Masking behind terrain
+            speed = 100, -- Slowing down to screen the area
+            offsetX = 8,
+            offsetY = 25,
+            roe = "OPEN_FIRE" -- Switches rules of engagement to Weapon Free via AssetFactories.ROE
+        }, {
+            type = "landing", -- Directs the engine to track landing recovery
+            airbaseName = "Kutaisi" -- Routes the flight back to land at the starting airfield
+        }}
+    }},
     ["red"] = { -- SECTOR 1: Spawned instantly at mission start
     {
         enabled = false,
@@ -214,6 +300,35 @@ local SectorManifest = {
             waypoint = 2, -- waypoints start at 1
             heading = 90
         }
+    }, {
+        enabled = false,
+        triggerType = "IMMEDIATE",
+        category = "AIRPLANE",
+        groupName = "Red_Hot_Start_Flight",
+        country = "Russia",
+        task = "CAS",
+        placement = {
+            airbaseName = "Kutaisi", -- Origin aerodrome
+            startType = "takeoff_hot", -- Triggers the "From Parking Area Hot" workflow
+            heading = 90
+        },
+        units = {{
+            unitType = "Su-25T",
+            name = "Red_Leader",
+            groundSpot = 1
+        }},
+        route = { -- Waypoint 2: Intermediate egress point (15km East, 5km North of airfield center)
+        {
+            type = "Turning Point",
+            alt = 2000, -- Meters MSL
+            speed = 200, -- Meters/sec
+            offsetX = 15000,
+            offsetY = 5000
+        }, -- Waypoint 3: Landing sequence back at Kutaisi (or your designated destination)
+        {
+            type = "landing",
+            airbaseName = "Kutaisi"
+        }}
     }}
 }
 
@@ -233,8 +348,7 @@ function startDynamicTheatre()
         local blueSectors = MissionDirector.new(SectorManifest["blue"])
         blueSectors:startEngineLoop()
     end
-    
-    
+
     env.info("[Orchestrator] All dynamic theatre environments successfully initialized.")
 end
 
