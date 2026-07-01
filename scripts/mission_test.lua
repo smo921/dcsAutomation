@@ -1,47 +1,3 @@
--- ============================================================================
--- GLOBAL THEATER ASSETS (Spawned relative to Bullseye at Mission Start)
--- ============================================================================
-local GlobalTheaterAssets = {
-    [1] = {
-        enabled = true,
-        task = "AWACS",
-        groupName = "Magic_Global_Sentry",
-        unitType = "E-3A",
-        country = "USA",
-        frequency = 251.0, -- MHz AM
-        modulation = "AM",
-        callsign = 2, -- Magic
-        callsignNumber = 1, -- Magic 1-1
-        altitude = 31000, -- Feet
-        speed = 290, -- knots
-        orbitPattern = "Circle",
-
-        -- BULLSEYE STANDOFF VECTOR
-        offsetHeading = 240, -- Heading from Bullseye to safe orbit zone (SW)
-        offsetDistance = 50 -- Stay 50nm away from Bullseye center
-    },
-    [2] = {
-        enabled = true,
-        groupName = "Texaco_Global_Refueling",
-        task = "Refueling",
-        unitType = "KC-135",
-        country = "USA",
-
-        frequency = 253.0, -- MHz AM
-        modulation = "AM",
-        callsign = 1, -- Texaco
-        callsignNumber = 1, -- Texaco 1-1
-        altitude = 31000, -- Feet
-        speed = 290, -- knots
-        orbitPattern = "Anchored",
-        orbitLength = 32, -- 32nm wide racetrack pattern
-        orbitWidth = 50,
-
-        -- BULLSEYE STANDOFF VECTOR
-        offsetHeading = 330, -- Heading from Bullseye to safe orbit zone (SW)
-        offsetDistance = 50 -- Stay 50nm away from Bullseye center
-    }
-}
 -- ==============================================================================
 -- 1. CENTRALIZED SECTOR MANIFEST (Edit your mission profiles here)
 -- ==============================================================================
@@ -87,6 +43,76 @@ local SectorManifest = {
             type = "landing", -- Routes safely back to the base specified below
             airbaseName = "Kutaisi"
         }}
+    },
+    -- AWACS Global Sentry (using bearing/distance from bullseye - Mode 3a)
+    {
+        enabled = true,
+        triggerType = "IMMEDIATE",
+        category = "AIRPLANE",
+        groupName = "Magic_Global_Sentry",
+        task = "AWACS",
+        country = "USA",
+
+        placement = {
+            heading = 240, -- Heading from Bullseye to safe orbit zone (SW)
+            distanceNM = 50 -- Stay 50nm away from Bullseye center
+        },
+
+        units = {{
+            unitType = "E-3A"
+        }},
+
+        route = {
+            {
+                type = "Turning Point",
+                alt = 31000, -- ~31000 feet
+                speed = 290, -- ~290 knots
+                offsetX = 0,
+                offsetY = 0
+            },
+            {
+                type = "Turning Point",
+                alt = 31000,
+                speed = 290,
+                offsetX = 5,  -- 5 nautical miles offset for orbit pattern (conversion handled by SpatialSolver)
+                offsetY = 0
+            }
+        }
+    },
+    -- Tanker Global Refueling (using bearing/distance from bullseye - Mode 3a)
+    {
+        enabled = true,
+        triggerType = "IMMEDIATE",
+        category = "AIRPLANE",
+        groupName = "Texaco_Global_Refueling",
+        task = "Refueling",
+        country = "USA",
+
+        placement = {
+            heading = 330, -- Heading from Bullseye to safe orbit zone (SW)
+            distanceNM = 50 -- Stay 50nm away from Bullseye center
+        },
+
+        units = {{
+            unitType = "KC-135"
+        }},
+
+        route = {
+            {
+                type = "Turning Point",
+                alt = 31000, -- ~31000 feet
+                speed = 290, -- ~290 knots
+                offsetX = 0,
+                offsetY = 0
+            },
+            {
+                type = "Turning Point",
+                alt = 31000,
+                speed = 290,
+                offsetX = 5,  -- 5 nautical miles offset for orbit pattern (conversion handled by SpatialSolver)
+                offsetY = 0
+            }
+        }
     }, -- Add this directly into your SectorManifest["blue"] array inside mission_test.lua
     {
         enabled = true,
@@ -339,9 +365,6 @@ local SectorManifest = {
 -- ==============================================================================
 
 function startDynamicTheatre()
-    -- 1. Initialize global assets (AWACS relative to Bullseye)
-    MissionDirector:initializeGlobalAssets(GlobalTheaterAssets)
-
     if SectorManifest["red"] then
         local redSectors = MissionDirector.new(SectorManifest["red"])
         redSectors:startEngineLoop()

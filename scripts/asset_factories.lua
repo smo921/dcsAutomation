@@ -226,12 +226,51 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
     -- Isolate the placement sub-table configuration
     local placement = config.placement or {}
 
-    -- Explicitly pull from the placement sub-table first
-    local airbaseName = placement.airbaseName or config.airbaseName
-    local startType = placement.startType or config.startType
-    local headingDeg = placement.heading or config.heading or 0
+    -- Mode detection logic for unified placement system
+    local mode = "unknown"
+    local resolvedX, resolvedY = startX, startY
+
+    -- Determine placement mode based on config fields:
+    -- Mode 1: Airbase ramp slot anchoring (airbaseName present)
+    if placement.airbaseName then
+        mode = "mode1"
+    -- Mode 2: Direct coordinate positioning (offsetX and offsetY both present)
+    elseif placement.offsetX and placement.offsetY then
+        mode = "mode2"
+    -- Mode 3a: Bearing + distance offset from origin (heading and distanceNM present)
+    elseif placement.heading and (placement.distanceNM or placement.offsetDistance) then
+        mode = "mode3a"
+    -- Mode 3b: Bearing + meters offset (heading and offsetX only, no distance)
+    elseif placement.heading and placement.offsetX and not (placement.distanceNM or placement.offsetDistance) then
+        mode = "mode3b"
+    else
+        -- Default fallback to Mode 2 for direct coordinate addition
+        mode = "mode2"
+    end
+
+    -- Resolve coordinates based on detected mode
+    if mode == "mode1" then
+        -- Mode 1: Airbase ramp slot anchoring
+        resolvedX, resolvedY = startX, startY
+    elseif mode == "mode2" then
+        -- Mode 2: Direct coordinate addition
+        resolvedX = startX + (placement.offsetX or 0)
+        resolvedY = startY + (placement.offsetY or 0)
+    elseif mode == "mode3a" then
+        -- Mode 3a: Bearing + distance offset from origin
+        local distanceNM = placement.distanceNM or placement.offsetDistance
+        resolvedX, resolvedY = SpatialSolver.getCoordinates({x = startX, y = startY}, {heading = placement.heading, distanceNM = distanceNM})
+    elseif mode == "mode3b" then
+        -- Mode 3b: Bearing + meters offset (treat offsetX as direct meter addition)
+        local headingRad = math.rad(placement.heading or 0)
+        local distanceMeters = placement.offsetX or 0
+        resolvedX = startX + (math.cos(headingRad) * distanceMeters)
+        resolvedY = startY + (math.sin(headingRad) * distanceMeters)
+    end
 
     -- Extract numerical Airbase ID required for engine anchorage mapping
+    local airbaseName = placement.airbaseName or config.airbaseName
+    local startType = placement.startType or config.startType or "air_start"
     local airbaseId = airbaseObj and airbaseObj:getID() or nil
 
     -- Ground start state flags evaluated from placement metrics
@@ -268,22 +307,22 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
         local spotStr = tostring(groundSpot)
 
         -- 1. FALLBACK COORDINATES (Airfield Center)
-        local spawnX = startX
-        local spawnY = startY
+        local spawnX = resolvedX
+        local spawnY = resolvedY
 
         -- 2. DYNAMIC COORDINATE LOOKUP
         -- Extract the actual physical coordinates for this specific spot via MIST
         if isRampStart and mist.DBs.spawnsByBase and mist.DBs.spawnsByBase[airbaseName] then
             local baseData = mist.DBs.spawnsByBase[airbaseName]
             if baseData[spotStr] then
-                spawnX = baseData[spotStr].x or startX
-                spawnY = baseData[spotStr].y or startY
+                spawnX = baseData[spotStr].x or resolvedX
+                spawnY = baseData[spotStr].y or resolvedY
             end
         end
 
         local alt = isRampStart and 0 or (placement.altitude or config.altitude or 2000)
         local speed = isRampStart and 0 or (placement.speed or config.speed or 150)
-        local headingRad = headingDeg * (math.pi / 180)
+        local headingRad = (placement.heading or config.heading or 0) * (math.pi / 180)
 
         local unitEntry = {
             ["type"] = unitType,
@@ -312,8 +351,8 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
     local firstWaypoint = {
         ["type"] = isRampStart and startTypeStr or "Turning Point",
         ["action"] = isRampStart and actionStr or "Turning Point",
-        ["x"] = unitPool[1] and unitPool[1].x or startX, -- Aligns perfectly with Unit 1
-        ["y"] = unitPool[1] and unitPool[1].y or startY, -- Aligns perfectly with Unit 1
+        ["x"] = unitPool[1] and unitPool[1].x or resolvedX, -- Aligns perfectly with Unit 1
+        ["y"] = unitPool[1] and unitPool[1].y or resolvedY, -- Aligns perfectly with Unit 1
         ["alt"] = isRampStart and 0 or (placement.altitude or config.altitude or 2000),
         ["alt_type"] = isRampStart and "AGL" or "MSL",
         ["speed"] = isRampStart and 0 or (placement.speed or config.speed or 150),
@@ -334,7 +373,7 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
 
     -- 3. Assemble flight routes (WP 2+)
     if config.route then
-        local routePoints = UnitFormationBuilder.BuildAirRoute(startX, startY, config.route, airbaseObj, isHelo)
+        local routePoints = UnitFormationBuilder.BuildAirRoute(resolvedX, resolvedY, config.route, airbaseObj, isHelo)
         for _, p in ipairs(routePoints) do
             table.insert(points, p)
         end
@@ -411,180 +450,173 @@ end
 
 
 function AssetFactories.buildAWACSorTanker(originPoint, config)
-    local x, y = SpatialSolver.getCoordinates(originPoint, config)
+    -- Determine if we should use the unified placement system or legacy approach
+    local placement = config.placement or {}
 
-    local altitude = mist.utils.feetToMeters(config.altitude) or 8000
-    local speed = mist.utils.knotsToMps(config.speed) or 150
+    -- For AWACS/tankers with airbaseName, we delegate to buildAirGroup for proper handling
+    if placement.airbaseName then
+        -- Use buildAirGroup with direct coordinates but mark as special case for orbit behavior
+        return AssetFactories.buildAirGroup(config, originPoint.x, originPoint.y, nil)
+    else
+        -- Legacy approach for bearing/distance offset from bullseye
+        local x, y = SpatialSolver.getCoordinates(originPoint, config)
 
-    local wp1_x = x
-    local wp1_y = y
-    local wp2_x = wp1_x + mist.utils.NMToMeters(0.5) -- (mist.utils.NMToMeters(config.orbitLength) or 40000)
-    local wp2_y = wp1_y + mist.utils.NMToMeters(0.5)
+        local wp1_x = x
+        local wp1_y = y
+        local wp2_x = wp1_x + mist.utils.NMToMeters(0.5) -- (mist.utils.NMToMeters(config.orbitLength) or 40000)
+        local wp2_y = wp1_y + mist.utils.NMToMeters(0.5)
 
-    -- 1. Initialize separated task lists for WP1 and WP2
-    local wp1TaskList = {}
-    local wp2TaskList = {}
+        -- 1. Initialize separated task lists for WP1 and WP2
+        local wp1TaskList = {}
+        local wp2TaskList = {}
 
-    -- Map config task names to exact DCS Engine Task IDs
-    local dcsTaskName = config.task
+        -- Map config task names to exact DCS Engine Task IDs
+        local dcsTaskName = config.task
 
-    -- WP1: Main Enroute Task (Must be active from spawn)
-    table.insert(wp1TaskList, {
-        ["id"] = dcsTaskName,
-        ["params"] = {}
-    })
-
-    -- WP1: Frequency Setup
-    if config.frequency then
+        -- WP1: Main Enroute Task (Must be active from spawn)
         table.insert(wp1TaskList, {
-            ["id"] = "SetFrequency",
-            ["params"] = {
-                ["frequency"] = config.frequency * 1000000,
-                ["modulation"] = (config.modulation == "FM") and 1 or 0 -- 0 = AM, 1 = FM
-            }
+            ["id"] = dcsTaskName,
+            ["params"] = {}
         })
-    end
 
-    -- WP1: Callsign Setup
-    if config.callsign then
-        table.insert(wp1TaskList, {
-            ["id"] = "SetCallsign",
-            ["params"] = {
-                ["callsign"] = config.callsign,
-                ["number"] = config.callsignNumber or 1
-            }
-        })
-    end
-
-    -- WP2: Configure the Orbit Command dynamically
-    -- Supports config.orbitPattern = "Circle" or "Racetrack" (defaults to Racetrack)
-    local patternChoice = config.orbitPattern or "Circle"
-    
-    local orbitParams = {
-        ["pattern"] = patternChoice,
-        ["altitude"] = altitude,
-        ["speed"] = speed
-    }
-
-    if patternChoice == "Anchored" then
-        orbitParams["hotLegDir"] = 180
-        orbitParams["legLength"] = mist.utils.NMToMeters(config.orbitLength)
-        orbitParams["width"] = mist.utils.NMToMeters(config.orbitWidth)
-        orbitParams["clockWise"] = config.orbitClockwise or false
-    end
-
-    table.insert(wp2TaskList, {
-        ["id"] = "Orbit",
-        ["params"] = orbitParams
-    })
-
-    local payload = {
-        ["visible"] = true,
-        ["category"] = "AIRPLANE",
-        ["country"] = config.country or "USA",
-        ["name"] = config.groupName,
-        ["task"] = config.task,
-        ["units"] = {{
-            ["type"] = config.unitType or "E-3A",
-            ["name"] = config.groupName .. "_Unit_1",
-            ["x"] = wp1_x,
-            ["y"] = wp1_y,
-            ["alt"] = altitude,
-            ["alt_type"] = "BARO",
-            ["speed"] = speed,
-            ["heading"] = 0,
-            ["skill"] = "Excellent"
-        }},
-        ["route"] = {
-            ["points"] = {
-                {
-                    ["x"] = wp1_x,
-                    ["y"] = wp1_y,
-                    ["alt"] = altitude,
-                    ["alt_type"] = "BARO",
-                    ["type"] = "Turning Point",
-                    ["action"] = "Turning Point",
-                    ["speed"] = speed,
-                    ["task"] = {
-                        ["id"] = "ComboTask",
-                        ["params"] = {
-                            ["tasks"] = wp1TaskList -- Initialized on spawn
-                        }
-                    }
-                }, 
-                {
-                    ["x"] = wp2_x,
-                    ["y"] = wp2_y,
-                    ["alt"] = altitude,
-                    ["alt_type"] = "BARO",
-                    ["type"] = "Turning Point",
-                    ["action"] = "Turning Point",
-                    ["speed"] = speed,
-                    ["task"] = {
-                        ["id"] = "ComboTask",
-                        ["params"] = {
-                            ["tasks"] = wp2TaskList -- Triggers the Orbit at WP2
-                        }
-                    }
+        -- WP1: Frequency Setup
+        if config.frequency then
+            table.insert(wp1TaskList, {
+                ["id"] = "SetFrequency",
+                ["params"] = {
+                    ["frequency"] = config.frequency * 1000000,
+                    ["modulation"] = (config.modulation == "FM") and 1 or 0 -- 0 = AM, 1 = FM
                 }
-            }
+            })
+        end
+
+        -- WP1: Callsign Setup
+        if config.callsign then
+            table.insert(wp1TaskList, {
+                ["id"] = "SetCallsign",
+                ["params"] = {
+                    ["callsign"] = config.callsign,
+                    ["number"] = config.callsignNumber or 1
+                }
+            })
+        end
+
+        -- WP2: Configure the Orbit Command dynamically
+        -- Supports config.orbitPattern = "Circle" or "Racetrack" (defaults to Racetrack)
+        local patternChoice = config.orbitPattern or "Circle"
+
+        local orbitParams = {
+            ["pattern"] = patternChoice,
+            ["altitude"] = config.altitude or 8000, -- Already in feet
+            ["speed"] = config.speed or 150 -- Already in knots
         }
-    }
-    return payload
-end
 
+        if patternChoice == "Anchored" then
+            orbitParams["hotLegDir"] = 180
+            orbitParams["legLength"] = mist.utils.NMToMeters(config.orbitLength)
+            orbitParams["width"] = mist.utils.NMToMeters(config.orbitWidth)
+            orbitParams["clockWise"] = config.orbitClockwise or false
+        end
 
-function AssetFactories.buildDrone(config, x, y)
-    local altitude = mist.utils.feetToMeters(config.altitude) or 4572
-    local speed = mist.utils.knotsToMps(config.speed or 200)
+        table.insert(wp2TaskList, {
+            ["id"] = "Orbit",
+            ["params"] = orbitParams
+        })
 
-    local payload = {
-        ["visible"] = true,
-        ["category"] = "AIRPLANE",
-        ["country"] = config.country or "USA",
-        ["name"] = config.groupName,
-        ["units"] = {
-            [1] = {
-                ["type"] = config.unitType or "MQ-9 Reaper",
+        local payload = {
+            ["visible"] = true,
+            ["category"] = "AIRPLANE",
+            ["country"] = config.country or "USA",
+            ["name"] = config.groupName,
+            ["task"] = config.task,
+            ["units"] = {{
+                ["type"] = config.unitType or "E-3A",
                 ["name"] = config.groupName .. "_Unit_1",
-                ["x"] = x,
-                ["y"] = y,
-                ["alt"] = altitude,
+                ["x"] = wp1_x,
+                ["y"] = wp1_y,
+                ["alt"] = config.altitude or 8000, -- Already in feet
                 ["alt_type"] = "BARO",
-                ["speed"] = speed,
+                ["speed"] = config.speed or 150, -- Already in knots
                 ["heading"] = 0,
                 ["skill"] = "Excellent"
-            }
-        },
-        ["route"] = {
-            ["points"] = {
-                [1] = {
-                    ["x"] = x,
-                    ["y"] = y,
-                    ["alt"] = altitude,
-                    ["alt_type"] = "BARO",
-                    ["speed"] = speed,
-                    ["action"] = "Turning Point",
-                    ["type"] = "Turning Point",
-                    ["task"] = {
-                        ["id"] = "ComboTask",
-                        ["params"] = {
-                            ["tasks"] = {
-                                [1] = {
-                                    ["id"] = "Orbit",
-                                    ["params"] = {
-                                        ["pattern"] = "Circle",
-                                        ["altitude"] = altitude,
-                                        ["speed"] = speed
-                                    }
-                                }
+            }},
+            ["route"] = {
+                ["points"] = {
+                    {
+                        ["x"] = wp1_x,
+                        ["y"] = wp1_y,
+                        ["alt"] = config.altitude or 8000, -- Already in feet
+                        ["alt_type"] = "BARO",
+                        ["type"] = "Turning Point",
+                        ["action"] = "Turning Point",
+                        ["speed"] = config.speed or 150, -- Already in knots
+                        ["task"] = {
+                            ["id"] = "ComboTask",
+                            ["params"] = {
+                                ["tasks"] = wp1TaskList -- Initialized on spawn
+                            }
+                        }
+                    },
+                    {
+                        ["x"] = wp2_x,
+                        ["y"] = wp2_y,
+                        ["alt"] = config.altitude or 8000, -- Already in feet
+                        ["alt_type"] = "BARO",
+                        ["type"] = "Turning Point",
+                        ["action"] = "Turning Point",
+                        ["speed"] = config.speed or 150, -- Already in knots
+                        ["task"] = {
+                            ["id"] = "ComboTask",
+                            ["params"] = {
+                                ["tasks"] = wp2TaskList -- Triggers the Orbit at WP2
                             }
                         }
                     }
                 }
             }
         }
+        return payload
+    end
+end
+
+
+function AssetFactories.buildDrone(config, x, y)
+    -- For drones, we now delegate to buildAirGroup to utilize the unified placement system
+    -- This allows drones to benefit from all three placement modes (ramp slot, bearing/distance, direct coordinates)
+
+    -- Create a temporary config that includes the position information
+    local droneConfig = {
+        groupName = config.groupName,
+        country = config.country or "USA",
+        category = "AIRPLANE",
+        task = "CAP",  -- Default task for drones
+        units = {
+            {
+                unitType = config.unitType or "MQ-9 Reaper",
+                name = config.groupName .. "_Unit_1"
+            }
+        },
+        placement = {
+            heading = config.heading,
+            offsetX = x,
+            offsetY = y,
+            altitude = config.altitude,
+            speed = config.speed
+        },
+        route = {
+            {
+                type = "Turning Point",
+                alt = config.altitude or 4572,  -- Default to ~15000 feet in meters (already handled by UnitRouteWaypoint.new)
+                speed = config.speed or 200,     -- Default to 200 m/s (already handled by UnitRouteWaypoint.new)
+                offsetX = 0,
+                offsetY = 0
+            }
+        }
     }
+
+    -- Delegate to buildAirGroup which now handles all placement modes
+    local payload = AssetFactories.buildAirGroup(droneConfig, x, y, nil)
+
     return payload
 end
 
