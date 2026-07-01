@@ -54,8 +54,11 @@ local SectorManifest = {
         country = "USA",
 
         placement = {
-            heading = 240, -- Heading from Bullseye to safe orbit zone (SW)
-            distanceNM = 50 -- Stay 50nm away from Bullseye center
+            offsetHeading = 240, -- Heading from Bullseye to safe orbit zone (SW)
+            offsetDistance = 50, -- Stay 50nm away from Bullseye center
+            heading = 0, -- Unit orientation when spawned (0 = North)
+            altitude = 31000, -- Feet
+            speed = 290 -- knots
         },
 
         units = {{
@@ -89,8 +92,11 @@ local SectorManifest = {
         country = "USA",
 
         placement = {
-            heading = 330, -- Heading from Bullseye to safe orbit zone (SW)
-            distanceNM = 50 -- Stay 50nm away from Bullseye center
+            offsetHeading = 330, -- Heading from Bullseye to safe orbit zone (SW)
+            offsetDistance = 50, -- Stay 50nm away from Bullseye center
+            heading = 0, -- Unit orientation when spawned (0 = North)
+            altitude = 31000, -- Feet
+            speed = 290 -- knots
         },
 
         units = {{

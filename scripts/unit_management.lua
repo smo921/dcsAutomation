@@ -153,17 +153,20 @@ end
 function SpatialSolver.getCoordinates(origin, placementConfig)
     local x, y = origin.x, origin.y
 
-    if placementConfig.offsetX and placementConfig.offsetY then
-        return x + placementConfig.offsetX, y + placementConfig.offsetY
-    elseif placementConfig.offsetHeading and placementConfig.offsetDistance then
+    -- Check for bearing/distance positioning first (Mode 2)
+    if placementConfig.offsetHeading and placementConfig.offsetDistance then
         return SpatialSolver.getVector(origin, placementConfig.offsetHeading, placementConfig.offsetDistance)
+    -- Then check for direct coordinate positioning (Mode 1)
+    elseif placementConfig.offsetX and placementConfig.offsetY then
+        return x + placementConfig.offsetX, y + placementConfig.offsetY
+    -- Then check for group waypoint positioning (Mode 3)
     elseif placementConfig.groupName and placementConfig.waypoint then
         env.info("[SpatialSolver] Placing unit near group: " .. placementConfig.groupName .. " waypoint: " ..
                      placementConfig.waypoint)
         local wp = getWaypointFromFlight(placementConfig.groupName, placementConfig.waypoint)
         return wp.x, wp.y
     else
-        return bullseye.x, bullseye.y
+        return x, y
     end
 end
 
@@ -591,7 +594,15 @@ function UnitPlacementConfig.new(placementConfig)
     self.offsetX = mist.utils.NMToMeters(placementConfig.offsetX or 0) -- nm
     self.offsetY = mist.utils.NMToMeters(placementConfig.offsetY or 0) -- nm
     self.spawnRadius = mist.utils.NMToMeters(placementConfig.spawnRadius or 0) -- nm
-    
+
+    -- Bearing/distance positioning fields (keep in original units)
+    self.offsetHeading = placementConfig.offsetHeading
+    self.offsetDistance = placementConfig.offsetDistance
+
+    -- Altitude and speed for air unit spawning
+    self.altitude = placementConfig.altitude
+    self.speed = placementConfig.speed
+
     self.strategy = placementConfig.strategy or ""
     self.zoneName = placementConfig.zoneName
 

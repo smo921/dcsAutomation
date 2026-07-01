@@ -226,46 +226,36 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
     -- Isolate the placement sub-table configuration
     local placement = config.placement or {}
 
-    -- Mode detection logic for unified placement system
+    -- Simplified mode detection logic for unified placement system
     local mode = "unknown"
     local resolvedX, resolvedY = startX, startY
 
     -- Determine placement mode based on config fields:
     -- Mode 1: Airbase ramp slot anchoring (airbaseName present)
     if placement.airbaseName then
-        mode = "mode1"
-    -- Mode 2: Direct coordinate positioning (offsetX and offsetY both present)
+        mode = "mode1"  -- Airbase ramp slot anchoring
+    -- Mode 2: Bearing + distance offset from origin (offsetHeading and offsetDistance present)
+    elseif placement.offsetHeading and placement.offsetDistance then
+        mode = "mode2"  -- Bearing + distance positioning
+    -- Mode 3: Direct coordinate positioning (offsetX and offsetY both present)
     elseif placement.offsetX and placement.offsetY then
-        mode = "mode2"
-    -- Mode 3a: Bearing + distance offset from origin (heading and distanceNM present)
-    elseif placement.heading and (placement.distanceNM or placement.offsetDistance) then
-        mode = "mode3a"
-    -- Mode 3b: Bearing + meters offset (heading and offsetX only, no distance)
-    elseif placement.heading and placement.offsetX and not (placement.distanceNM or placement.offsetDistance) then
-        mode = "mode3b"
+        mode = "mode3"  -- Direct coordinate positioning
     else
-        -- Default fallback to Mode 2 for direct coordinate addition
-        mode = "mode2"
+        -- Default fallback to Mode 3 for direct coordinate addition
+        mode = "mode3"
     end
 
     -- Resolve coordinates based on detected mode
     if mode == "mode1" then
-        -- Mode 1: Airbase ramp slot anchoring
+        -- Mode 1: Airbase ramp slot anchoring - coordinates already resolved by Sector system
         resolvedX, resolvedY = startX, startY
     elseif mode == "mode2" then
-        -- Mode 2: Direct coordinate addition
+        -- Mode 2: Bearing + distance offset from origin
+        resolvedX, resolvedY = SpatialSolver.getCoordinates({x = startX, y = startY}, placement)
+    elseif mode == "mode3" then
+        -- Mode 3: Direct coordinate addition
         resolvedX = startX + (placement.offsetX or 0)
         resolvedY = startY + (placement.offsetY or 0)
-    elseif mode == "mode3a" then
-        -- Mode 3a: Bearing + distance offset from origin
-        local distanceNM = placement.distanceNM or placement.offsetDistance
-        resolvedX, resolvedY = SpatialSolver.getCoordinates({x = startX, y = startY}, {heading = placement.heading, distanceNM = distanceNM})
-    elseif mode == "mode3b" then
-        -- Mode 3b: Bearing + meters offset (treat offsetX as direct meter addition)
-        local headingRad = math.rad(placement.heading or 0)
-        local distanceMeters = placement.offsetX or 0
-        resolvedX = startX + (math.cos(headingRad) * distanceMeters)
-        resolvedY = startY + (math.sin(headingRad) * distanceMeters)
     end
 
     -- Extract numerical Airbase ID required for engine anchorage mapping
@@ -320,8 +310,8 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
             end
         end
 
-        local alt = isRampStart and 0 or (placement.altitude or config.altitude or 2000)
-        local speed = isRampStart and 0 or (placement.speed or config.speed or 150)
+        local alt = isRampStart and 0 or mist.utils.feetToMeters(placement.altitude or config.altitude or 2000)
+        local speed = isRampStart and 0 or mist.utils.knotsToMps(placement.speed or config.speed or 150)
         local headingRad = (placement.heading or config.heading or 0) * (math.pi / 180)
 
         local unitEntry = {
@@ -537,7 +527,7 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
                 ["alt"] = config.altitude or 8000, -- Already in feet
                 ["alt_type"] = "BARO",
                 ["speed"] = config.speed or 150, -- Already in knots
-                ["heading"] = 0,
+                ["heading"] = math.rad(config.heading or 0), -- Unit orientation in radians
                 ["skill"] = "Excellent"
             }},
             ["route"] = {
