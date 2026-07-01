@@ -400,6 +400,8 @@ function AssetFactories.buildGroundUnit(config, x, y)
     }
 end
 
+
+
 function AssetFactories.buildAWACSorTanker(originPoint, config)
     local x, y = SpatialSolver.getCoordinates(originPoint, config)
 
@@ -408,59 +410,36 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
 
     local wp1_x = x
     local wp1_y = y
-    local wp2_x = x + (mist.utils.NMToMeters(config.orbitLength) or 40000)
-    local wp2_y = y
+    local wp2_x = x + mist.utils.NMToMeters(0.5) -- (mist.utils.NMToMeters(config.orbitLength) or 40000)
+    local wp2_y = y + mist.utils.NMToMeters(0.5)
 
-    -- Initialize the tasks array explicitly
-    local taskList = {}
+    -- 1. Initialize separated task lists for WP1 and WP2
+    local wp1TaskList = {}
+    local wp2TaskList = {}
 
     -- Map config task names to exact DCS Engine Task IDs
     local dcsTaskName = config.task
-    if config.task == "Refueling" then
-        dcsTaskName = "Tanker"
-    elseif config.task == "AWACS" then
-        dcsTaskName = "Awacs"
-    end
 
-    -- 1. Main Enroute Task (Must be valid and index [1])
-    table.insert(taskList, {
+    -- WP1: Main Enroute Task (Must be active from spawn)
+    table.insert(wp1TaskList, {
         ["id"] = dcsTaskName,
         ["params"] = {}
     })
 
-    -- 2. Orbit Command
-    local orbitParams = {
-        ["pattern"] = "Racetrack",
-        ["altitude"] = altitude,
-        ["speed"] = speed
-    }
-
-    -- FIX: Tankers require "refuelingable = true" inside the orbit parameters
-    if dcsTaskName == "Tanker" then
-        orbitParams["refuelingable"] = true
-    end
-
-    table.insert(taskList, {
-        ["id"] = "Orbit",
-        ["params"] = orbitParams
-    })
-    
-    
-    
-    -- 3. Frequency Setup
+    -- WP1: Frequency Setup
     if config.frequency then
-        table.insert(taskList, {
+        table.insert(wp1TaskList, {
             ["id"] = "SetFrequency",
             ["params"] = {
                 ["frequency"] = config.frequency * 1000000,
-                ["modulation"] = config.modulation or "AM"
+                ["modulation"] = (config.modulation == "FM") and 1 or 0 -- 0 = AM, 1 = FM
             }
         })
     end
 
-    -- 4. Callsign Setup
+    -- WP1: Callsign Setup
     if config.callsign then
-        table.insert(taskList, {
+        table.insert(wp1TaskList, {
             ["id"] = "SetCallsign",
             ["params"] = {
                 ["callsign"] = config.callsign,
@@ -468,6 +447,28 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
             }
         })
     end
+
+    -- WP2: Configure the Orbit Command dynamically
+    -- Supports config.orbitPattern = "Circle" or "Racetrack" (defaults to Racetrack)
+    local patternChoice = config.orbitPattern or "Circle"
+    
+    local orbitParams = {
+        ["pattern"] = patternChoice,
+        ["altitude"] = altitude,
+        ["speed"] = speed
+    }
+
+    if patternChoice == "Anchored" then
+        orbitParams["hotLegDir"] = 180
+        orbitParams["legLength"] = mist.utils.NMToMeters(config.orbitLength)
+        orbitParams["width"] = mist.utils.NMToMeters(config.orbitWidth)
+        orbitParams["clockWise"] = config.orbitClockwise or false
+    end
+
+    table.insert(wp2TaskList, {
+        ["id"] = "Orbit",
+        ["params"] = orbitParams
+    })
 
     local payload = {
         ["visible"] = true,
@@ -487,40 +488,44 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
             ["skill"] = "Excellent"
         }},
         ["route"] = {
-            ["points"] = {{
-                ["x"] = wp1_x,
-                ["y"] = wp1_y,
-                ["alt"] = altitude,
-                ["alt_type"] = "BARO",
-                ["type"] = "Turning Point",
-                ["action"] = "Turning Point",
-                ["speed"] = speed,
-                ["task"] = {
-                    ["id"] = "ComboTask",
-                    ["params"] = {
-                        ["tasks"] = taskList -- Assign the cleanly packed array here
+            ["points"] = {
+                {
+                    ["x"] = wp1_x,
+                    ["y"] = wp1_y,
+                    ["alt"] = altitude,
+                    ["alt_type"] = "BARO",
+                    ["type"] = "Turning Point",
+                    ["action"] = "Turning Point",
+                    ["speed"] = speed,
+                    ["task"] = {
+                        ["id"] = "ComboTask",
+                        ["params"] = {
+                            ["tasks"] = wp1TaskList -- Initialized on spawn
+                        }
+                    }
+                }, 
+                {
+                    ["x"] = wp2_x,
+                    ["y"] = wp2_y,
+                    ["alt"] = altitude,
+                    ["alt_type"] = "BARO",
+                    ["type"] = "Turning Point",
+                    ["action"] = "Turning Point",
+                    ["speed"] = speed,
+                    ["task"] = {
+                        ["id"] = "ComboTask",
+                        ["params"] = {
+                            ["tasks"] = wp2TaskList -- Triggers the Orbit at WP2
+                        }
                     }
                 }
-            }, {
-                ["x"] = wp2_x,
-                ["y"] = wp2_y,
-                ["alt"] = altitude,
-                ["alt_type"] = "BARO",
-                ["type"] = "Turning Point",
-                ["action"] = "Turning Point",
-                ["speed"] = speed,
-                ["task"] = {
-                    ["id"] = "ComboTask",
-                    ["params"] = {
-                        ["tasks"] = {}
-                    }
-                }
-            }}
+            }
         }
     }
     Utils.PrintTable(payload)
     return payload
 end
+
 
 function AssetFactories.buildDrone(config, x, y)
     local altitude = mist.utils.feetToMeters(config.altitude) or 4572

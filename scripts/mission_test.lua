@@ -14,7 +14,7 @@ local GlobalTheaterAssets = {
         callsignNumber = 1, -- Magic 1-1
         altitude = 31000, -- Feet
         speed = 290, -- knots
-        orbitLength = 32, -- 32nm wide racetrack pattern
+        orbitPattern = "Circle",
 
         -- BULLSEYE STANDOFF VECTOR
         offsetHeading = 240, -- Heading from Bullseye to safe orbit zone (SW)
@@ -33,7 +33,9 @@ local GlobalTheaterAssets = {
         callsignNumber = 1, -- Texaco 1-1
         altitude = 31000, -- Feet
         speed = 290, -- knots
+        orbitPattern = "Anchored",
         orbitLength = 32, -- 32nm wide racetrack pattern
+        orbitWidth = 50,
 
         -- BULLSEYE STANDOFF VECTOR
         offsetHeading = 330, -- Heading from Bullseye to safe orbit zone (SW)
