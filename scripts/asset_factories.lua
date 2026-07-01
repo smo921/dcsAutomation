@@ -100,10 +100,12 @@ end
 
 function UnitFormationBuilder.BuildRoute(startX, startY, waypoints)
     local points = {}
+    local currentX = startX
+    local currentY = startY
 
     for _, wp in ipairs(waypoints or {}) do
-        local wpX = startX + (wp.offsetX or 0)
-        local wpY = startY + (wp.offsetY or 0)
+        local wpX = currentX + (wp.offsetX or 0)
+        local wpY = currentY + (wp.offsetY or 0)
 
         -- mist.ground.buildWP creates a complete DCS ground route point automatically.
         -- Arguments: ( vec2/vec3 point, formStr, speedMps )
@@ -142,6 +144,8 @@ function UnitFormationBuilder.BuildRoute(startX, startY, waypoints)
         end
 
         table.insert(points, node)
+        currentX = wpX
+        currentY = wpY
     end
 
     return points
@@ -157,6 +161,8 @@ function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAi
     local points = {}
     local wpBuilder = isHelo and mist.heli.buildWP or mist.fixedWing.buildWP
 
+    local currentX = startX
+    local currentY = startY
     for _, wp in ipairs(waypoints or {}) do
         local wpX, wpY, aeroId, wpType, wpAction
 
@@ -167,13 +173,13 @@ function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAi
                 wpX, wpY = landPos.x, landPos.z
                 aeroId = landBase:getID()
             else
-                wpX, wpY = startX, startY
+                wpX, wpY = currentX, currentY
             end
             wpType = "Land"
             wpAction = "Landing"
         else
-            wpX = startX + (wp.offsetX or 0)
-            wpY = startY + (wp.offsetY or 0)
+            wpX = currentX + (wp.offsetX or 0)
+            wpY = currentY + (wp.offsetY or 0)
             wpType = wp.type or "Turning Point"
             wpAction = wp.action or "Turning Point"
         end
@@ -209,6 +215,8 @@ function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAi
         end
 
         table.insert(points, node)
+        currentX = wpX
+        currentY = wpY
     end
 
     return points
@@ -410,8 +418,8 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
 
     local wp1_x = x
     local wp1_y = y
-    local wp2_x = x + mist.utils.NMToMeters(0.5) -- (mist.utils.NMToMeters(config.orbitLength) or 40000)
-    local wp2_y = y + mist.utils.NMToMeters(0.5)
+    local wp2_x = wp1_x + mist.utils.NMToMeters(0.5) -- (mist.utils.NMToMeters(config.orbitLength) or 40000)
+    local wp2_y = wp1_y + mist.utils.NMToMeters(0.5)
 
     -- 1. Initialize separated task lists for WP1 and WP2
     local wp1TaskList = {}
