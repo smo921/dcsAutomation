@@ -11,6 +11,27 @@ To initialize the framework correctly within your Mission Editor (ME), you must 
 3. **`unit_management.lua`** (The core solver engine, map marker registry, radar loops, and sector classes)
 4. **`mission_test.lua`** (Your centralized configuration manifest and launch engine loop)
 
+> Note: The `unit_management.lua` file now includes standardized configuration templates and utilities for consistent data structures.
+
+---
+
+## Standardized Configuration System
+
+The framework now includes a standardized configuration system that provides:
+
+- **Consistent Data Structures**: All configurations follow predefined templates
+- **Validation**: Configurations are validated against templates to catch errors early
+- **Helper Functions**: Utility functions for creating and working with standardized configurations
+
+Key features available in `unit_management.lua`:
+- `ConfigStandards.SECTOR_TEMPLATE`: Base sector configuration template
+- `ConfigStandards.ROUTE_WAYPOINT_TEMPLATE`: Route waypoint configuration template
+- `ConfigStandards.DRONE_TEMPLATE`: Drone configuration template
+- `ConfigStandards.RADAR_SECTOR_TEMPLATE`: Radar sector specific configuration template
+- `ConfigStandards.validateConfig()`: Function to validate configurations against templates
+
+These templates and utilities help ensure consistent configuration structures and early error detection.
+
 ---
 
 ## Basic Deployment Example

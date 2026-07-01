@@ -17,7 +17,7 @@ This is a DCS World mission scripting project that uses Lua and the MIST framewo
 
 ### Core Engine Files:
 - `mission_test.lua` - Main mission entry point that defines the sector manifest and orchestrates all dynamic theatre elements
-- `unit_management.lua` - Core logic for unit management, spatial calculations, trigger evaluation, and sector handling
+- `unit_management.lua` - Core logic for unit management, spatial calculations, trigger evaluation, and sector handling. Now includes standardized configuration templates and utilities.
 - `asset_factories.lua` - Factory functions for creating different types of assets (aircraft, ground units, radar, drones, etc.)
 - `respawnOrActivate.lua` - Logic for respawning or activating existing groups
 - `unitsAlive.lua` - Helper function to check if a group is alive
@@ -27,6 +27,7 @@ This is a DCS World mission scripting project that uses Lua and the MIST framewo
 - **Triggers**: Various ways to activate sector spawning (immediate, radar detection, zone entry, objective completion)
 - **Asset Factories**: Functions that build different types of DCS groups with proper configuration
 - **Spatial Solver**: Handles coordinate calculations, terrain checking, and safe placement logic
+- **Standardized Configurations**: Consistent data structures for defining sectors and assets with validation (integrated into unit_management.lua)
 
 ## Development Commands
 
@@ -48,6 +49,16 @@ The code is organized in a modular fashion:
 - Factory pattern for creating different types of assets (air, ground, radar, drones)
 - Event-driven architecture using timer scheduling and trigger registries
 - Spatial math utilities for coordinate calculations and terrain validation
+- Standardized configuration system for consistent data structures and validation (integrated into unit_management.lua)
+
+### Standardized Configuration System
+The project includes a standardized configuration system that provides:
+- Consistent data structures for all configuration types
+- Validation to catch configuration errors early
+- Helper functions for creating and working with configurations
+
+Key components (integrated into `unit_management.lua`):
+- Configuration templates and utilities
 
 ### Important Constants/Variables
 - `SpatialSolver` - Contains all spatial calculation and terrain checking logic

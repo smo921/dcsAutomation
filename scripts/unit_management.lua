@@ -1,3 +1,183 @@
+-- Standardized configuration structures and utilities for DCS mission scripting
+ConfigStandards = {}
+
+-- Standard sector configuration template
+ConfigStandards.SECTOR_TEMPLATE = {
+    enabled = true,
+    category = "GROUND", -- "GROUND", "AIRPLANE", "HELICOPTER"
+    triggerType = "IMMEDIATE", -- "IMMEDIATE", "TRIGGER_ZONE", "RADAR", "OBJECTIVE_COMPLETE"
+    zoneName = nil,
+    groupName = "",
+    unitType = nil,
+    parentGroupName = nil,
+    country = "Russia",
+    units = {},
+    placement = {
+        heading = 0,
+        offsetX = 0,
+        offsetY = 0,
+        spawnRadius = 0,
+        offsetHeading = nil,
+        offsetDistance = nil,
+        altitude = nil,
+        speed = nil,
+        strategy = "",
+        zoneName = nil,
+        groupName = nil,
+        waypoint = nil,
+        startType = nil,
+        airbaseName = nil
+    },
+    route = {},
+    task = nil,
+    droneConfig = nil
+}
+
+-- Standard route waypoint template
+ConfigStandards.ROUTE_WAYPOINT_TEMPLATE = {
+    type = "Turning Point",
+    speed = 200,
+    alt = 3000,
+    offsetX = 0,
+    offsetY = 0,
+    roe = nil,
+    threat = nil,
+    airbaseName = nil,
+    action = nil,
+    alt_type = "BARO"
+}
+
+-- Standard air unit configuration
+ConfigStandards.AIR_UNIT_TEMPLATE = {
+    unitType = "",
+    name = "",
+    groundSpot = nil
+}
+
+-- Standard drone configuration
+ConfigStandards.DRONE_TEMPLATE = {
+    enabled = true,
+    groupName = "",
+    unitType = "MQ-9 Reaper",
+    country = "USA",
+    heading = 0,
+    altitude = 4572, -- ~15000 feet in meters
+    speed = 200, -- m/s
+    targetX = nil,
+    targetY = nil
+}
+
+-- Standard radar sector configuration
+ConfigStandards.RADAR_SECTOR_TEMPLATE = {
+    radarFilterEnabled = false,
+    pointDefense = nil,
+    maxDetectRange = 200000.0,
+    triggeredUnits = nil
+}
+
+-- Standard point defense configuration
+ConfigStandards.POINT_DEFENSE_TEMPLATE = {
+    minRadius = 100,
+    maxRadius = 300,
+    units = {}
+}
+
+-- Utility functions for working with standardized configurations
+
+-- Deep copy a table structure
+function ConfigStandards.deepCopy(original)
+    local copy = {}
+    for key, value in pairs(original) do
+        if type(value) == "table" then
+            copy[key] = ConfigStandards.deepCopy(value)
+        else
+            copy[key] = value
+        end
+    end
+    return copy
+end
+
+-- Merge two configuration tables, with the second taking precedence
+function ConfigStandards.mergeConfig(defaults, overrides)
+    local result = ConfigStandards.deepCopy(defaults)
+
+    if not overrides then return result end
+
+    for key, value in pairs(overrides) do
+        if type(value) == "table" and type(result[key]) == "table" then
+            result[key] = ConfigStandards.mergeConfig(result[key], value)
+        else
+            result[key] = value
+        end
+    end
+
+    return result
+end
+
+-- Create a new sector configuration based on the template
+function ConfigStandards.createSector(config)
+    return ConfigStandards.mergeConfig(ConfigStandards.SECTOR_TEMPLATE, config)
+end
+
+-- Create a new route waypoint based on the template
+function ConfigStandards.createWaypoint(config)
+    return ConfigStandards.mergeConfig(ConfigStandards.ROUTE_WAYPOINT_TEMPLATE, config)
+end
+
+-- Create a new air unit based on the template
+function ConfigStandards.createAirUnit(config)
+    return ConfigStandards.mergeConfig(ConfigStandards.AIR_UNIT_TEMPLATE, config)
+end
+
+-- Create a new drone configuration based on the template
+function ConfigStandards.createDrone(config)
+    return ConfigStandards.mergeConfig(ConfigStandards.DRONE_TEMPLATE, config)
+end
+
+-- Create a new radar sector configuration based on the template
+function ConfigStandards.createRadarSector(config)
+    local sector = ConfigStandards.createSector(config)
+    local radarConfig = ConfigStandards.mergeConfig(ConfigStandards.RADAR_SECTOR_TEMPLATE, config)
+
+    -- Merge radar-specific properties
+    for key, value in pairs(radarConfig) do
+        sector[key] = value
+    end
+
+    return sector
+end
+
+-- Create a new point defense configuration based on the template
+function ConfigStandards.createPointDefense(config)
+    return ConfigStandards.mergeConfig(ConfigStandards.POINT_DEFENSE_TEMPLATE, config)
+end
+
+-- Validate a configuration against a template
+function ConfigStandards.validateConfig(config, template, path)
+    path = path or "root"
+
+    if type(config) ~= "table" then
+        return false, string.format("Expected table at %s, got %s", path, type(config))
+    end
+
+    for key, expectedValue in pairs(template) do
+        local value = config[key]
+        local currentPath = path .. "." .. key
+
+        if type(expectedValue) == "table" and type(value) == "table" then
+            local valid, error = ConfigStandards.validateConfig(value, expectedValue, currentPath)
+            if not valid then
+                return false, error
+            end
+        elseif value ~= nil and type(value) ~= type(expectedValue) then
+            return false, string.format("Type mismatch at %s: expected %s, got %s",
+                currentPath, type(expectedValue), type(value))
+        end
+    end
+
+    return true
+end
+
 local function is_nil_or_empty(t)
     return not t or next(t) == nil
 end
@@ -123,6 +303,7 @@ function MapMarkerRegistry.clearMark(trackingKey)
         -- env.info("[MarkerRegistry] Successfully purged marker for track: " .. trackingKey)
     end
 end
+
 
 SpatialSolver = {}
 SpatialSolver.VALID_LAND_TYPES = {
@@ -638,6 +819,12 @@ function Sector:new(sectorConfig)
 
     if is_nil_or_empty(sectorConfig) then return self end
 
+    -- Validate configuration against standard template
+    local valid, error = ConfigStandards.validateConfig(sectorConfig, ConfigStandards.SECTOR_TEMPLATE)
+    if not valid then
+        env.info("[Sector] Configuration validation error: " .. error)
+    end
+
     self.enabled = sectorConfig.enabled
     -- if self.enable == nil then self.enabled = true end
 
@@ -656,7 +843,7 @@ function Sector:new(sectorConfig)
     self.country = sectorConfig.country or "Russia"
     self.units = sectorConfig.units
 
-    if sectorConfig.placement then 
+    if sectorConfig.placement then
         self.placement = UnitPlacementConfig.new(sectorConfig.placement)
     end
 
@@ -1007,6 +1194,12 @@ function RadarSector:new(config)
     local s = Sector:new(config)
     setmetatable(s, self)
 
+    -- Validate radar-specific configuration
+    local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.RADAR_SECTOR_TEMPLATE)
+    if not valid then
+        env.info("[RadarSector] Configuration validation error: " .. error)
+    end
+
     s.radarFilterEnabled = config.radarFilterEnabled
     s.pointDefense = config.pointDefense
     s.maxDetectRange = config.maxDetectRange or 200000.0
@@ -1035,7 +1228,7 @@ function MissionDirector.new(coalitionConfig)
         if sector.enabled == true then
             local s
             if sector.triggerType == "RADAR" then
-               s = RadarSector:new(sector) 
+               s = RadarSector:new(sector)
             else
                 s = Sector:new(sector)
             end
