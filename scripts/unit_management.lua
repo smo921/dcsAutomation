@@ -262,35 +262,44 @@ local function printSurfaceType(surfaceType)
     end
 end
 
+--- Unified group lifecycle state checker.
+-- Determines if a group matches the expected state (alive/dead/doesn't exist).
+-- @param groupName string The tracking name of the group (optional, can be nil)
+-- @param expectAlive boolean If true, expects group to have active units; if false, expects group to not exist or be dead
+-- @return boolean true if group state matches expectation, false otherwise
+function checkGroupState(groupName, expectAlive)
+    if not groupName then
+        -- No group name means the check fails if we expect alive, passes if we expect not alive
+        return not expectAlive
+    end
+
+    local gp = Group.getByName(groupName)
+
+    -- STATE 1: Group does not exist or is not active
+    if gp == nil or gp:isExist() == false or gp:getSize() == 0 then
+        return not expectAlive
+    end
+
+    -- STATE 2: Group exists, check for active units
+    for i = 1, gp:getSize() do
+        local unit = gp:getUnit(i)
+        if unit and unit:isExist() and unit:isActive() and unit:getLife() > 1 then
+            -- Found at least one alive unit
+            return expectAlive
+        end
+    end
+
+    -- STATE 3: Group exists but all units are dead
+    return not expectAlive
+end
+
 --- Determines whether a group is eligible to be spawned.
 -- Prevents duplicate spawning of active assets and unwanted re-spawning of destroyed ones.
 -- @param groupName string The tracking name of the group.
 -- @return boolean true if it is safe and valid to spawn the group; false otherwise.
-local function shouldGroupSpawn(groupName)
-    if not groupName then return false end
-
-    local gp = Group.getByName(groupName)
-
-    -- STATE 1: Group object does not exist anywhere in the active simulation database.
-    -- This means it has never been spawned yet. Safe to deploy!
-    if gp == nil or gp:isExist() == false then
-        return true
-    end
-
-    -- STATE 2: The group container exists. Check if any units are still breathing.
-    for i = 1, gp:getSize() do
-        local unit = gp:getUnit(i)
-        if unit and unit:isExist() and unit:isActive() and unit:getLife() > 1 then
-            -- Found alive units. The asset is active in the world right now.
-            env.info(string.format("[SpawnGuard] Blocked spawn for '%s': Group is already active in theater.", groupName))
-            return false
-        end
-    end
-
-    -- STATE 3: The group container exists, but every single unit has been destroyed.
-    -- This prevents dead units from popping back into existence.
-    env.info(string.format("[SpawnGuard] Blocked spawn for '%s': Group was already deployed and neutralized.", groupName))
-    return false
+shouldGroupSpawn = function(groupName)
+    -- A group is eligible to spawn if it does NOT exist (expectAlive=false means we want it to not exist)
+    return not checkGroupState(groupName, true)
 end
 
 -- ============================================================================
@@ -858,26 +867,8 @@ end
 -- @param parentGroupName string Name of the parent group
 -- @return boolean true if the group is destroyed or doesn't exist
 function TriggerRegistry._checkGroupDestroyed(parentGroupName)
-    if not parentGroupName then
-        return true
-    end
-
-    local gp = Group.getByName(parentGroupName)
-
-    -- If the group reference returns nil or contains no active units
-    if gp == nil or gp:isExist() == false or gp:getSize() == 0 then
-        return true
-    end
-
-    -- Double check if units have structural lifepoints remaining
-    for i = 1, gp:getSize() do
-        local unit = gp:getUnit(i)
-        if unit and unit:isActive() and unit:getLife() > 1 then
-            return false -- At least one asset is still fighting
-        end
-    end
-
-    return true
+    -- Using unified checkGroupState: expectAlive=false means we want the group to not exist or be dead
+    return not checkGroupState(parentGroupName, true)
 end
 
 -- ============================================================================
@@ -1434,17 +1425,9 @@ end
 --- Check if this sector's units are all dead.
 -- @return boolean true if all units are dead
 function Sector:_checkOwnUnitsDead()
-    local g = Group.getByName(self.groupName)
-    if not g or g:getSize() == 0 then
-        return true
-    end
-    for i = 1, g:getSize() do
-        local u = g:getUnit(i)
-        if u and u:isActive() and u:getLife() > 1 then
-            return false
-        end
-    end
-    return true
+    -- Using unified checkGroupState: expectAlive=true means group should have active units
+    -- Return not(checkGroupState) because we want to know if all are dead
+    return not checkGroupState(self.groupName, true)
 end
 
 --- Start the engine loop for all sectors.

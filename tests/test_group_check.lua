@@ -1,4 +1,4 @@
--- Test groupCheck function (shared group lifecycle logic)
+-- Test checkGroupState function (shared group lifecycle logic)
 
 -- Load mocks first
 dofile("tests/mocks/dcs_mocks.lua")
@@ -12,36 +12,49 @@ dofile("tests/test_framework.lua")
 -- Load test utilities
 local TestUtils = dofile("tests/test_utils.lua")
 
--- Tests for groupCheck
-describe("groupCheck", function()
-    it("should return false for nil group name when checkAlive=true", function()
-        local result = groupCheck(nil, true)
+-- Tests for checkGroupState
+describe("checkGroupState", function()
+    it("should return false for nil group name when expectAlive=true", function()
+        local result = checkGroupState(nil, true)
         assert_false(result)
     end)
 
-    it("should return true for nil group name when checkAlive=false", function()
-        local result = groupCheck(nil, false)
+    it("should return true for nil group name when expectAlive=false", function()
+        local result = checkGroupState(nil, false)
         assert_true(result)
     end)
 
-    it("should return false when group does not exist and checkAlive=true", function()
-        local result = groupCheck("NonExistent_Group", true)
+    it("should return false when group does not exist and expectAlive=true", function()
+        local result = checkGroupState("NonExistent_Group", true)
         assert_false(result)
     end)
 
-    it("should return true when group does not exist and checkAlive=false", function()
-        local result = groupCheck("NonExistent_Group", false)
+    it("should return true when group does not exist and expectAlive=false", function()
+        local result = checkGroupState("NonExistent_Group", false)
         assert_true(result)
     end)
 
-    it("should return true for existing alive group when checkAlive=true", function()
-        local result = groupCheck("Test_Group", true)
+    it("should return true for existing alive group when expectAlive=true", function()
+        local result = checkGroupState("Test_Group", true)
         assert_true(result)
     end)
 
-    it("should return false for existing group when checkAlive=false", function()
-        local result = groupCheck("Test_Group", false)
+    it("should return false for existing group when expectAlive=false", function()
+        local result = checkGroupState("Test_Group", false)
         assert_false(result)
+    end)
+end)
+
+-- Tests for shouldGroupSpawn (wrapper function)
+describe("shouldGroupSpawn", function()
+    it("should return false when group exists and is active", function()
+        local result = shouldGroupSpawn("Test_Group")
+        assert_false(result)
+    end)
+
+    it("should return true when group does not exist", function()
+        local result = shouldGroupSpawn("NonExistent_Group")
+        assert_true(result)
     end)
 end)
 

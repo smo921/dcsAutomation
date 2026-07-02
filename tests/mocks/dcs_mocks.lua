@@ -324,7 +324,8 @@ coord = {
     end
 }
 
--- Mock groupCheck function (for testing the refactored code)
+-- Mock groupCheck function (kept for backwards compatibility, delegates to checkGroupState)
+-- For testing without unit_management loaded, defines a standalone implementation
 groupCheck = function(groupName, checkAlive)
     if not groupName then
         return not checkAlive
