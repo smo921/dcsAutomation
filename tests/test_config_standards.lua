@@ -36,20 +36,23 @@ describe("ConfigStandards.createSector", function()
 end)
 
 describe("ConfigStandards.createWaypoint", function()
-    it("should create a waypoint with default values", function()
+    it("should create a waypoint with default values (converted to meters/m/s)", function()
         local wp = ConfigStandards.createWaypoint({
             offsetX = 100
         })
 
         assert_equal("Turning Point", wp.type)
-        assert_equal(200, wp.speed)
-        assert_equal(3000, wp.alt)
-        assert_equal(100, wp.offsetX)
+        -- Speed: 200 knots converted to m/s
+        assert_true(math.abs(wp.speed - mist.utils.knotsToMps(200)) < 0.1)
+        -- Altitude: 3000 feet converted to meters
+        assert_true(math.abs(wp.alt - mist.utils.feetToMeters(3000)) < 0.1)
+        -- offsetX: 100 NM converted to meters
+        assert_true(math.abs(wp.offsetX - mist.utils.NMToMeters(100)) < 0.1)
     end)
 end)
 
 describe("ConfigStandards.createDrone", function()
-    it("should create a drone with default values", function()
+    it("should create a drone with default values (converted to meters/m/s)", function()
         local drone = ConfigStandards.createDrone({
             groupName = "Test_Drone"
         })
@@ -57,7 +60,10 @@ describe("ConfigStandards.createDrone", function()
         assert_equal("Test_Drone", drone.groupName)
         assert_equal("MQ-9 Reaper", drone.unitType)
         assert_equal("USA", drone.country)
-        assert_equal(4572, drone.altitude)
+        -- Altitude: 15000 feet converted to meters
+        assert_true(math.abs(drone.altitude - mist.utils.feetToMeters(15000)) < 0.1)
+        -- Speed: 200 knots converted to m/s
+        assert_true(math.abs(drone.speed - mist.utils.knotsToMps(200)) < 0.1)
     end)
 end)
 

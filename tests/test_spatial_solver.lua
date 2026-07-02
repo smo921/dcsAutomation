@@ -58,17 +58,18 @@ describe("SpatialSolver.getCoordinates", function()
         assert_true(math.abs(y) < 100) -- Should be close to same y
     end)
 
-    it("should handle direct coordinate positioning", function()
+    it("should handle direct coordinate positioning (input in NM, output in meters)", function()
         local origin = {x = 0, y = 0}
         local placementConfig = {
-            offsetX = 1000,
-            offsetY = 2000
+            offsetX = 1,    -- 1 NM
+            offsetY = 2     -- 2 NM
         }
 
         local x, y = SpatialSolver.getCoordinates(origin, placementConfig)
 
-        assert_equal(1000, x)
-        assert_equal(2000, y)
+        -- Should be converted from NM to meters
+        assert_true(math.abs(x - mist.utils.NMToMeters(1)) < 1)
+        assert_true(math.abs(y - mist.utils.NMToMeters(2)) < 1)
     end)
 
     it("should handle group waypoint positioning", function()

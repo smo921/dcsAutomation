@@ -1,18 +1,6 @@
 @echo off
-echo === DCS Mission Scripting Unit Tests ===
-echo.
-
-REM Check if Lua is installed
-lua -v >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Error: Lua is not installed or not in PATH
-    echo Please install Lua from https://lua.org/download.html
-    echo Or add Lua to your system PATH
-    exit /b 1
-)
-
-REM Run the tests
-lua tests/run_tests.lua
+REM Run the tests using the installed Lua path
+"C:/Program Files (x86)/Lua/5.1/lua.exe" tests/run_tests.lua
 
 REM Capture the exit code
 set exit_code=%errorlevel%

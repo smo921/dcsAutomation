@@ -36,11 +36,35 @@ Key features:
 
 ## Development Commands
 
+### Commit Messages
+When making commits, use the `git commit` command directly with `-m` flag for short messages, or write the message in a text editor. Avoid using PowerShell here-strings (`@'...'@`) for commit messages as they can introduce unwanted symbols.
+
 ### Running Tests
-This project is primarily a mission script for DCS World. Testing involves:
-1. Loading the mission in DCS World
-2. Using the mission's built-in triggers to verify functionality
-3. Manual verification of spawning behavior, radar detection, and drone operations
+This project includes a unit testing framework using Busted (installed via LuaRocks). Tests verify the configuration system, spatial solvers, radar handlers, and asset factories.
+
+**To run tests:**
+```bash
+# Using the batch script (recommended)
+run_tests.bat
+
+# Or directly with Lua
+"C:/Program Files (x86)/Lua/5.1/lua.exe" tests/run_tests.lua
+```
+
+**To install testing dependencies:**
+```bash
+# Install Lua and Busted using Chocolatey
+install_tests.bat
+```
+
+**Test files:**
+- `tests/test_config_standards.lua` - Configuration template and validation tests
+- `tests/test_spatial_solver.lua` - Coordinate and terrain calculation tests
+- `tests/test_radar_handler.lua` - Radar detection and threat filtering tests
+- `tests/test_sector.lua` - Sector class and configuration parsing tests
+- `tests/test_waypoint_builder.lua` - Waypoint and route building tests
+- `tests/test_awacs_tanker.lua` - AWACS/Tanker asset factory tests
+- `tests/test_group_check.lua` - Group lifecycle tests
 
 ### Debugging
 - Use `env.info()` calls throughout the codebase for logging

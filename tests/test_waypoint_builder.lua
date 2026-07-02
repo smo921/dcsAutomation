@@ -167,8 +167,9 @@ describe("AssetFactories.buildOrbitTask", function()
         local config = {}
         local task = AssetFactories.buildOrbitTask(config)
         assert_equal("Circle", task.params.pattern)
-        assert_equal(8000, task.params.altitude) -- default
-        assert_equal(150, task.params.speed) -- default
+        -- Defaults: 15000 feet, 200 knots - converted to meters/m/s
+        assert_true(math.abs(task.params.altitude - mist.utils.feetToMeters(15000)) < 1)
+        assert_true(math.abs(task.params.speed - mist.utils.knotsToMps(200)) < 1)
     end)
 end)
 

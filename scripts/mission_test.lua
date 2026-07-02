@@ -1,21 +1,30 @@
 -- ==============================================================================
--- 1. CENTRALIZED SECTOR MANIFEST (Edit your mission profiles here)
+-- CENTRALIZED SECTOR MANIFEST
+-- Edit your mission profiles here using NATO units:
+--   - Altitude: feet
+--   - Distance: nautical miles (NM)
+--   - Speed: knots
 -- ==============================================================================
 
-local SectorManifest = {
-    ["blue"] = {{
+-- ==============================================================================
+-- BLUE COALITION - FRIENDLY FORCES
+-- ==============================================================================
+
+local BlueSectorManifest = {
+    -- ============================================================================
+    -- AIR UNIT: Enroute CAP Falcon (Airbase ramp anchoring)
+    -- ============================================================================
+    {
         enabled = true,
-        triggerType = "IMMEDIATE", -- Runs inside your existing startEngineLoop()
-        category = "AIRPLANE", -- Routes execution flows through the new factory branch
+        triggerType = "IMMEDIATE",
+        category = "AIRPLANE",
         groupName = "Enroute_CAP_Falcon",
         country = "USA",
         task = "CAP",
         placement = {
-            startType = "takeoff_hot", -- "takeoff_cold", "takeoff_hot", "takeoff_ramp", or "air_start"
-            airbaseName = "Kutaisi" -- Anchor airbase for taxi nodes and initial translation points
+            startType = "takeoff_hot",  -- "takeoff_cold", "takeoff_hot", "takeoff_ramp", or "air_start"
+            airbaseName = "Kutaisi"      -- Anchor airbase for taxi nodes
         },
-
-        -- Heterogeneous unit arrays are supported out-of-the-box
         units = {{
             unitType = "F-16C_50",
             name = "Falcon_1_1",
@@ -25,12 +34,11 @@ local SectorManifest = {
             name = "Falcon_1_2",
             groundSpot = 23
         }},
-
         route = {{
             type = "Turning Point",
-            alt = 19000, -- Flight altitude in feet
-            speed = 450, -- Velocity in knots
-            offsetX = 8, -- NM offset from departure airfield center
+            alt = 19000,    -- Flight altitude in feet
+            speed = 450,    -- Velocity in knots
+            offsetX = 8,    -- NM offset from departure airfield center
             offsetY = 16
         }, {
             type = "Turning Point",
@@ -38,13 +46,16 @@ local SectorManifest = {
             speed = 450,
             offsetX = -6,
             offsetY = 25,
-            roe = "OPEN_FIRE" -- Hooks straight into AssetFactories.ROE mapping
+            roe = "OPEN_FIRE"  -- Hooks straight into AssetFactories.ROE mapping
         }, {
-            type = "landing", -- Routes safely back to the base specified below
+            type = "landing",
             airbaseName = "Kutaisi"
         }}
     },
-    -- AWACS Global Sentry (using bearing/distance from bullseye - Mode 3a)
+
+    -- ============================================================================
+    -- AWACS: Magic Global Sentry (Bearing + distance from bullseye)
+    -- ============================================================================
     {
         enabled = true,
         triggerType = "IMMEDIATE",
@@ -52,24 +63,21 @@ local SectorManifest = {
         groupName = "Magic_Global_Sentry",
         task = "AWACS",
         country = "USA",
-
         placement = {
-            offsetHeading = 240, -- Heading from Bullseye to safe orbit zone (SW)
-            offsetDistance = 50, -- Stay 50nm away from Bullseye center
-            heading = 0, -- Unit orientation when spawned (0 = North)
-            altitude = 31000, -- Feet
-            speed = 290 -- knots
+            offsetHeading = 240,   -- Heading from Bullseye to safe orbit zone (SW)
+            offsetDistance = 50,   -- Stay 50nm away from Bullseye center
+            heading = 0,           -- Unit orientation (0 = North)
+            altitude = 31000,      -- Feet
+            speed = 290            -- knots
         },
-
         units = {{
             unitType = "E-3A"
         }},
-
         route = {
             {
                 type = "Turning Point",
-                alt = 31000, -- ~31000 feet
-                speed = 290, -- ~290 knots
+                alt = 31000,
+                speed = 290,
                 offsetX = 0,
                 offsetY = 0
             },
@@ -77,12 +85,15 @@ local SectorManifest = {
                 type = "Turning Point",
                 alt = 31000,
                 speed = 290,
-                offsetX = 5,  -- 5 nautical miles offset for orbit pattern (conversion handled by SpatialSolver)
+                offsetX = 5,   -- 5 nautical miles offset for orbit pattern
                 offsetY = 0
             }
         }
     },
-    -- Tanker Global Refueling (using bearing/distance from bullseye - Mode 3a)
+
+    -- ============================================================================
+    -- TANKER: Texaco Global Refueling (Bearing + distance from bullseye)
+    -- ============================================================================
     {
         enabled = true,
         triggerType = "IMMEDIATE",
@@ -90,24 +101,21 @@ local SectorManifest = {
         groupName = "Texaco_Global_Refueling",
         task = "Refueling",
         country = "USA",
-
         placement = {
-            offsetHeading = 330, -- Heading from Bullseye to safe orbit zone (SW)
-            offsetDistance = 50, -- Stay 50nm away from Bullseye center
-            heading = 0, -- Unit orientation when spawned (0 = North)
-            altitude = 31000, -- Feet
-            speed = 290 -- knots
+            offsetHeading = 330,   -- Heading from Bullseye to safe orbit zone (SW)
+            offsetDistance = 50,   -- Stay 50nm away from Bullseye center
+            heading = 0,           -- Unit orientation (0 = North)
+            altitude = 31000,      -- Feet
+            speed = 290            -- knots
         },
-
         units = {{
             unitType = "KC-135"
         }},
-
         route = {
             {
                 type = "Turning Point",
-                alt = 31000, -- ~31000 feet
-                speed = 290, -- ~290 knots
+                alt = 31000,
+                speed = 290,
                 offsetX = 0,
                 offsetY = 0
             },
@@ -115,71 +123,75 @@ local SectorManifest = {
                 type = "Turning Point",
                 alt = 31000,
                 speed = 290,
-                offsetX = 5,  -- 5 nautical miles offset for orbit pattern (conversion handled by SpatialSolver)
+                offsetX = 5,   -- 5 nautical miles offset for orbit pattern
                 offsetY = 0
             }
         }
-    }, -- Add this directly into your SectorManifest["blue"] array inside mission_test.lua
+    },
+
+    -- ============================================================================
+    -- HELICOPTER: Hunter-Killer Flight (Airbase CAS flight)
+    -- ============================================================================
     {
         enabled = true,
-        triggerType = "IMMEDIATE", -- Boots up immediately when startEngineLoop() runs
-        category = "HELICOPTER", -- Routes the group through the new air factory code
+        triggerType = "IMMEDIATE",
+        category = "HELICOPTER",
         groupName = "Hunter_Killer_Flight",
         country = "USA",
-        task = "CAS", -- Close Air Support role
-
+        task = "CAS",
         placement = {
-            startType = "takeoff_cold", -- Spawns cold on the ramp slots at the airbase
-            airbaseName = "Kutaisi" -- Airfield anchor for parsing coordinates & parking IDs
+            startType = "takeoff_cold",  -- Spawns cold on the ramp slots
+            airbaseName = "Kutaisi"
         },
-
-        -- Heterogeneous flight: Mixing asymmetric airframes within a single tactical group
         units = {{
             unitType = "AH-64D_BLK_II",
             name = "Hunter_Lead",
             groundSpot = 15
-        }, -- Apache Lead
-        {
+        }, {
             unitType = "OH-58D",
             name = "Killer_Wingman",
             groundSpot = 16
-        } -- Kiowa Scout
-        },
-
-        -- Flight path using metric offsets relative to the Kutaisi airbase origin
+        }},
         route = {{
             type = "Turning Point",
-            alt = 100, -- Low altitude ingress (feet)
-            speed = 115, -- ~115 knots ground speed (m/s)
-            offsetX = 5, -- 5nm North of Kutaisi
-            offsetY = 12 -- 12nm East of Kutaisi
+            alt = 100,     -- Low altitude ingress (feet)
+            speed = 115,   -- Ground speed in knots
+            offsetX = 5,   -- 5nm North of Kutaisi
+            offsetY = 12   -- 12nm East of Kutaisi
         }, {
             type = "Turning Point",
-            alt = 50, -- Masking behind terrain
-            speed = 100, -- Slowing down to screen the area
+            alt = 50,      -- Masking behind terrain
+            speed = 100,
             offsetX = 8,
             offsetY = 25,
-            roe = "OPEN_FIRE" -- Switches rules of engagement to Weapon Free via AssetFactories.ROE
+            roe = "OPEN_FIRE"
         }, {
-            type = "landing", -- Directs the engine to track landing recovery
-            airbaseName = "Kutaisi" -- Routes the flight back to land at the starting airfield
+            type = "landing",
+            airbaseName = "Kutaisi"
         }}
-    }},
-    ["red"] = { -- SECTOR 1: Spawned instantly at mission start
+    }
+}
+
+-- ==============================================================================
+-- RED COALITION - OPFOR
+-- ==============================================================================
+
+local RedSectorManifest = {
+    -- ============================================================================
+    -- SECTOR 1: Border Patrol (IMMEDIATE - disabled by default)
+    -- ============================================================================
     {
         enabled = false,
         triggerType = "IMMEDIATE",
         groupName = "Border_Patrol_Alpha",
         country = "Russia",
         units = {"T-72B", "BMP-2"},
-
         placement = {
             heading = 90,
             offsetX = 2.7,
             offsetY = 2.7,
             spawnRadius = 1.0
         },
-
         route = {{
             type = "On Road",
             speed = 30,
@@ -191,17 +203,20 @@ local SectorManifest = {
             offsetX = 4.3,
             offsetY = 6.5
         }},
-        -- NEW: Drone assigned to track this ground movement profile right at mission start
         drone = {
             groupName = "Reaper_Overwatch_Alpha",
             unitType = "MQ-9 Reaper",
             country = "USA",
             frequency = 133.1,
             callsign = 1,
-            altitude = 15000,
-            speed = 110
+            altitude = 15000,  -- feet
+            speed = 200        -- knots
         }
-    }, -- SECTOR 2: Traditional Radar Intercept Gate
+    },
+
+    -- ============================================================================
+    -- SECTOR 2: Radar Intercept Gate (RADAR - triggers on detection)
+    -- ============================================================================
     {
         enabled = true,
         triggerType = "RADAR",
@@ -209,39 +224,34 @@ local SectorManifest = {
         groupName = "EW Radar Alpha",
         country = "Russia",
         unitType = "1L13 EWR",
-
         placement = {
             heading = 135,
-            offsetX = 0.9, -- fallback offset from bullseye if zone not found
+            offsetX = 0.9,    -- fallback offset from bullseye if zone not found
             offsetY = 1.4,
             spawnRadius = 0.5,
             strategy = "ZONE_RANDOM",
             zoneName = "Alpha_Radar_Clearing"
         },
-
-        -- NEW: Air Defense Ring Configuration
         pointDefense = {
-            minRadius = 150, -- Minimum distance from the radar (so they don't clip)
-            maxRadius = 350, -- Maximum scatter distance
-            units = {"Tor 9A331", -- SA-15 Gauntlet (Tracked SAM)
-            "2S6 Tunguska", -- SA-19 Tunguska (AAA + SAM)
-            "Ural-375 ZU-23" -- Truck-mounted AAA
+            minRadius = 150,  -- Minimum distance from the radar
+            maxRadius = 350,  -- Maximum scatter distance
+            units = {
+                "Tor 9A331",      -- SA-15 Gauntlet (Tracked SAM)
+                "2S6 Tunguska",   -- SA-19 Tunguska (AAA + SAM)
+                "Ural-375 ZU-23"  -- Truck-mounted AAA
             }
         },
+        maxDetectRangeNM = 80.0,  -- Range in nautical miles
 
-        maxDetectRangeNM = 80.0,
-        checkInterval = 5.0,
-
-        -- DEDICATED RECON DRONE: Tied strictly to this localized sector target
         drone = {
             enabled = false,
             groupName = "Reaper_Eye_Bravo",
             unitType = "MQ-9 Reaper",
             country = "USA",
-            frequency = 133.0, -- MHz AM
-            callsign = 1, -- Darkstar
-            altitude = 16500, -- feet
-            speed = 120 -- knots
+            frequency = 133.0,
+            callsign = 1,
+            altitude = 16500,  -- feet
+            speed = 200        -- knots
         },
 
         triggeredUnits = {
@@ -267,13 +277,15 @@ local SectorManifest = {
                 roe = "OPEN_FIRE"
             }}
         }
-    }, -- SECTOR 3: Triggered when a player enters a Mission Editor Trigger Zone
+    },
+
+    -- ============================================================================
+    -- SECTOR 3: Trigger Zone Ambush (TRIGGER_ZONE)
+    -- ============================================================================
     {
         enabled = true,
         triggerType = "TRIGGER_ZONE",
-        zoneName = "Valley_Breach_Zone", -- Must match your exact ME Trigger Zone Name
-        checkInterval = 2.0,
-
+        zoneName = "Valley_Breach_Zone",
         groupName = "Ambush_Team_Bravo",
         country = "Russia",
         units = {"BMP-2", "BRDM-2"},
@@ -295,13 +307,15 @@ local SectorManifest = {
             offsetY = 4.0,
             roe = "OPEN_FIRE"
         }}
-    }, -- SECTOR 4: Chain reaction. Spawns ONLY after Sector 2's objectives are cleared!
+    },
+
+    -- ============================================================================
+    -- SECTOR 4: Quick Reaction Force (OBJECTIVE_COMPLETE - chain reaction)
+    -- ============================================================================
     {
         enabled = false,
         triggerType = "OBJECTIVE_COMPLETE",
-        parentGroupName = "North_Vanguard_Platoon", -- Watches the group state of Sector 2
-        checkInterval = 5.0,
-
+        parentGroupName = "North_Vanguard_Platoon",
         groupName = "Quick_Reaction_Force_QRF",
         country = "Russia",
         units = {"T-72B", "T-72B", "BMP-2"},
@@ -323,7 +337,12 @@ local SectorManifest = {
             offsetY = 5.4,
             roe = "OPEN_FREE"
         }}
-    }, {
+    },
+
+    -- ============================================================================
+    -- SECTOR 5: Waypoint Patrol (Follows another group's waypoints)
+    -- ============================================================================
+    {
         enabled = false,
         triggerType = "IMMEDIATE",
         groupName = "Waypoint_Patrol",
@@ -331,10 +350,15 @@ local SectorManifest = {
         units = {"T-72B", "BMP-2"},
         placement = {
             groupName = "Aerial-1",
-            waypoint = 2, -- waypoints start at 1
+            waypoint = 2,    -- waypoints start at 1
             heading = 90
         }
-    }, {
+    },
+
+    -- ============================================================================
+    -- SECTOR 6: Red Air CAS (Airbase hot start)
+    -- ============================================================================
+    {
         enabled = false,
         triggerType = "IMMEDIATE",
         category = "AIRPLANE",
@@ -342,8 +366,8 @@ local SectorManifest = {
         country = "Russia",
         task = "CAS",
         placement = {
-            airbaseName = "Kutaisi", -- Origin aerodrome
-            startType = "takeoff_hot", -- Triggers the "From Parking Area Hot" workflow
+            airbaseName = "Kutaisi",
+            startType = "takeoff_hot",
             heading = 90
         },
         units = {{
@@ -351,19 +375,17 @@ local SectorManifest = {
             name = "Red_Leader",
             groundSpot = 1
         }},
-        route = { -- Waypoint 2: Intermediate egress point (15km East, 5km North of airfield center)
-        {
+        route = {{
             type = "Turning Point",
-            alt = 2000, -- Meters MSL
-            speed = 200, -- Meters/sec
-            offsetX = 15000,
-            offsetY = 5000
-        }, -- Waypoint 3: Landing sequence back at Kutaisi (or your designated destination)
-        {
+            alt = 2000,     -- Feet
+            speed = 200,    -- knots
+            offsetX = 15,   -- 15nm East
+            offsetY = 5     -- 5nm North
+        }, {
             type = "landing",
             airbaseName = "Kutaisi"
         }}
-    }}
+    }
 }
 
 -- ==============================================================================
@@ -371,16 +393,18 @@ local SectorManifest = {
 -- ==============================================================================
 
 function startDynamicTheatre()
-    if SectorManifest["red"] then
-        local redSectors = MissionDirector.new(SectorManifest["red"])
+    -- Initialize red coalition sectors
+    if RedSectorManifest then
+        local redSectors = MissionDirector.new(RedSectorManifest)
         redSectors:startEngineLoop()
     end
-    if SectorManifest["blue"] then
-        local blueSectors = MissionDirector.new(SectorManifest["blue"])
+
+    -- Initialize blue coalition sectors
+    if BlueSectorManifest then
+        local blueSectors = MissionDirector.new(BlueSectorManifest)
         blueSectors:startEngineLoop()
     end
-
-    end
+end
 
 -- Delay processing initialization execution by 3 seconds
 timer.scheduleFunction(startDynamicTheatre, {}, timer.getTime() + 3.0)

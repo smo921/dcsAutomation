@@ -1,3 +1,10 @@
+-- ==============================================================================
+-- ASSET FACTORIES MODULE
+-- ==============================================================================
+-- Factory functions for creating DCS assets (aircraft, ground units, radar, etc.)
+-- Input units for user-facing configuration: altitude in feet, distance in nautical miles (NM), speed in knots.
+-- Conversions to meters/m/s handled in UnitPlacementConfig.new() and UnitRouteWaypoint.new().
+-- ==============================================================================
 
 Utils = {}
 
@@ -13,8 +20,18 @@ function Utils.PrintTable(t, indent)
     end
 end
 
+-- ==============================================================================
+-- UNIT FORMATION BUILDER
+-- ==============================================================================
+-- Factory for building unit formations. Coordinate inputs are in meters (already converted by constructors).
+
 UnitFormationBuilder = {}
 
+--- Builds units in a linear formation.
+-- @param config table Unit configuration with units array
+-- @param x number Starting X coordinate (meters)
+-- @param y number Starting Y coordinate (meters)
+-- @return table Unit payload array
 function UnitFormationBuilder.Linear(config, x, y)
     local unitPayload = {}
     local currentYOffset = 0
@@ -60,6 +77,11 @@ function UnitFormationBuilder.Linear(config, x, y)
     return unitPayload
 end
 
+--- Builds units in a radial scatter formation.
+-- @param config table Unit configuration with units array
+-- @param x number Center X coordinate (meters)
+-- @param y number Center Y coordinate (meters)
+-- @return table Unit payload array
 function UnitFormationBuilder.RadialScatter(config, x, y)
     local unitPayload = {
         ["visible"] = true,
@@ -100,9 +122,10 @@ function UnitFormationBuilder.RadialScatter(config, x, y)
 end
 
 --- Builds waypoints for any unit type by delegating to appropriate MIST builder.
--- @param startX number Starting X coordinate
--- @param startY number Starting Y coordinate
--- @param waypoints table Array of waypoint configurations
+-- Inputs are already in meters (converted by UnitRouteWaypoint.new()).
+-- @param startX number Starting X coordinate (meters)
+-- @param startY number Starting Y coordinate (meters)
+-- @param waypoints table Array of waypoint configurations (speed in m/s, alt in meters, offsets in meters)
 -- @param unitType string Unit type: "GROUND", "AIRPLANE", or "HELICOPTER"
 -- @param defaultAirbaseObj table Optional airbase object for landing waypoints
 -- @return table Array of waypoint nodes with tasks
@@ -141,7 +164,7 @@ function UnitFormationBuilder.BuildWaypoints(startX, startY, waypoints, unitType
             wpAlt = 0
             wpAltType = "AGL"
         else
-            -- Standard waypoint with relative offsets
+            -- Standard waypoint with relative offsets (already in meters from UnitRouteWaypoint.new)
             wpX = currentX + (wp.offsetX or 0)
             wpY = currentY + (wp.offsetY or 0)
             wpType = wp.type or "Turning Point"
@@ -200,24 +223,18 @@ function UnitFormationBuilder.BuildWaypoints(startX, startY, waypoints, unitType
     return points
 end
 
---- Builds waypoints for ground units (delegates to BuildWaypoints).
--- @param startX number Starting X coordinate
--- @param startY number Starting Y coordinate
+--- Builds waypoints for ground units.
+-- @param startX number Starting X coordinate (meters)
+-- @param startY number Starting Y coordinate (meters)
 -- @param waypoints table Array of waypoint configurations
 -- @return table Array of waypoint nodes with tasks
 function UnitFormationBuilder.BuildRoute(startX, startY, waypoints)
     return UnitFormationBuilder.BuildWaypoints(startX, startY, waypoints, "GROUND")
 end
 
-AssetFactories = {}
-
--- ==============================================================================
--- AIR UNIT PRODUCTION EXTENSIONS
--- ==============================================================================
-
---- Builds waypoints for air units (delegates to BuildWaypoints).
--- @param startX number Starting X coordinate
--- @param startY number Starting Y coordinate
+--- Builds waypoints for air units.
+-- @param startX number Starting X coordinate (meters)
+-- @param startY number Starting Y coordinate (meters)
 -- @param waypoints table Array of waypoint configurations
 -- @param defaultAirbaseObj table Optional airbase object for landing waypoints
 -- @param isHelo boolean True if building for helicopter
@@ -227,15 +244,31 @@ function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAi
     return UnitFormationBuilder.BuildWaypoints(startX, startY, waypoints, unitType, defaultAirbaseObj)
 end
 
+-- ==============================================================================
+-- ASSET FACTORIES
+-- ==============================================================================
+
+AssetFactories = {}
+
+-- ==============================================================================
+-- AIR UNIT PRODUCTION
+-- ==============================================================================
+
+--- Builds an air group (airplane or helicopter).
+-- Input coordinates are in meters (already converted by constructors).
+-- @param config table Unit configuration
+-- @param startX number Starting X coordinate (meters)
+-- @param startY number Starting Y coordinate (meters)
+-- @param airbaseObj table Optional airbase object for ramp spawning
+-- @return table Group payload ready for mist.dynAdd
 function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
     -- Isolate the placement sub-table configuration
     local placement = config.placement or {}
 
-    -- Simplified mode detection logic for unified placement system
+    -- Determine placement mode based on config fields
     local mode = "unknown"
     local resolvedX, resolvedY = startX, startY
 
-    -- Determine placement mode based on config fields:
     -- Mode 1: Airbase ramp slot anchoring (airbaseName present)
     if placement.airbaseName then
         mode = "mode1"  -- Airbase ramp slot anchoring
@@ -252,13 +285,13 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
 
     -- Resolve coordinates based on detected mode
     if mode == "mode1" then
-        -- Mode 1: Airbase ramp slot anchoring - coordinates already resolved by Sector system
+        -- Mode 1: Airbase ramp slot anchoring - coordinates already resolved
         resolvedX, resolvedY = startX, startY
     elseif mode == "mode2" then
         -- Mode 2: Bearing + distance offset from origin
         resolvedX, resolvedY = SpatialSolver.getCoordinates({x = startX, y = startY}, placement)
     elseif mode == "mode3" then
-        -- Mode 3: Direct coordinate addition
+        -- Mode 3: Direct coordinate addition (values are already in meters from UnitPlacementConfig.new)
         resolvedX = startX + (placement.offsetX or 0)
         resolvedY = startY + (placement.offsetY or 0)
     end
@@ -305,8 +338,7 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
         local spawnX = resolvedX
         local spawnY = resolvedY
 
-        -- 2. DYNAMIC COORDINATE LOOKUP
-        -- Extract the actual physical coordinates for this specific spot via MIST
+        -- 2. DYNAMIC COORDINATE LOOKUP for ramp starts
         if isRampStart and mist.DBs.spawnsByBase and mist.DBs.spawnsByBase[airbaseName] then
             local baseData = mist.DBs.spawnsByBase[airbaseName]
             if baseData[spotStr] then
@@ -315,15 +347,16 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
             end
         end
 
-        local alt = isRampStart and 0 or mist.utils.feetToMeters(placement.altitude or config.altitude or 2000)
-        local speed = isRampStart and 0 or mist.utils.knotsToMps(placement.speed or config.speed or 150)
+        -- Use converted values from UnitPlacementConfig (already in meters and m/s)
+        local alt = isRampStart and 0 or (placement.altitude or 0)
+        local speed = isRampStart and 0 or (placement.speed or 150)
         local headingRad = (placement.heading or config.heading or 0) * (math.pi / 180)
 
         local unitEntry = {
             ["type"] = unitType,
             ["name"] = unitName,
-            ["x"] = spawnX, -- Now assigned to the exact physical stall coordinate
-            ["y"] = spawnY, -- Now assigned to the exact physical stall coordinate
+            ["x"] = spawnX,
+            ["y"] = spawnY,
             ["alt"] = alt,
             ["speed"] = speed,
             ["skill"] = "Excellent",
@@ -346,11 +379,11 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
     local firstWaypoint = {
         ["type"] = isRampStart and startTypeStr or "Turning Point",
         ["action"] = isRampStart and actionStr or "Turning Point",
-        ["x"] = unitPool[1] and unitPool[1].x or resolvedX, -- Aligns perfectly with Unit 1
-        ["y"] = unitPool[1] and unitPool[1].y or resolvedY, -- Aligns perfectly with Unit 1
-        ["alt"] = isRampStart and 0 or (placement.altitude or config.altitude or 2000),
+        ["x"] = unitPool[1] and unitPool[1].x or resolvedX,
+        ["y"] = unitPool[1] and unitPool[1].y or resolvedY,
+        ["alt"] = isRampStart and 0 or (placement.altitude or 0),
         ["alt_type"] = isRampStart and "AGL" or "MSL",
-        ["speed"] = isRampStart and 0 or (placement.speed or config.speed or 150),
+        ["speed"] = isRampStart and 0 or (placement.speed or 150),
         ["task"] = {
             ["id"] = "ComboTask",
             ["params"] = {
@@ -366,7 +399,7 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
 
     table.insert(points, firstWaypoint)
 
-    -- 3. Assemble flight routes (WP 2+)
+    -- 3. Assemble flight routes (WP 2+) - offsets are already in meters from UnitRouteWaypoint.new
     if config.route then
         local routePoints = UnitFormationBuilder.BuildAirRoute(resolvedX, resolvedY, config.route, airbaseObj, isHelo)
         for _, p in ipairs(routePoints) do
@@ -393,8 +426,13 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
     return groupPayload
 end
 
+--- Builds a radar station.
+-- @param config table Radar configuration
+-- @param x number X coordinate (meters)
+-- @param y number Y coordinate (meters)
+-- @return table Radar group payload ready for mist.dynAdd
 function AssetFactories.buildRadar(config, x, y)
-        local payload = {
+    local payload = {
         ["visible"] = true,
         ["category"] = "GROUND",
         ["country"] = config.country,
@@ -417,6 +455,10 @@ function AssetFactories.buildRadar(config, x, y)
     return payload
 end
 
+--- Builds a static object (buildings, obstacles, etc.).
+-- @param config table Static configuration
+-- @param x number X coordinate (meters)
+-- @param y number Y coordinate (meters)
 function AssetFactories.buildStatic(config, x, y)
     local staticPayload = {
         ["country"] = config.country,
@@ -430,6 +472,11 @@ function AssetFactories.buildStatic(config, x, y)
     coalition.addStaticObject(country.id[config.country], staticPayload)
 end
 
+--- Builds a single ground unit.
+-- @param config table Unit configuration
+-- @param x number X coordinate (meters)
+-- @param y number Y coordinate (meters)
+-- @return table Unit payload
 function AssetFactories.buildGroundUnit(config, x, y)
     return {
         ["type"] = config.unitType,
@@ -441,11 +488,14 @@ function AssetFactories.buildGroundUnit(config, x, y)
     }
 end
 
+-- ==============================================================================
+-- AWACS / TANKER TASK BUILDERS
+-- ==============================================================================
 
-
--- AWACS/Tanker specific task builders
-
---- Builds frequency setup task for AWACS/Tanker
+--- Builds frequency setup task for AWACS/Tanker.
+-- @param frequency number Frequency in MHz
+-- @param modulation string "AM" or "FM"
+-- @return table Frequency task configuration
 function AssetFactories.buildFrequencyTask(frequency, modulation)
     return {
         ["id"] = "SetFrequency",
@@ -456,7 +506,10 @@ function AssetFactories.buildFrequencyTask(frequency, modulation)
     }
 end
 
---- Builds callsign setup task for AWACS/Tanker
+--- Builds callsign setup task for AWACS/Tanker.
+-- @param callsign string Callsign string
+-- @param number number Callsign number
+-- @return table Callsign task configuration
 function AssetFactories.buildCallsignTask(callsign, number)
     return {
         ["id"] = "SetCallsign",
@@ -467,7 +520,9 @@ function AssetFactories.buildCallsignTask(callsign, number)
     }
 end
 
---- Builds orbit task with various patterns
+--- Builds orbit task with various patterns.
+-- Altitude and speed are already in meters/m/s from UnitRouteWaypoint.new().
+-- Only converts NM for orbit dimensions (orbitLength, orbitWidth).
 -- @param config table AWACS/Tanker configuration with orbit parameters
 -- @return table Orbit task configuration
 function AssetFactories.buildOrbitTask(config)
@@ -475,14 +530,14 @@ function AssetFactories.buildOrbitTask(config)
 
     local orbitParams = {
         ["pattern"] = patternChoice,
-        ["altitude"] = config.altitude or 8000,
-        ["speed"] = config.speed or 150
+        ["altitude"] = config.altitude or mist.utils.feetToMeters(15000), -- 15000 feet default, converted to meters
+        ["speed"] = config.speed or mist.utils.knotsToMps(200) -- 200 knots default, converted to m/s
     }
 
     if patternChoice == "Anchored" then
         orbitParams["hotLegDir"] = 180
-        orbitParams["legLength"] = mist.utils.NMToMeters(config.orbitLength or 5)
-        orbitParams["width"] = mist.utils.NMToMeters(config.orbitWidth or 2)
+        orbitParams["legLength"] = mist.utils.NMToMeters(config.orbitLength or 5) -- NM to meters
+        orbitParams["width"] = mist.utils.NMToMeters(config.orbitWidth or 2) -- NM to meters
         orbitParams["clockWise"] = config.orbitClockwise or false
     end
 
@@ -493,8 +548,9 @@ function AssetFactories.buildOrbitTask(config)
 end
 
 --- Builds AWACS or Tanker group with proper orbit task routing.
--- AWACS/Tankers are air units that orbit at a fixed location to provide services.
--- @param originPoint table Bullseye or reference coordinates {x, y}
+-- User-facing inputs: altitude in feet, speed in knots, offsets in NM.
+-- Conversions handled in UnitPlacementConfig.new() and buildAirGroup().
+-- @param originPoint table Bullseye or reference coordinates {x, y} in meters
 -- @param config table AWACS/Tanker configuration
 -- @return table DCS group payload ready for mist.dynAdd
 function AssetFactories.buildAWACSorTanker(originPoint, config)
@@ -504,10 +560,10 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
         return AssetFactories.buildAirGroup(config, originPoint.x, originPoint.y, nil)
     end
 
-    -- Use existing SpatialSolver to get coordinates (handles bearing/distance, direct coords, fallback)
+    -- Get coordinates (inputs in meters, returns meters)
     local x, y = SpatialSolver.getCoordinates(originPoint, placement)
 
-    -- Build orbit task
+    -- Build orbit task (converts altitude/speed from feet/knots to meters/m/s)
     local orbitTask = AssetFactories.buildOrbitTask(config)
 
     -- Build frequency/callsign tasks if specified
@@ -520,11 +576,12 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
     end
 
     -- Build route with orbit task at waypoint 2, optional tasks at waypoint 1
+    -- Values are already in meters/m/s from UnitRouteWaypoint.new() and UnitPlacementConfig.new()
     local waypoints = {
         {
             type = "Turning Point",
-            alt = config.altitude,
-            speed = config.speed,
+            alt = config.altitude or mist.utils.feetToMeters(15000), -- 15000 feet default
+            speed = config.speed or mist.utils.knotsToMps(190), -- 190 knots default
             offsetX = 0,
             offsetY = 0,
             task = #firstWaypointTasks > 0 and {
@@ -534,9 +591,9 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
         },
         {
             type = "Turning Point",
-            alt = config.altitude,
-            speed = config.speed,
-            offsetX = mist.utils.NMToMeters(0.5), -- Small offset for orbit entry
+            alt = config.altitude or mist.utils.feetToMeters(15000), -- 15000 feet default
+            speed = config.speed or mist.utils.knotsToMps(190), -- 190 knots default
+            offsetX = mist.utils.NMToMeters(0.5), -- Small offset for orbit entry (0.5 NM)
             offsetY = 0,
             task = orbitTask
         }
@@ -555,8 +612,8 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
             heading = placement.heading,
             offsetX = x,
             offsetY = y,
-            altitude = config.altitude,
-            speed = config.speed
+            altitude = config.altitude, -- already in meters
+            speed = config.speed -- already in m/s
         },
         route = waypoints
     }
@@ -564,7 +621,13 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
     return AssetFactories.buildAirGroup(unitConfig, x, y, nil)
 end
 
-
+--- Builds a drone (unmanned aerial vehicle).
+-- User-facing inputs: altitude in feet, speed in knots, offsets in NM.
+-- Conversions handled in UnitPlacementConfig.new() and buildAirGroup().
+-- @param config table Drone configuration
+-- @param x number X coordinate (meters)
+-- @param y number Y coordinate (meters)
+-- @return table Drone group payload ready for mist.dynAdd
 function AssetFactories.buildDrone(config, x, y)
     -- For drones, we now delegate to buildAirGroup to utilize the unified placement system
     -- This allows drones to benefit from all three placement modes (ramp slot, bearing/distance, direct coordinates)
@@ -585,27 +648,31 @@ function AssetFactories.buildDrone(config, x, y)
             heading = config.heading,
             offsetX = x,
             offsetY = y,
-            altitude = config.altitude,
-            speed = config.speed
+            altitude = config.altitude or 15000, -- feet
+            speed = config.speed or 200 -- knots
         },
         route = {
             {
                 type = "Turning Point",
-                alt = config.altitude or 4572,  -- Default to ~15000 feet in meters (already handled by UnitRouteWaypoint.new)
-                speed = config.speed or 200,     -- Default to 200 m/s (already handled by UnitRouteWaypoint.new)
+                alt = config.altitude or 15000, -- feet
+                speed = config.speed or 200, -- knots
                 offsetX = 0,
                 offsetY = 0
             }
         }
     }
 
-    -- Delegate to buildAirGroup which now handles all placement modes
+    -- Delegate to buildAirGroup which handles all conversions
     local payload = AssetFactories.buildAirGroup(droneConfig, x, y, nil)
 
     return payload
 end
 
--- Consolidate directly into your core tables using the configuration string keys
+-- ==============================================================================
+-- CONFIGURATION CONSTANTS
+-- ==============================================================================
+
+-- Rules of Engagement (ROE) mappings
 AssetFactories.ROE = {
     WEAPON_FREE = 0,
     OPEN_FIRE_WEAPON_FREE = 1,
@@ -614,6 +681,7 @@ AssetFactories.ROE = {
     WEAPON_HOLD = 4
 }
 
+-- Threat Reaction options for ground units
 AssetFactories.THREAT_REACTION = {
     NO_REACTION = 0,
     PASSIVE_DEFENCE = 1,
@@ -623,12 +691,16 @@ AssetFactories.THREAT_REACTION = {
     AAA_EVADE_FIRE = 5 -- Note: Does not actually exist in the enum table
 }
 
+-- Option IDs for task configuration
 AssetFactories.OPTION_IDS = {
     ROE = 0,
     THREAT_REACTION = 1
 }
 
--- Encapsulates task formatting to hide complex nested tables from the router logic
+--- Encapsulates task formatting to hide complex nested tables from the router logic.
+-- @param optionId number Option ID constant
+-- @param optionValue number Option value constant
+-- @return table Wrapped task configuration
 function AssetFactories.buildOptionCommand(optionId, optionValue)
     return {
         ["id"] = "WrappedAction",
@@ -644,8 +716,17 @@ function AssetFactories.buildOptionCommand(optionId, optionValue)
     }
 end
 
+-- ==============================================================================
+-- GROUND UNIT FACTORIES
+-- ==============================================================================
+
+--- Builds a platoon (ground unit group).
+-- @param config table Platoon configuration
+-- @param x number Starting X coordinate (meters)
+-- @param y number Starting Y coordinate (meters)
+-- @return table Platoon payload ready for mist.dynAdd
 function AssetFactories.buildPlatoon(config, x, y)
-    -- Compile Waypoints
+    -- Compile Waypoints (offsets already in meters from UnitRouteWaypoint.new)
     local points = {}
     if config.route then
         points = UnitFormationBuilder.BuildRoute(x, y, config.route)
@@ -664,17 +745,24 @@ function AssetFactories.buildPlatoon(config, x, y)
     }
 end
 
+--- Builds a point defense ring (air defense units around a radar).
+-- @param config table Radar sector configuration
+-- @param x number Center X coordinate (meters)
+-- @param y number Center Y coordinate (meters)
+-- @return table Point defense payload ready for mist.dynAdd
 function AssetFactories.buildPointDefense(config, x, y)
     local pdConfig = {
         ["country"] = config.country,
         ["groupName"] = config.groupName .. "_Point_Defense",
-        ["minR"] = config.pointDefense.minRadius or 100,
-        ["maxR"] = config.pointDefense.maxRadius or 300,
+        ["minR"] = config.pointDefense.minRadius or 100, -- Already in meters
+        ["maxR"] = config.pointDefense.maxRadius or 300, -- Already in meters
         ["units"] = config.pointDefense.units
     }
     return UnitFormationBuilder.RadialScatter(pdConfig, x, y)
 end
 
+--- Activates point defense units by setting ALARM_STATE to RED.
+-- @param adGroup table The point defense group payload
 function AssetFactories.activatePointDefense(adGroup)
     for idx, unit in ipairs(adGroup.units) do
         TriggerRegistry.scheduleAction(1.5, function()
@@ -685,3 +773,7 @@ function AssetFactories.activatePointDefense(adGroup)
         end, {})
     end
 end
+
+-- ==============================================================================
+-- END OF MODULE
+-- ==============================================================================

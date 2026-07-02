@@ -1,7 +1,22 @@
--- Standardized configuration structures and utilities for DCS mission scripting
+-- ==============================================================================
+-- UNIT MANAGEMENT MODULE
+-- ==============================================================================
+-- Provides core logic for unit management, spatial calculations, trigger
+-- evaluation, and sector handling for DCS World mission scripting.
+-- Units in config: altitude in feet, distance in nautical miles, speed in knots.
+-- Conversions to meters/m/s handled by constructors/factories.
+-- ==============================================================================
+
+-- ============================================================================
+-- SECTION 1: CONFIGURATION STANDARDS
+-- ============================================================================
+
+--- Standardized configuration structures and utilities for DCS mission scripting.
+-- @module config_standards
+
 ConfigStandards = {}
 
--- Standard sector configuration template
+-- Configuration Templates - All use feet, nautical miles, knots for user clarity
 ConfigStandards.SECTOR_TEMPLATE = {
     enabled = true,
     category = "GROUND", -- "GROUND", "AIRPLANE", "HELICOPTER"
@@ -19,8 +34,8 @@ ConfigStandards.SECTOR_TEMPLATE = {
         spawnRadius = 0,
         offsetHeading = nil,
         offsetDistance = nil,
-        altitude = nil,
-        speed = nil,
+        altitude = nil, -- FEET
+        speed = nil, -- KNOTS
         strategy = "",
         zoneName = nil,
         groupName = nil,
@@ -30,14 +45,13 @@ ConfigStandards.SECTOR_TEMPLATE = {
     },
     route = {},
     task = nil,
-    droneConfig = nil
+    drone = nil
 }
 
--- Standard route waypoint template
 ConfigStandards.ROUTE_WAYPOINT_TEMPLATE = {
     type = "Turning Point",
-    speed = 200,
-    alt = 3000,
+    speed = 200, -- KNOTS
+    alt = 3000, -- FEET
     offsetX = 0,
     offsetY = 0,
     roe = nil,
@@ -47,42 +61,36 @@ ConfigStandards.ROUTE_WAYPOINT_TEMPLATE = {
     alt_type = "BARO"
 }
 
--- Standard air unit configuration
 ConfigStandards.AIR_UNIT_TEMPLATE = {
     unitType = "",
     name = "",
     groundSpot = nil
 }
 
--- Standard drone configuration
 ConfigStandards.DRONE_TEMPLATE = {
     enabled = true,
     groupName = "",
     unitType = "MQ-9 Reaper",
     country = "USA",
     heading = 0,
-    altitude = 4572, -- ~15000 feet in meters
-    speed = 200, -- m/s
+    altitude = 15000, -- FEET
+    speed = 200, -- KNOTS
     targetX = nil,
     targetY = nil
 }
 
--- Standard radar sector configuration
 ConfigStandards.RADAR_SECTOR_TEMPLATE = {
     radarFilterEnabled = false,
     pointDefense = nil,
-    maxDetectRange = 200000.0,
+    maxDetectRange = 200000.0, -- METERS (DCS internal)
     triggeredUnits = nil
 }
 
--- Standard point defense configuration
 ConfigStandards.POINT_DEFENSE_TEMPLATE = {
-    minRadius = 100,
-    maxRadius = 300,
+    minRadius = 100, -- METERS
+    maxRadius = 300, -- METERS
     units = {}
 }
-
--- Utility functions for working with standardized configurations
 
 -- Deep copy a table structure
 function ConfigStandards.deepCopy(original)
@@ -99,9 +107,10 @@ end
 
 -- Merge two configuration tables, with the second taking precedence
 function ConfigStandards.mergeConfig(defaults, overrides)
-    local result = ConfigStandards.deepCopy(defaults)
+    if not defaults then return {} end
+    if not overrides then return ConfigStandards.deepCopy(defaults) end
 
-    if not overrides then return result end
+    local result = ConfigStandards.deepCopy(defaults)
 
     for key, value in pairs(overrides) do
         if type(value) == "table" and type(result[key]) == "table" then
@@ -116,40 +125,72 @@ end
 
 -- Create a new sector configuration based on the template
 function ConfigStandards.createSector(config)
-    return ConfigStandards.mergeConfig(ConfigStandards.SECTOR_TEMPLATE, config)
+    return ConfigStandards.mergeConfig(ConfigStandards.SECTOR_TEMPLATE, config or {})
 end
 
--- Create a new route waypoint based on the template
+-- Create a new route waypoint based on the template.
+-- Handles unit conversion: feet->meters, knots->m/s, NM->meters
 function ConfigStandards.createWaypoint(config)
-    return ConfigStandards.mergeConfig(ConfigStandards.ROUTE_WAYPOINT_TEMPLATE, config)
+    local wp = ConfigStandards.mergeConfig(ConfigStandards.ROUTE_WAYPOINT_TEMPLATE, config or {})
+
+    -- Convert to internal metric units
+    wp.speed = mist.utils.knotsToMps(wp.speed)
+    wp.alt = mist.utils.feetToMeters(wp.alt)
+    wp.offsetX = mist.utils.NMToMeters(wp.offsetX)
+    wp.offsetY = mist.utils.NMToMeters(wp.offsetY)
+
+    return wp
 end
 
 -- Create a new air unit based on the template
 function ConfigStandards.createAirUnit(config)
-    return ConfigStandards.mergeConfig(ConfigStandards.AIR_UNIT_TEMPLATE, config)
+    return ConfigStandards.mergeConfig(ConfigStandards.AIR_UNIT_TEMPLATE, config or {})
 end
 
--- Create a new drone configuration based on the template
+-- Create a new drone configuration based on the template.
+-- Handles unit conversion: feet->meters, knots->m/s
 function ConfigStandards.createDrone(config)
-    return ConfigStandards.mergeConfig(ConfigStandards.DRONE_TEMPLATE, config)
+    local drone = ConfigStandards.mergeConfig(ConfigStandards.DRONE_TEMPLATE, config or {})
+
+    -- Convert to internal metric units
+    drone.altitude = mist.utils.feetToMeters(drone.altitude)
+    drone.speed = mist.utils.knotsToMps(drone.speed)
+
+    return drone
 end
 
 -- Create a new radar sector configuration based on the template
 function ConfigStandards.createRadarSector(config)
     local sector = ConfigStandards.createSector(config)
-    local radarConfig = ConfigStandards.mergeConfig(ConfigStandards.RADAR_SECTOR_TEMPLATE, config)
+    local radarConfig = ConfigStandards.mergeConfig(ConfigStandards.RADAR_SECTOR_TEMPLATE, config or {})
 
-    -- Merge radar-specific properties
     for key, value in pairs(radarConfig) do
-        sector[key] = value
+        if key ~= "triggeredUnits" then
+            sector[key] = value
+        end
+    end
+
+    if config and config.triggeredUnits then
+        sector.triggeredUnits = ConfigStandards.createSector(config.triggeredUnits)
     end
 
     return sector
 end
 
--- Create a new point defense configuration based on the template
+-- Create a new point defense configuration based on the template.
+-- Handles unit conversion: NM to meters for radius values
 function ConfigStandards.createPointDefense(config)
-    return ConfigStandards.mergeConfig(ConfigStandards.POINT_DEFENSE_TEMPLATE, config)
+    local pd = ConfigStandards.mergeConfig(ConfigStandards.POINT_DEFENSE_TEMPLATE, config or {})
+
+    -- Convert NM to meters for radius values if they were specified as NM
+    if pd.minRadius and pd.minRadius < 10 then
+        pd.minRadius = mist.utils.NMToMeters(pd.minRadius)
+    end
+    if pd.maxRadius and pd.maxRadius < 10 then
+        pd.maxRadius = mist.utils.NMToMeters(pd.maxRadius)
+    end
+
+    return pd
 end
 
 -- Validate a configuration against a template
@@ -178,58 +219,45 @@ function ConfigStandards.validateConfig(config, template, path)
     return true
 end
 
-local function is_nil_or_empty(t)
+-- ============================================================================
+-- SECTION 2: UTILITIES
+-- ============================================================================
+
+--- Check if a table is nil or empty.
+-- @param t table The table to check
+-- @return boolean true if table is nil or empty
+local function isNilOrEmpty(t)
     return not t or next(t) == nil
 end
 
-local function printGroup(groupName)
-    local group = Group.getByName(groupName)
-
-    if group then
-        local units = group:getUnits()
-        for i, unit in pairs(units) do
-            env.info("Unit #" .. i)
-            env.info("  Name: " .. Unit.getName(unit))
-            env.info("  Type: " .. unit:getTypeName()) -- e.g., "F-16C" or "T-72"
-
-            -- Pull raw descriptor table (mass, speed, category, etc.)
-            local desc = unit:getDesc()
-        end
-    end
-end
-
+--- Get waypoint data from a flight's route.
+-- @param flightName string The group name
+-- @param waypoint number The waypoint index (1-based)
+-- @return table|nil The waypoint data or nil
 local function getWaypointFromFlight(flightName, waypoint)
-    -- Returns a sub-table containing coordinate positions, speed, and altitude for each waypoint
     local flightPlan = mist.getGroupRoute(flightName)
     if flightPlan and flightPlan[waypoint] then
         return flightPlan[waypoint]
     end
 end
 
+--- Print flight path waypoints to log.
+-- @param flightName string The group name
 local function printFlightPath(flightName)
-    -- Returns a sub-table containing coordinate positions, speed, and altitude for each waypoint
     local flightPlan = mist.getGroupRoute(flightName)
-
     if flightPlan then
-        -- Iterate through the waypoints
         for i, waypoint in ipairs(flightPlan) do
-            -- Extract properties for each waypoint
-            local wpIndex = i
-            local latitude = waypoint.x
-            local longitude = waypoint.y
-            local altitude = waypoint.alt
-            local wpType = waypoint.type
-
-            -- Do something with the waypoint data (e.g., print to dcs.log)
-            env.info("Waypoint " .. wpIndex .. " - X: " .. latitude .. " Y: " .. longitude)
+            env.info(string.format("Waypoint %d - X: %.2f Y: %.2f", i, waypoint.x, waypoint.y))
         end
     end
 end
 
+--- Print surface type name to log for debugging.
+-- @param surfaceType number The surface type index
 local function printSurfaceType(surfaceType)
     for str, ind in pairs(land.SurfaceType) do
         if ind == surfaceType then
-            env.info('point is type ' .. surfaceType .. ' String: ' .. str)
+            env.info(string.format("point is type %d String: %s", surfaceType, str))
         end
     end
 end
@@ -265,23 +293,31 @@ local function shouldGroupSpawn(groupName)
     return false
 end
 
+-- ============================================================================
+-- SECTION 3: MAP MARKER REGISTRY
+-- ============================================================================
+
 MapMarkerRegistry = {
     activeMarkers = {}, -- Keys: sector/group name, Value: { id = Int, lastPos = vec3, text = String }
     activeRadios = {} -- Key: groupName, Value: menuRef
 }
 
--- Generate a unique marker ID or update an existing one safely
+--- Generate a unique marker ID or update an existing one safely.
+-- @param trackingKey string The tracking key (sector/group name)
+-- @param textMessage string The text message to display
+-- @param positionVector table The position {x, y, z}
+-- @return number newMarkerId The marker ID that was created
 function MapMarkerRegistry.drawTacticalMark(trackingKey, textMessage, positionVector)
-    -- 1. Clean up old marker if one already exists for this track
+    -- Clean up old marker if one already exists for this track
     MapMarkerRegistry.clearMark(trackingKey)
 
-    -- 2. Generate a random ID that won't collide with other systems
+    -- Generate a unique marker ID
     local newMarkerId = math.random(100000, 999999)
 
-    -- 3. Draw to all players in the coalition
+    -- Draw to all players in the coalition
     trigger.action.markToAll(newMarkerId, textMessage, positionVector, true)
 
-    -- 4. Store state internally
+    -- Store state internally
     MapMarkerRegistry.activeMarkers[trackingKey] = {
         id = newMarkerId,
         pos = positionVector,
@@ -293,17 +329,20 @@ function MapMarkerRegistry.drawTacticalMark(trackingKey, textMessage, positionVe
     return newMarkerId
 end
 
--- Safely remove a marker from the F10 map layout
+--- Safely remove a marker from the F10 map layout.
+-- @param trackingKey string The tracking key (sector/group name)
 function MapMarkerRegistry.clearMark(trackingKey)
     local markerData = MapMarkerRegistry.activeMarkers[trackingKey]
     if markerData then
         -- Native DCS World API hook to yank it from everyone's map screens
         trigger.action.removeMark(markerData.id)
         MapMarkerRegistry.activeMarkers[trackingKey] = nil
-        -- env.info("[MarkerRegistry] Successfully purged marker for track: " .. trackingKey)
     end
 end
 
+-- ============================================================================
+-- SECTION 4: SPATIAL SOLVER
+-- ============================================================================
 
 SpatialSolver = {}
 SpatialSolver.VALID_LAND_TYPES = {
@@ -313,10 +352,18 @@ SpatialSolver.VALID_LAND_TYPES = {
 }
 SpatialSolver.DEFAULT_CLEARANCE_RADIUS = 12 -- meters
 
+--- Get the bullseye coordinates for a given coalition.
+-- @param coalition string "blue" or "red"
+-- @return table|nil bullseye coordinates {x, y} or nil
 function SpatialSolver.getBullseye(coalition)
     return mist.DBs.missionData["bullseye"][coalition]
 end
 
+--- Check if terrain at coordinates is clear for spawning.
+-- @param x number X coordinate
+-- @param y number Y coordinate
+-- @param radius number Radius to check around the point
+-- @return boolean true if terrain is clear, false otherwise
 function SpatialSolver.terrainIsClear(x, y, radius)
     -- Check surface type (not water)
     if land.getSurfaceType({x = x, y = y}) == 3 then
@@ -331,19 +378,30 @@ function SpatialSolver.terrainIsClear(x, y, radius)
     return true
 end
 
+--- Get coordinates based on placement configuration.
+-- Supports three modes:
+-- 1. Bearing + distance (offsetHeading + offsetDistance) - both in NM
+-- 2. Direct coordinates (offsetX + offsetY) - in NM
+-- 3. Group waypoint positioning (groupName + waypoint)
+-- @param origin table Origin coordinates {x, y}
+-- @param placementConfig table Placement configuration (NM for distances)
+-- @return number x, number y Resolved coordinates
 function SpatialSolver.getCoordinates(origin, placementConfig)
     local x, y = origin.x, origin.y
 
-    -- Check for bearing/distance positioning first (Mode 2)
+    -- Check for bearing/distance positioning first (both in NM)
     if placementConfig.offsetHeading and placementConfig.offsetDistance then
         return SpatialSolver.getVector(origin, placementConfig.offsetHeading, placementConfig.offsetDistance)
-    -- Then check for direct coordinate positioning (Mode 1)
+    -- Then check for direct coordinate positioning (in NM)
     elseif placementConfig.offsetX and placementConfig.offsetY then
-        return x + placementConfig.offsetX, y + placementConfig.offsetY
-    -- Then check for group waypoint positioning (Mode 3)
+        -- Convert NM to meters for coordinate offset
+        local offsetX = mist.utils.NMToMeters(placementConfig.offsetX)
+        local offsetY = mist.utils.NMToMeters(placementConfig.offsetY)
+        return x + offsetX, y + offsetY
+    -- Then check for group waypoint positioning
     elseif placementConfig.groupName and placementConfig.waypoint then
-        env.info("[SpatialSolver] Placing unit near group: " .. placementConfig.groupName .. " waypoint: " ..
-                     placementConfig.waypoint)
+        env.info(string.format("[SpatialSolver] Placing unit near group: %s waypoint: %s",
+                    placementConfig.groupName, placementConfig.waypoint))
         local wp = getWaypointFromFlight(placementConfig.groupName, placementConfig.waypoint)
         return wp.x, wp.y
     else
@@ -351,12 +409,18 @@ function SpatialSolver.getCoordinates(origin, placementConfig)
     end
 end
 
+--- Calculate vector coordinates from origin using heading and distance.
+-- Distance is in nautical miles (NM), heading in degrees.
+-- Uses aviation convention: 0° = North, 90° = East
+-- @param origin table Origin coordinates {x, y}
+-- @param heading number Heading in degrees (0 = North)
+-- @param distance number Distance in nautical miles
+-- @return number x, number y Target coordinates in meters
 function SpatialSolver.getVector(origin, heading, distance)
     local x, y
     local headingDeg = heading or 180
     local distanceNm = distance or 60
 
-    -- In aviation/military convention: 0° = North, 90° = East
     -- Convert to mathematical convention where 0° = East
     local headingRad = math.rad(90 - headingDeg)
     local distanceMeters = mist.utils.NMToMeters(distanceNm)
@@ -367,12 +431,20 @@ function SpatialSolver.getVector(origin, heading, distance)
     return x, y
 end
 
-function SpatialSolver.searchArea(x, y, radius)
+--- Attempts to find a safe spawn location by searching outward from origin.
+-- @param x number Starting X coordinate
+-- @param y number Starting Y coordinate
+-- @param radius number Radius to search within (optional, default: 25 meters)
+-- @param groupName string Optional group name for logging context
+-- @return number finalX, number finalY Safe coordinates or fallback
+function SpatialSolver.searchArea(x, y, radius, groupName)
     local safeFound = false
     local attempts = 0
+    local maxAttempts = 20
     local finalX, finalY
-    -- Keep trying to find a clear spot up to 20 times per unit
-    while not safeFound and attempts < 20 do
+
+    -- Keep trying to find a clear spot
+    while not safeFound and attempts < maxAttempts do
         attempts = attempts + 1
 
         local randomAngle = math.random() * 2 * math.pi
@@ -392,16 +464,25 @@ function SpatialSolver.searchArea(x, y, radius)
     if not safeFound then
         finalX = x + (math.random(-50, 50))
         finalY = y + (math.random(-50, 50))
-        env.info(string.format(
-            "[Director Warning] Could not find clear clearing for %s Unit %d after 20 attempts. Defaulting near center.",
-            self.groupName, i))
+        -- Note: This fallback is acceptable for non-critical spawn locations
+        -- Critical spawn points (radar, airbases) should have explicit coordinate validation
+        if groupName then
+            env.info(string.format(
+                "[SpatialSolver] Could not find clear spot for '%s' after %d attempts. Using fallback near center.",
+                groupName, maxAttempts))
+        end
     end
 
     return finalX, finalY
 end
 
--- finds a safe place inside a trigger zone, or based on startingPosition.x,y and placementConfig
-function SpatialSolver.findSafeGroundCoordinates(startingPosition, placementConfig)
+--- Finds a safe place inside a trigger zone, or based on coordinates and placement config.
+-- Placement config distances are in nautical miles (NM).
+-- @param startingPosition table Starting position {x, y}
+-- @param placementConfig table Placement configuration (NM for distances)
+-- @param groupName string Optional group name for logging
+-- @return number x, number y Safe coordinates
+function SpatialSolver.findSafeGroundCoordinates(startingPosition, placementConfig, groupName)
     local startX, startY
 
     -- Strategy 1: Zone Randomization
@@ -420,9 +501,20 @@ function SpatialSolver.findSafeGroundCoordinates(startingPosition, placementConf
         startX, startY = SpatialSolver.getCoordinates(startingPosition, placementConfig)
     end
 
-    return SpatialSolver.searchArea(startX, startY, placementConfig.spawnRadius)
+    -- Convert spawnRadius from NM to meters for searchArea
+    local searchRadius = SpatialSolver.DEFAULT_CLEARANCE_RADIUS
+    if placementConfig.spawnRadius and placementConfig.spawnRadius > 0 then
+        searchRadius = mist.utils.NMToMeters(placementConfig.spawnRadius)
+    end
+
+    return SpatialSolver.searchArea(startX, startY, searchRadius, groupName)
 end
 
+--- Count scenery obstructions in a circular area.
+-- @param x number Center X coordinate
+-- @param y number Center Y coordinate
+-- @param radius number Radius to check
+-- @return number Count of obstructions found
 function SpatialSolver.countSceneryObstructions(x, y, radius)
     local obstructionCount = 0
     local sphere = {
@@ -430,10 +522,7 @@ function SpatialSolver.countSceneryObstructions(x, y, radius)
         params = {
             point = {
                 x = x,
-                y = land.getHeight({
-                    x = x,
-                    y = y
-                }),
+                y = land.getHeight({x = x, y = y}),
                 z = y
             },
             radius = radius
@@ -446,7 +535,7 @@ function SpatialSolver.countSceneryObstructions(x, y, radius)
         return true
     end)
 
-    -- Layer 2: Scan for base structures (dense urban city blocks, industrial complexes, map forests)
+    -- Layer 2: Scan for base structures (dense urban city blocks, industrial complexes)
     world.searchObjects(Object.Category.BASE, sphere, function(obj)
         obstructionCount = obstructionCount + 1
         return true
@@ -455,7 +544,11 @@ function SpatialSolver.countSceneryObstructions(x, y, radius)
     return obstructionCount
 end
 
--- findStaticObstructions searche cirular area for obstructions, returning false if none found
+--- Check for static obstructions in a circular area.
+-- @param x number Center X coordinate
+-- @param y number Center Y coordinate
+-- @param radius number Radius to check
+-- @return boolean true if obstruction found, false otherwise
 function SpatialSolver.findStaticObstructions(x, y, radius)
     local hasObstruction = false
     local sphere = {
@@ -463,31 +556,39 @@ function SpatialSolver.findStaticObstructions(x, y, radius)
         params = {
             point = {
                 x = x,
-                y = land.getHeight({
-                    x = x,
-                    y = y
-                }),
+                y = land.getHeight({x = x, y = y}),
                 z = y
             },
             radius = radius
         }
     }
+
     world.searchObjects(Object.Category.SCENERY, sphere, function(obj)
-        hasObstruction = true;
+        hasObstruction = true
         return false
     end)
+
     return hasObstruction
 end
 
+-- ============================================================================
+-- SECTION 5: RADAR HANDLER
+-- ============================================================================
+
 RadarHandler = {}
 
+--- Convert kilometers to nautical miles.
+-- @param km number Distance in kilometers
+-- @return number Distance in nautical miles
 function RadarHandler.KmToNm(km)
     return km / 1.852
 end
 
--- Calculate the straight‑line distance (nm) between two DCS units.
--- Works even if one of the units has been destroyed – the function will
--- simply return nil in that case.
+--- Calculate the straight-line distance (nm) between two DCS units.
+-- Works even if one of the units has been destroyed.
+-- @param unitA table Unit A or nil
+-- @param unitB table Unit B or nil
+-- @return number|nil Distance in nautical miles, or nil if either unit is missing
 function RadarHandler.getDistanceInNM(unitA, unitB)
     if not (unitA and unitB) then
         return nil
@@ -504,11 +605,14 @@ function RadarHandler.getDistanceInNM(unitA, unitB)
     local dy = posA.y - posB.y
     local dz = posA.z - posB.z
 
-    distanceKM = math.sqrt(dx * dx + dy * dy + dz * dz) / 1000
+    local distanceKM = math.sqrt(dx * dx + dy * dy + dz * dz) / 1000
     return RadarHandler.KmToNm(distanceKM)
 end
 
--- Helper: Pretty‑print a single detection ------------------------------------
+--- Pretty-print a single detection.
+-- @param radar table Radar unit
+-- @param target table Target detection
+-- @return string Formatted detection string
 function RadarHandler.formatDetection(radar, target)
     local name = target.object:getName() or "Unknown"
     local dist = RadarHandler.getDistanceInNM(radar, target.object) or 0
@@ -516,9 +620,12 @@ function RadarHandler.formatDetection(radar, target)
     return string.format("%s - %s", name, range)
 end
 
-
+-- Aircraft types to filter out as non-threats
 RadarHandler.filterByAircraft = { "KC-135", "E-3A", "MQ-9 Reaper" }
 
+--- Determine if an aircraft is a threat based on type filtering.
+-- @param aircraft table Aircraft detection data
+-- @return boolean true if it is a threat, false otherwise
 function RadarHandler.isThreat(aircraft)
     -- Handle nil or missing aircraft data
     if not aircraft or not aircraft.object or not aircraft.object:isExist() then
@@ -531,7 +638,6 @@ function RadarHandler.isThreat(aircraft)
     -- Check if aircraft type is in the non-threat filter list
     for _, filterType in ipairs(RadarHandler.filterByAircraft) do
         if string.find(typeName, filterType, 1, true) then
-            -- env.info("[RadarCheck] Skipping " .. typeName .. " not a threat.")
             return false -- Not a threat
         end
     end
@@ -540,22 +646,23 @@ function RadarHandler.isThreat(aircraft)
     return true
 end
 
+--- Log a detected threat to the DCS log.
+-- @param radarUnit table The radar unit detecting the threat
+-- @param det table The detected target
 function RadarHandler.logThreat(radarUnit, det)
     if det.object and det.object:isExist() then
-        -- Pull the actual vehicle/aircraft type name (e.g., "F-16C_50" or "AH-64D_BLK_II")
         local typeName = det.object:getTypeName() or "Unknown Type"
-        
-        -- Pull the specific unit designation name assigned in the Mission Editor
         local unitName = det.object:getName() or "Unknown Unit"
-        
-        -- Calculate distance for a highly descriptive telemetry printout
         local distance = RadarHandler.getDistanceInNM(radarUnit, det.object) or 0
-        
-        env.info(string.format("[CheckRadar] Found Target -> Type: %s | Unit Name: %s | Range: %.1f nm", typeName, unitName, distance))
+
+        env.info(string.format("[CheckRadar] Found Target -> Type: %s | Unit Name: %s | Range: %.1f nm",
+            typeName, unitName, distance))
     end
 end
 
--- Main routine that queries the radar ---------------------------------------
+--- Main routine that queries the radar for detections.
+-- @param radarSector table The radar sector configuration
+-- @return boolean true if a threat was detected, false otherwise
 function RadarHandler.checkRadar(radarSector)
     local groupName = radarSector.groupName
     local radarGroup = Group.getByName(radarSector.groupName)
@@ -570,8 +677,8 @@ function RadarHandler.checkRadar(radarSector)
 
     local controller = radarUnit:getController()
     if not controller then
-        local message = "[RadarCheck] ERROR: Radar unit '" .. radarUnit:getName() ..
-                            "' has no controller. Is it alive and active?"
+        local message = string.format(
+            "[RadarCheck] ERROR: Radar unit '%s' has no controller. Is it alive and active?", radarUnit:getName())
         trigger.action.outText(message, 10)
         env.error(message)
         return false
@@ -581,8 +688,6 @@ function RadarHandler.checkRadar(radarSector)
     local threatFound = false
 
     if detections and #detections > 0 then
-        -- env.info("[RadarCheck] Radar '" .. groupName .. "' detected " .. #detections .. " target(s).")
-
         for _, det in ipairs(detections) do
             -- Flag to decide whether target is found
             threatFound = true
@@ -591,38 +696,28 @@ function RadarHandler.checkRadar(radarSector)
                 threatFound = RadarHandler.isThreat(det)
             end
 
-            -- Optional: ignore very far detections
-            -- det.distance is a boolean not a number
+            -- Optional: ignore very far detections (maxDetectRange is in meters)
             if threatFound and det.distance then
                 local distance = RadarHandler.getDistanceInNM(radarUnit, det.object)
                 if distance and distance > radarSector.maxDetectRange then
                     threatFound = false
-                    local message = "[RadarCheck]  Skipping – beyond max range (" .. radarSector.maxDetectRange ..
-                                        " nm)."
-                    trigger.action.outText(message, 10)
-                    env.info(message)
+                    env.info(string.format("[RadarCheck] Skipping – beyond max range (%.1f nm).", radarSector.maxDetectRange))
                 end
             end
 
             if threatFound then
-                -- RadarHandler.logThreat(radarUnit, det)
                 return threatFound
             end
         end
-        -- Your custom logic here – e.g. trigger a client message, change AI state, etc.
-        -- For example: env.mission.setWaypoint(1, "DetectedEnemy")
-    else
-        -- local message = "[RadarCheck] Radar '" .. groupName .. "' found NO targets."
-        -- trigger.action.outText(message, 10)
-        -- env.info(message)
     end
 
     return threatFound
 end
 
--- ==============================================================================
--- CENTRALIZED TRIGGER REGISTRY ENGINE
--- ==============================================================================
+-- ============================================================================
+-- SECTION 6: TRIGGER REGISTRY
+-- ============================================================================
+
 TriggerRegistry = {
     monitoredSectors = {},
     actionQueue = {},
@@ -630,12 +725,17 @@ TriggerRegistry = {
     tickInterval = 15.0 -- Evaluation heartbeat frequency in seconds
 }
 
--- Add a sector to the tracking pool
+--- Add a sector to the tracking pool.
+-- @param sectorInstance table The sector instance to monitor
 function TriggerRegistry.register(sectorInstance)
     table.insert(TriggerRegistry.monitoredSectors, sectorInstance)
-        TriggerRegistry._ensureHeartbeat()
+    TriggerRegistry._ensureHeartbeat()
 end
 
+--- Schedule a delayed action to execute after a delay.
+-- @param delaySeconds number Delay in seconds
+-- @param callbackFunction function Function to call
+-- @param contextArgs table Arguments to pass to the callback
 function TriggerRegistry.scheduleAction(delaySeconds, callbackFunction, contextArgs)
     local actionPayload = {
         executeAt = timer.getTime() + delaySeconds,
@@ -646,6 +746,7 @@ function TriggerRegistry.scheduleAction(delaySeconds, callbackFunction, contextA
     TriggerRegistry._ensureHeartbeat()
 end
 
+--- Ensure the heartbeat loop is running.
 function TriggerRegistry._ensureHeartbeat()
     if not TriggerRegistry.isActive then
         TriggerRegistry.isActive = true
@@ -653,7 +754,10 @@ function TriggerRegistry._ensureHeartbeat()
     end
 end
 
--- The private master loop handler
+--- The private master loop handler.
+-- @param args table Arguments (unused)
+-- @param time number Current time
+-- @return number|nil Next execution time or nil to sleep
 function TriggerRegistry._heartbeat(args, time)
     local currentTime = timer.getTime()
 
@@ -679,9 +783,7 @@ function TriggerRegistry._heartbeat(args, time)
     -- --------------------------------------------------------------------------
     for i = #TriggerRegistry.monitoredSectors, 1, -1 do
         local sector = TriggerRegistry.monitoredSectors[i]
-        -- env.info(string.format("[TriggerRegistry] evaluating: %s", sector.groupName))
         if TriggerRegistry.evaluate(sector) then
-            -- sector:spawnUnits()
             table.remove(TriggerRegistry.monitoredSectors, i)
         end
     end
@@ -696,15 +798,18 @@ function TriggerRegistry._heartbeat(args, time)
     return time + TriggerRegistry.tickInterval
 end
 
--- Process the sector.  Return true to signal that all processing is complete
+--- Process the sector. Return true to signal that all processing is complete.
+-- @param sector table The sector to evaluate
+-- @return boolean true if sector processing is complete
 function TriggerRegistry.evaluate(sector)
-    if sector.droneConfig and sector.droneConfig.enabled then
+    if sector.drone and sector.drone.enabled then
         -- check if drone is dead and cleanup
         local isDead = sector:checkDroneDead()
-        if isDead then sector.dronConfig.enabled = false end
+        if isDead then
+            sector.drone.enabled = false
+        end
     end
 
-    -- env.info("Trigger Registry evaluate loop: " .. sector.groupName )
     if sector.triggerType == "TRIGGER_ZONE" then
         local triggered = TriggerRegistry._checkZone(sector.zoneName)
         local shouldSpawn = shouldGroupSpawn(sector.groupName)
@@ -718,29 +823,30 @@ function TriggerRegistry.evaluate(sector)
 
     elseif sector.triggerType == "OBJECTIVE_COMPLETE" then
         return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName)
+
     else
         -- Unrecognized or faulty trigger logic drops safe fallback logging
-        -- env.info(string.format("[TriggerRegistry Warning] Unknown trigger type '%s' on group %s", sector.triggerType, sector.groupName))
     end
 
     return false
 end
 
--- ==============================================================================
--- INDIVIDUAL ISOLATED EVALUATORS (Easy to expand later!)
--- ==============================================================================
-
+--- Check if blue units are in a trigger zone.
+-- @param zoneName string Name of the zone to check
+-- @return boolean true if blue units are in the zone
 function TriggerRegistry._checkZone(zoneName)
     if not zoneName or not trigger.misc.getZone(zoneName) then
         env.info("[TriggerRegistry] Zone not found.")
         return false
     end
-    -- Wrap MIST utility checks safely
+
     local blueUnits = mist.makeUnitTable({'[blue]'})
     local playersInZone = mist.getUnitsInZones(blueUnits, {zoneName})
     return playersInZone ~= nil and #playersInZone > 0
 end
 
+--- Check for radar detection and spawn triggered units.
+-- @param radarSector table The radar sector configuration
 function TriggerRegistry._checkRadarDetection(radarSector)
     local threatFound = RadarHandler.checkRadar(radarSector)
     if threatFound and shouldGroupSpawn(radarSector.triggeredUnits.groupName) then
@@ -748,13 +854,17 @@ function TriggerRegistry._checkRadarDetection(radarSector)
     end
 end
 
+--- Check if a parent group has been destroyed.
+-- @param parentGroupName string Name of the parent group
+-- @return boolean true if the group is destroyed or doesn't exist
 function TriggerRegistry._checkGroupDestroyed(parentGroupName)
     if not parentGroupName then
         return true
     end
+
     local gp = Group.getByName(parentGroupName)
 
-    -- If the group reference returns nil or contains no active airframes/hulls
+    -- If the group reference returns nil or contains no active units
     if gp == nil or gp:isExist() == false or gp:getSize() == 0 then
         return true
     end
@@ -766,26 +876,165 @@ function TriggerRegistry._checkGroupDestroyed(parentGroupName)
             return false -- At least one asset is still fighting
         end
     end
+
     return true
 end
 
+-- ============================================================================
+-- SECTION 7: UNIT SPAWNER
+-- ============================================================================
+
+UnitSpawner = {}
+
+--- Resolve spawn coordinates based on configuration.
+-- @param config table The unit configuration with placement details (NM for distances)
+-- @param defaultBullseye table Default bullseye coordinates if fallback needed
+-- @param groupName string Optional group name for logging
+-- @return number x, number y Resolved spawn coordinates
+function UnitSpawner.resolveSpawnCoordinates(config, defaultBullseye, groupName)
+    local placement = config.placement or {}
+
+    -- Mode 1: Airbase anchoring (for air units)
+    if placement.airbaseName then
+        local airbaseObj = Airbase.getByName(placement.airbaseName)
+        if airbaseObj then
+            local basePos = airbaseObj:getPosition().p
+            return basePos.x, basePos.z
+        else
+            env.warn(string.format("[UnitSpawner] Airbase '%s' not found for '%s', using fallback.",
+                placement.airbaseName, groupName or "unknown"))
+        end
+    end
+
+    -- Mode 2: Ground units - find safe coordinates
+    if config.category ~= "AIRPLANE" and config.category ~= "HELICOPTER" then
+        return SpatialSolver.findSafeGroundCoordinates(defaultBullseye, placement, groupName)
+    end
+
+    -- Mode 3: Air fallback to bullseye
+    local bullseye = defaultBullseye or SpatialSolver.getBullseye("blue")
+    if bullseye then
+        return bullseye.x, bullseye.y
+    end
+
+    return 0, 0  -- Hard fallback to origin
+end
+
+--- Spawns a group from configuration.
+-- @param config table Unit configuration
+-- @param defaultBullseye table Bullseye coordinates for fallback
+-- @param groupName string Optional group name for logging
+-- @return table|nil The spawned group payload, or nil on failure
+function UnitSpawner.spawnGroup(config, defaultBullseye, groupName)
+    if isNilOrEmpty(config) or isNilOrEmpty(config.units) then
+        env.warn(string.format("[UnitSpawner] Spawn failed for '%s': empty configuration", groupName))
+        return nil
+    end
+
+    local x, y = UnitSpawner.resolveSpawnCoordinates(config, defaultBullseye, groupName)
+
+    if config.category == "AIRPLANE" or config.category == "HELICOPTER" then
+        local airbaseObj = config.placement.airbaseName and Airbase.getByName(config.placement.airbaseName)
+        local units = AssetFactories.buildAirGroup(config, x, y, airbaseObj)
+        if units then
+            mist.dynAdd(units)
+            return units
+        end
+    else
+        local units = AssetFactories.buildPlatoon(config, x, y)
+        mist.dynAdd(units)
+        return units
+    end
+
+    return nil
+end
+
+--- Spawns radar station with radar-specific logic.
+-- @param radarSector table The radar sector configuration
+-- @return boolean true if spawned successfully
+function UnitSpawner.spawnRadarStation(radarSector)
+    if not radarSector.groupName or not radarSector.unitType then
+        env.error("[UnitSpawner] Radar spawn failed: missing groupName or unitType")
+        return false
+    end
+
+    local zoneName = radarSector.placement.zoneName
+    local finalX, finalY
+
+    -- Strategy 1: Zone Randomization
+    if zoneName then
+        local zoneData = trigger.misc.getZone(zoneName)
+        if zoneData then
+            local point = mist.getRandomPointInZone(zoneName)
+            if land.getSurfaceType({x = point.x, y = point.y}) ~= 3 then
+                finalX, finalY = point.x, point.y
+            else
+                finalX, finalY = zoneData.point.x, zoneData.point.z
+                env.info(string.format("[UnitSpawner] Zone '%s' random point in water, using center.", zoneName))
+            end
+        else
+            env.warn(string.format("[UnitSpawner] Zone '%s' not found, using fallback coordinates.", zoneName))
+        end
+    end
+
+    -- Strategy 2: Fallback to coordinates from placement config
+    if not finalX or not finalY then
+        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(
+            SpatialSolver.getBullseye("blue"), radarSector.placement, radarSector.groupName)
+    end
+
+    -- Build and spawn radar
+    local radarPayload = AssetFactories.buildRadar(radarSector, finalX, finalY)
+    mist.dynAdd(radarPayload)
+
+    -- Activate radar (Red/ALARM_STATE)
+    TriggerRegistry.scheduleAction(1.0, function(args)
+        local g = Group.getByName(args.name)
+        if g and g:getController() then
+            g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
+        end
+    end, { name = radarSector.groupName })
+
+    -- Spawn air defense ring if configured
+    if radarSector.pointDefense and type(radarSector.pointDefense.units) == "table" and #radarSector.pointDefense.units > 0 then
+        local adPayload = AssetFactories.buildPointDefense(radarSector, finalX, finalY)
+        mist.dynAdd(adPayload)
+        AssetFactories.activatePointDefense(adPayload)
+    end
+
+    -- Spawn drone if configured
+    if radarSector.drone then
+        radarSector:spawnDynamicDrone(finalX, finalY)
+    end
+
+    return true
+end
+
+-- ============================================================================
+-- SECTION 8: CONFIGURATION CLASSES
+-- ============================================================================
+
 UnitPlacementConfig = {}
 
+--- Create a new UnitPlacementConfig from raw configuration.
+-- Input values are in feet/NM/knots, converted to meters/m/s here.
+-- @param placementConfig table Raw placement configuration (feet, NM, knots)
+-- @return table UnitPlacementConfig instance
 function UnitPlacementConfig.new(placementConfig)
     local self = setmetatable({}, UnitPlacementConfig)
 
     self.heading = placementConfig.heading or 0 -- degrees
-    self.offsetX = mist.utils.NMToMeters(placementConfig.offsetX or 0) -- nm
-    self.offsetY = mist.utils.NMToMeters(placementConfig.offsetY or 0) -- nm
-    self.spawnRadius = mist.utils.NMToMeters(placementConfig.spawnRadius or 0) -- nm
+    self.offsetX = mist.utils.NMToMeters(placementConfig.offsetX or 0) -- NM to meters
+    self.offsetY = mist.utils.NMToMeters(placementConfig.offsetY or 0) -- NM to meters
+    self.spawnRadius = mist.utils.NMToMeters(placementConfig.spawnRadius or 0) -- NM to meters
 
-    -- Bearing/distance positioning fields (keep in original units)
+    -- Bearing/distance positioning fields (keep in original NM units, convert in SpatialSolver)
     self.offsetHeading = placementConfig.offsetHeading
     self.offsetDistance = placementConfig.offsetDistance
 
-    -- Altitude and speed for air unit spawning
-    self.altitude = placementConfig.altitude
-    self.speed = placementConfig.speed
+    -- Altitude (feet) and speed (knots) for air unit spawning - convert to metric
+    self.altitude = placementConfig.altitude and mist.utils.feetToMeters(placementConfig.altitude)
+    self.speed = placementConfig.speed and mist.utils.knotsToMps(placementConfig.speed)
 
     self.strategy = placementConfig.strategy or ""
     self.zoneName = placementConfig.zoneName
@@ -800,36 +1049,46 @@ end
 
 UnitRouteWaypoint = {}
 
+--- Create a new UnitRouteWaypoint from raw configuration.
+-- Input values are in feet/knots, converted to meters/m/s here.
+-- @param routeConfig table Raw route waypoint configuration (feet, knots)
+-- @return table UnitRouteWaypoint instance
 function UnitRouteWaypoint.new(routeConfig)
     local self = setmetatable({}, UnitRouteWaypoint)
     self.type = routeConfig.type
-    self.speed = mist.utils.knotsToMps(routeConfig.speed or 200)
-    self.alt = mist.utils.feetToMeters(routeConfig.alt or 3000)
-    self.offsetX = mist.utils.NMToMeters(routeConfig.offsetX or 0)
-    self.offsetY = mist.utils.NMToMeters(routeConfig.offsetY or 0)
+    self.speed = mist.utils.knotsToMps(routeConfig.speed or 200) -- knots to m/s
+    self.alt = mist.utils.feetToMeters(routeConfig.alt or 3000) -- feet to meters
+    self.offsetX = mist.utils.NMToMeters(routeConfig.offsetX or 0) -- NM to meters
+    self.offsetY = mist.utils.NMToMeters(routeConfig.offsetY or 0) -- NM to meters
     self.roe = routeConfig.roe or ""
     self.airbaseName = routeConfig.airbaseName
     return self
 end
 
+-- ============================================================================
+-- SECTION 9: SECTOR CLASS
+-- ============================================================================
+
 Sector = {}
 Sector.__index = Sector
 local GlobalUnitGroupRegistry = {}
 
+--- Create a new Sector instance.
+-- @param sectorConfig table Sector configuration (feet, NM, knots)
+-- @return table Sector instance
 function Sector:new(sectorConfig)
     local self = setmetatable({}, Sector)
     self.__index = self
 
-    if is_nil_or_empty(sectorConfig) then return self end
+    if isNilOrEmpty(sectorConfig) then return self end
 
     -- Validate configuration against standard template
     local valid, error = ConfigStandards.validateConfig(sectorConfig, ConfigStandards.SECTOR_TEMPLATE)
     if not valid then
-        env.info("[Sector] Configuration validation error: " .. error)
+        env.info(string.format("[Sector] Configuration validation error: %s", error))
     end
 
     self.enabled = sectorConfig.enabled
-    -- if self.enable == nil then self.enabled = true end
 
     -- Activation Rules Configuration
     self.category = sectorConfig.category or "GROUND"
@@ -859,7 +1118,7 @@ function Sector:new(sectorConfig)
 
     self.task = sectorConfig.task
 
-    self.droneConfig = sectorConfig.drone -- Stores the nested drone sub-table
+    self.drone = sectorConfig.drone -- Stores the nested drone sub-table
 
     -- State Lifecycles
     self.hasSpawned = false
@@ -869,13 +1128,14 @@ function Sector:new(sectorConfig)
     return self
 end
 
+--- Add drone radio menu to F10 map.
 function Sector:addDroneRadioMenu()
-    if not self.droneConfig then
+    if not self.drone then
         env.info("Not adding radio menu, no drone config found")
         return
     end
 
-    local droneName = self.droneConfig.groupName
+    local droneName = self.drone.groupName
 
     -- Ensure the F10 framework root parent commands exist
     if not MapMarkerRegistry.rootMenu then
@@ -900,7 +1160,6 @@ function Sector:addDroneRadioMenu()
                 TriggerRegistry.scheduleAction(2.0, function()
                     local liveDrone = Group.getByName(droneName)
                     if liveDrone and liveDrone:getSize() > 0 and liveDrone:getUnit(1):getLife() > 1 then
-
                         -- Fetch fresh coordinates of the target asset from the world matrix map
                         local targetGroup = Group.getByName(self.groupName)
                         if targetGroup and targetGroup:getUnit(1) then
@@ -944,6 +1203,9 @@ function Sector:addDroneRadioMenu()
     MapMarkerRegistry.activeRadios[droneName] = cmdPath
 end
 
+--- Assign drone to target zone for searching.
+-- @param droneGroupName string Name of the drone group
+-- @param targetGroupName string Name of the target group
 function Sector:assignDroneToTarget(droneGroupName, targetGroupName)
     local droneGroup = Group.getByName(droneGroupName)
 
@@ -951,26 +1213,29 @@ function Sector:assignDroneToTarget(droneGroupName, targetGroupName)
         local droneController = droneGroup:getController()
 
         -- Pull final coordinates bound during spawn tracking
-        local searchX = self.droneConfig.targetX or self.offsetX
-        local searchY = self.droneConfig.targetY or self.offsetY
+        local searchX = self.drone.targetX or self.placement.offsetX
+        local searchY = self.drone.targetY or self.placement.offsetY
 
-        -- FIX: Structured format for EngageTargetsInZone with correct data parameters
+        -- Structured format for EngageTargetsInZone with correct data parameters
         local engageZoneTask = {
             id = 'EngageTargetsInZone',
             params = {
                 point = {searchX, searchY},
-                zoneRadius = self.spawnRadius or 5000,
+                zoneRadius = self.placement.spawnRadius or 5000,
                 targetTypes = {"Vehicles", "Air Defense"},
                 priority = 1
             }
         }
 
         droneController:pushTask(engageZoneTask)
-            else
-        env.info(string.format("[Director Warning] Drone %s missing for zone engagement routing.", droneGroupName))
+    else
+        env.warn(string.format("[Director Warning] Drone %s missing for zone engagement routing.", droneGroupName))
     end
 end
 
+--- Create a tactical ground target markpoint on F10 map.
+-- @param targetX number Target X coordinate
+-- @param targetY number Target Y coordinate
 function Sector:createGroundTargetMarkpoint(targetX, targetY)
     local groundGroup = Group.getByName(self.groupName)
     if groundGroup and groundGroup:getUnit(1) and groundGroup:getUnit(1):isExist() then
@@ -999,13 +1264,15 @@ function Sector:createGroundTargetMarkpoint(targetX, targetY)
     end
 end
 
+--- Check if the drone is dead.
+-- @return boolean true if drone is dead
 function Sector:checkDroneDead()
-    local droneName = self.droneConfig.groupName
+    local droneName = self.drone.groupName
     local liveDrone = Group.getByName(droneName)
 
     -- If the sector has spawned, but the drone attached to it is now missing/dead
     if self.hasSpawned and (not liveDrone or liveDrone:getSize() == 0) then
-        env.info("Drone " .. droneName .. " is dead")
+        env.info(string.format("Drone %s is dead", droneName))
         -- clear map marker after 5 minutes of drone being shot down
         TriggerRegistry.scheduleAction(300, function()
             MapMarkerRegistry.clearMark(self.groupName)
@@ -1024,166 +1291,79 @@ function Sector:checkDroneDead()
     return false
 end
 
+--- Spawn the dynamic drone asset.
+-- @param spawnX number Spawn X coordinate
+-- @param spawnY number Spawn Y coordinate
 function Sector:spawnDynamicDrone(spawnX, spawnY)
-    if self.droneConfig.enabled == false then
+    if self.drone.enabled == false then
         return
     end
 
     TriggerRegistry.scheduleAction(2.0, function()
-        mist.dynAdd(AssetFactories.buildDrone(self.droneConfig, spawnX, spawnY))
-        
+        mist.dynAdd(AssetFactories.buildDrone(self.drone, spawnX, spawnY))
+
         -- Wait 3 seconds for the airframe to register before assigning its search task
         TriggerRegistry.scheduleAction(3.0, function()
-            if Group.getByName(self.droneConfig.groupName) then
+            if Group.getByName(self.drone.groupName) then
                 -- Paint map tracking markpoint readouts onto the player's F10 layer
                 self:createGroundTargetMarkpoint(spawnX, spawnY)
-                self:assignDroneToTarget(self.droneConfig.groupName, self.groupName)
+                self:assignDroneToTarget(self.drone.groupName, self.groupName)
                 self:addDroneRadioMenu()
             end
         end)
     end)
 end
 
+--- Wraps UnitSpawner.spawnRadarStation for backwards compatibility.
+-- @return boolean true if spawned successfully
 function Sector:spawnRadarStation()
-    if self.hasSpawned then
-        return
-    end
-    if not self.groupName or not self.unitType then
-        return
-    end
-    local zoneName = self.placement.zoneName
-    local finalX, finalY
-
-    -- 1. Grab a random point inside the specified ME Trigger Zone
-    if zoneName then
-        local zoneData = trigger.misc.getZone(zoneName)
-
-        if zoneData then
-            local randomZonePoint = mist.getRandomPointInZone(zoneName)
-            local surfaceType = land.getSurfaceType(randomZonePoint)
-
-            if surfaceType ~= 3 then
-                finalX = randomZonePoint.x
-                finalY = randomZonePoint.y
-            else
-                finalX = zoneData.point.x
-                finalY = zoneData.point.z
-                env.info(": x, y: " .. randomZonePoint.x .. "," .. randomZonePoint.z)
-                env.info(
-                    "[Director Warning] Random zone point landed in water. Centering radar safety fallback inside zone.")
-            end
-        else
-            env.info("[Director Error] Named zone '" .. zoneName ..
-                         "' completely missing from the Mission Editor! Defaulting to profile offsets.")
-        end
-    end
-
-    -- 2. Explicit Fallback: If zone logic fails or isn't specified, use your profile offsets
-    if not finalX or not finalY then
-        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(SpatialSolver.getBullseye("blue"), self.placement)
-    end
-
-    -- Construct and deploy the dynamic radar group
-    local radarGroupPayload = AssetFactories.buildRadar(self, finalX, finalY)
-    mist.dynAdd(radarGroupPayload)
-
-    -- Force radar power state to Red (Active Scan)
-    TriggerRegistry.scheduleAction(1.0, function(args)
-        local g = Group.getByName(args.name)
-        if g and g:getController() then
-            g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
-        end
-    end, {
-        name = self.groupName
-    })
-
-    -- 3. Deploy Air Defense Ring Escorts if configured
-    if self.pointDefense and type(self.pointDefense.units) == "table" and #self.pointDefense.units > 0 then
-        local adPayload = AssetFactories.buildPointDefense(self, finalX, finalY)
-        mist.dynAdd(adPayload)
-        AssetFactories.activatePointDefense(adPayload)
-    end
-
-    -- Sector Drone Deployment Phase
-    if self.droneConfig then
-        self:spawnDynamicDrone(finalX, finalY)
-    end
-    self.hasSpawned = true
+    return UnitSpawner.spawnRadarStation(self)
 end
 
-
-
-
+--- Legacy spawn function - kept for backwards compatibility.
+-- @param config table Unit configuration
+-- @return table|nil Spawning result
 local function spawnUnitsFromConfig(config)
-    if is_nil_or_empty(config) or is_nil_or_empty(config.units) then return end
-
-    if config.category == "AIRPLANE" or config.category == "HELICOPTER" then
-        local finalX, finalY
-        local airbaseObj = nil
-
-        if config.placement.airbaseName then
-            airbaseObj = Airbase.getByName(config.placement.airbaseName)
-            if airbaseObj then
-                local basePos = airbaseObj:getPosition().p
-                finalX, finalY = basePos.x, basePos.z
-            else
-                env.info("Airbase object not found for: " .. config.placement.airbaseName)
-            end
-        end
-
-        -- Air start fallback if no airbase is bound
-        if not finalX or not finalY then
-            local bullseye = SpatialSolver.getBullseye("blue")
-            if bullseye then
-                finalX, finalY = bullseye.x, bullseye.y
-            else
-                finalX, finalY = 0, 0
-            end
-        end
-
-        local units = AssetFactories.buildAirGroup(config, finalX, finalY, airbaseObj)
-        if units then
-            mist.dynAdd(units)
-        end
-    else
-        -- Fallback to original Ground Platoon construction engine
-        local finalX, finalY
-        local bullseye = SpatialSolver.getBullseye("blue")
-
-        finalX, finalY = SpatialSolver.findSafeGroundCoordinates(bullseye, config.placement)
-        local units = AssetFactories.buildPlatoon(config, finalX, finalY)
-
-        mist.dynAdd(units)
-    end
+    local bullseye = SpatialSolver.getBullseye("blue")
+    return UnitSpawner.spawnGroup(config, bullseye, config.groupName)
 end
 
-
-
-
+--- Spawn this sector's units.
 function Sector:spawnUnits()
     if self.hasSpawned then
         return
     end
 
-    spawnUnitsFromConfig(self)
-    -- ========================================================================
-    -- STEP 2: PROCESS THE DATA-DRIVEN DRONE OVERWATCH ASSETS
-    -- ========================================================================
-    if self.droneConfig then
+    local bullseye = SpatialSolver.getBullseye("blue")
+    UnitSpawner.spawnGroup(self, bullseye, self.groupName)
+
+    -- PROCESS THE DATA-DRIVEN DRONE OVERWATCH ASSETS
+    if self.drone then
         self:spawnDynamicDrone(SpatialSolver.getCoordinates(bullseye, self.placement))
     end
 
     self.hasSpawned = true
 end
 
+--- Spawn triggered units for this sector.
 function Sector:spawnTriggeredUnits()
-    spawnUnitsFromConfig(self.triggeredUnits)
+    if self.triggeredUnits then
+        local bullseye = SpatialSolver.getBullseye("blue")
+        UnitSpawner.spawnGroup(self.triggeredUnits, bullseye, self.triggeredUnits.groupName)
+    end
 end
+
+-- ============================================================================
+-- SECTION 10: RADAR SECTOR CLASS
+-- ============================================================================
 
 RadarSector = {}
 RadarSector.__index = RadarSector
 setmetatable(RadarSector, { __index = Sector }) -- inherit from Sector
 
+--- Create a new RadarSector instance.
+-- @param config table Radar sector configuration (feet, NM, knots)
+-- @return table RadarSector instance
 function RadarSector:new(config)
     local s = Sector:new(config)
     setmetatable(s, self)
@@ -1191,7 +1371,7 @@ function RadarSector:new(config)
     -- Validate radar-specific configuration
     local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.RADAR_SECTOR_TEMPLATE)
     if not valid then
-        env.info("[RadarSector] Configuration validation error: " .. error)
+        env.info(string.format("[RadarSector] Configuration validation error: %s", error))
     end
 
     s.radarFilterEnabled = config.radarFilterEnabled
@@ -1204,20 +1384,24 @@ function RadarSector:new(config)
 
     return s
 end
--- ==============================================================================
--- 2. AUTOMATION CORE ENGINE LOGIC
--- ==============================================================================
+
+-- ============================================================================
+-- SECTION 11: MISSION DIRECTOR
+-- ============================================================================
+
 MissionDirector = {}
 MissionDirector.__index = MissionDirector
 
 -- Shared lookup tracking cache allowing instances to check if other instances finished
 local GlobalDirectorRegistry = {}
 
+--- Create a new MissionDirector instance.
+-- @param coalitionConfig table Array of sector configurations (feet, NM, knots)
+-- @return table MissionDirector instance
 function MissionDirector.new(coalitionConfig)
     local self = setmetatable({}, MissionDirector)
     self.sectors = {}
     for _, sector in ipairs(coalitionConfig) do
-        
         if sector.enabled == true then
             local s
             if sector.triggerType == "RADAR" then
@@ -1231,6 +1415,8 @@ function MissionDirector.new(coalitionConfig)
     return self
 end
 
+--- Initialize global assets like AWACS and Tankers.
+-- @param globalConfig table Array of global asset configurations (feet, NM, knots)
 function MissionDirector:initializeGlobalAssets(globalConfig)
     if not globalConfig then
         return
@@ -1245,6 +1431,8 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
     end
 end
 
+--- Check if this sector's units are all dead.
+-- @return boolean true if all units are dead
 function Sector:_checkOwnUnitsDead()
     local g = Group.getByName(self.groupName)
     if not g or g:getSize() == 0 then
@@ -1259,6 +1447,8 @@ function Sector:_checkOwnUnitsDead()
     return true
 end
 
+--- Start the engine loop for all sectors.
+-- Spawns immediate sectors immediately, registers others with TriggerRegistry.
 function MissionDirector:startEngineLoop()
     for _, sector in ipairs(self.sectors) do
         -- IMMEDIATE SECTORS: Fire instantly without scheduling background checks
@@ -1271,3 +1461,7 @@ function MissionDirector:startEngineLoop()
         TriggerRegistry.register(sector)
     end
 end
+
+-- ============================================================================
+-- END OF MODULE
+-- ============================================================================
