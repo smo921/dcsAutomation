@@ -150,11 +150,17 @@ function UnitFormationBuilder.BuildWaypoints(startX, startY, waypoints, unitType
         -- Handle landing waypoints for air units
         if wp.type == "landing" or wp.type == "Land" then
             local landBase = Airbase.getByName(wp.airbaseName) or defaultAirbaseObj
-            if landBase then
-                local landPos = landBase:getPosition().p
-                wpX, wpY = landPos.x, landPos.z
-                aeroId = landBase:getID()
+            if landBase and type(landBase) == "table" and landBase.getController then
+                -- Verify landBase has required methods before calling them
+                if type(landBase.getPosition) == "function" and type(landBase.getID) == "function" then
+                    local landPos = landBase:getPosition().p
+                    wpX, wpY = landPos.x, landPos.z
+                    aeroId = landBase:getID()
+                else
+                    env.warning(string.format("[AssetFactories] Invalid landBase object for '%s'", wp.airbaseName))
+                end
             else
+                env.warning(string.format("[AssetFactories] Airbase '%s' not found", wp.airbaseName or "unknown"))
                 wpX = currentX
                 wpY = currentY
             end
@@ -262,6 +268,14 @@ AssetFactories = {}
 -- @param airbaseObj table Optional airbase object for ramp spawning
 -- @return table Group payload ready for mist.dynAdd
 function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
+    -- Validate airbaseObj if provided (for mode1 ramp spawning)
+    if airbaseObj and type(airbaseObj) ~= "table" then
+        env.warn(string.format("[AssetFactories] Invalid airbase object type: %s", type(airbaseObj)))
+        airbaseObj = nil
+    end
+
+    -- Isolate the placement sub-table configuration
+    local placement = config.placement or {}
     -- Isolate the placement sub-table configuration
     local placement = config.placement or {}
 
@@ -299,7 +313,13 @@ function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
     -- Extract numerical Airbase ID required for engine anchorage mapping
     local airbaseName = placement.airbaseName or config.airbaseName
     local startType = placement.startType or config.startType or "air_start"
-    local airbaseId = airbaseObj and airbaseObj:getID() or nil
+    local airbaseId = nil
+    if airbaseObj and airbaseObj.isExist and airbaseObj:isExist() then
+        -- Safe to call getID - verify airbaseObj has the method
+        if type(airbaseObj.getID) == "function" then
+            airbaseId = airbaseObj:getID()
+        end
+    end
 
     -- Ground start state flags evaluated from placement metrics
     local isRampStart = (airbaseName ~= nil and startType ~= "air_start")
