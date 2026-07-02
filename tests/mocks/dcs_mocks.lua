@@ -323,3 +323,25 @@ coord = {
         }
     end
 }
+
+-- Mock groupCheck function (for testing the refactored code)
+groupCheck = function(groupName, checkAlive)
+    if not groupName then
+        return not checkAlive
+    end
+
+    local gp = Group.getByName(groupName)
+
+    if not gp or gp:isExist() == false or gp:getSize() == 0 then
+        return not checkAlive
+    end
+
+    for i = 1, gp:getSize() do
+        local unit = gp:getUnit(i)
+        if unit and unit:isExist() and unit:isActive() and unit:getLife() > 1 then
+            return checkAlive
+        end
+    end
+
+    return not checkAlive
+end

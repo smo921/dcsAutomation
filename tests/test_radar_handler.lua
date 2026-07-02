@@ -21,8 +21,11 @@ local mock_target_unit = TestUtils.createMockTargetUnit("Mock_Target", "F-16C_50
 -- Tests for RadarHandler
 describe("RadarHandler.KmToNm", function()
     it("should convert kilometers to nautical miles", function()
-        local nm = RadarHandler.KmToNm(1852) -- 1852 km = 1000 NM
-
+        -- Use mist.utils.NMToMeters to get the conversion factor
+        local metersPerNm = mist.utils.NMToMeters(1)
+        -- 1852 km = 1852000 meters = 1000 NM * 1852 meters/NM
+        local km = 1852
+        local nm = RadarHandler.KmToNm(km)
         -- Should be approximately 1000 NM
         assert_true(math.abs(nm - 1000) < 1)
     end)

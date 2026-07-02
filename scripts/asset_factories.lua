@@ -99,74 +99,32 @@ function UnitFormationBuilder.RadialScatter(config, x, y)
     return unitPayload
 end
 
-function UnitFormationBuilder.BuildRoute(startX, startY, waypoints)
-    local points = {}
-    local currentX = startX
-    local currentY = startY
-
-    for _, wp in ipairs(waypoints or {}) do
-        local wpX = currentX + (wp.offsetX or 0)
-        local wpY = currentY + (wp.offsetY or 0)
-
-        -- mist.ground.buildWP creates a complete DCS ground route point automatically.
-        -- Arguments: ( vec2/vec3 point, formStr, speedMps )
-        local node = mist.ground.buildWP({
-            x = wpX,
-            y = wpY
-        }, wp.type or "Off Road", (wp.speed or 30) / 3.6)
-
-        -- Handle ROE/Threat tasks exactly as before
-        node.task = {
-            ["id"] = "ComboTask",
-            ["params"] = {
-                ["tasks"] = {}
-            }
-        }
-        local optionDefinitions = {{
-            name = "ROE",
-            val = wp.roe,
-            map = AssetFactories.ROE
-        }, {
-            name = "THREAT_REACTION",
-            val = wp.threat,
-            map = AssetFactories.THREAT_REACTION
-        }}
-
-        for _, opt in ipairs(optionDefinitions) do
-            if opt.val and opt.map[opt.val] then
-                table.insert(node.task.params.tasks, {
-                    ["id"] = "Option",
-                    ["params"] = {
-                        ["name"] = AssetFactories.OPTION_IDS[opt.name],
-                        ["value"] = opt.map[opt.val]
-                    }
-                })
-            end
-        end
-
-        table.insert(points, node)
-        currentX = wpX
-        currentY = wpY
+--- Builds waypoints for any unit type by delegating to appropriate MIST builder.
+-- @param startX number Starting X coordinate
+-- @param startY number Starting Y coordinate
+-- @param waypoints table Array of waypoint configurations
+-- @param unitType string Unit type: "GROUND", "AIRPLANE", or "HELICOPTER"
+-- @param defaultAirbaseObj table Optional airbase object for landing waypoints
+-- @return table Array of waypoint nodes with tasks
+function UnitFormationBuilder.BuildWaypoints(startX, startY, waypoints, unitType, defaultAirbaseObj)
+    -- Determine which MIST builder to use
+    local wpBuilder
+    if unitType == "GROUND" then
+        wpBuilder = mist.ground.buildWP
+    elseif unitType == "HELICOPTER" then
+        wpBuilder = mist.heli.buildWP
+    else -- AIRPLANE
+        wpBuilder = mist.fixedWing.buildWP
     end
 
-    return points
-end
-
-AssetFactories = {}
-
--- ==============================================================================
--- AIR UNIT PRODUCTION EXTENSIONS
--- ==============================================================================
-
-function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAirbaseObj, isHelo)
     local points = {}
-    local wpBuilder = isHelo and mist.heli.buildWP or mist.fixedWing.buildWP
-
     local currentX = startX
     local currentY = startY
-    for _, wp in ipairs(waypoints or {}) do
-        local wpX, wpY, aeroId, wpType, wpAction
 
+    for _, wp in ipairs(waypoints or {}) do
+        local wpX, wpY, aeroId, wpType, wpAction, wpSpeed, wpAlt, wpAltType
+
+        -- Handle landing waypoints for air units
         if wp.type == "landing" or wp.type == "Land" then
             local landBase = Airbase.getByName(wp.airbaseName) or defaultAirbaseObj
             if landBase then
@@ -174,29 +132,37 @@ function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAi
                 wpX, wpY = landPos.x, landPos.z
                 aeroId = landBase:getID()
             else
-                wpX, wpY = currentX, currentY
+                wpX = currentX
+                wpY = currentY
             end
             wpType = "Land"
             wpAction = "Landing"
+            wpSpeed = wp.speed or 0
+            wpAlt = 0
+            wpAltType = "AGL"
         else
+            -- Standard waypoint with relative offsets
             wpX = currentX + (wp.offsetX or 0)
             wpY = currentY + (wp.offsetY or 0)
             wpType = wp.type or "Turning Point"
             wpAction = wp.action or "Turning Point"
+            wpSpeed = wp.speed or 150
+            wpAlt = wp.alt or 3000
+            wpAltType = wp.alt_type or "BARO"
         end
 
-        -- Create baseline waypoint using MIST
+        -- Build waypoint using appropriate MIST function
         local node = wpBuilder({
             x = wpX,
             y = wpY
-        }, wpAction, wp.speed or 150, wp.alt or 3000, wp.alt_type or "BARO")
+        }, wpAction, wpSpeed, wpAlt, wpAltType)
 
         node.type = wpType
         if aeroId then
             node.aerodromeId = aeroId
         end
 
-        -- FIX: Safely initialize the DCS Task table structure so MIST or native systems can parse it
+        -- Add task options (ROE and optionally THREAT_REACTION for ground units)
         node.task = {
             ["id"] = "ComboTask",
             ["params"] = {
@@ -204,7 +170,7 @@ function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAi
             }
         }
 
-        -- Now table.insert will safely find the target array without throwing a nil error
+        -- ROE is common to all unit types
         if wp.roe and AssetFactories.ROE[wp.roe] then
             table.insert(node.task.params.tasks, {
                 ["id"] = "Option",
@@ -215,12 +181,50 @@ function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAi
             })
         end
 
+        -- THREAT_REACTION only for ground units (air units use different logic)
+        if unitType == "GROUND" and wp.threat and AssetFactories.THREAT_REACTION[wp.threat] then
+            table.insert(node.task.params.tasks, {
+                ["id"] = "Option",
+                ["params"] = {
+                    ["name"] = AssetFactories.OPTION_IDS.THREAT_REACTION,
+                    ["value"] = AssetFactories.THREAT_REACTION[wp.threat]
+                }
+            })
+        end
+
         table.insert(points, node)
         currentX = wpX
         currentY = wpY
     end
 
     return points
+end
+
+--- Builds waypoints for ground units (delegates to BuildWaypoints).
+-- @param startX number Starting X coordinate
+-- @param startY number Starting Y coordinate
+-- @param waypoints table Array of waypoint configurations
+-- @return table Array of waypoint nodes with tasks
+function UnitFormationBuilder.BuildRoute(startX, startY, waypoints)
+    return UnitFormationBuilder.BuildWaypoints(startX, startY, waypoints, "GROUND")
+end
+
+AssetFactories = {}
+
+-- ==============================================================================
+-- AIR UNIT PRODUCTION EXTENSIONS
+-- ==============================================================================
+
+--- Builds waypoints for air units (delegates to BuildWaypoints).
+-- @param startX number Starting X coordinate
+-- @param startY number Starting Y coordinate
+-- @param waypoints table Array of waypoint configurations
+-- @param defaultAirbaseObj table Optional airbase object for landing waypoints
+-- @param isHelo boolean True if building for helicopter
+-- @return table Array of waypoint nodes with tasks
+function UnitFormationBuilder.BuildAirRoute(startX, startY, waypoints, defaultAirbaseObj, isHelo)
+    local unitType = isHelo and "HELICOPTER" or "AIRPLANE"
+    return UnitFormationBuilder.BuildWaypoints(startX, startY, waypoints, unitType, defaultAirbaseObj)
 end
 
 function AssetFactories.buildAirGroup(config, startX, startY, airbaseObj)
@@ -439,134 +443,125 @@ end
 
 
 
-function AssetFactories.buildAWACSorTanker(originPoint, config)
-    -- Determine if we should use the unified placement system or legacy approach
-    local placement = config.placement or {}
+-- AWACS/Tanker specific task builders
 
-    -- For AWACS/tankers with airbaseName, we delegate to buildAirGroup for proper handling
-    if placement.airbaseName then
-        -- Use buildAirGroup with direct coordinates but mark as special case for orbit behavior
-        return AssetFactories.buildAirGroup(config, originPoint.x, originPoint.y, nil)
-    else
-        -- Legacy approach for bearing/distance offset from bullseye
-        local x, y = SpatialSolver.getCoordinates(originPoint, config)
-
-        local wp1_x = x
-        local wp1_y = y
-        local wp2_x = wp1_x + mist.utils.NMToMeters(0.5) -- (mist.utils.NMToMeters(config.orbitLength) or 40000)
-        local wp2_y = wp1_y + mist.utils.NMToMeters(0.5)
-
-        -- 1. Initialize separated task lists for WP1 and WP2
-        local wp1TaskList = {}
-        local wp2TaskList = {}
-
-        -- Map config task names to exact DCS Engine Task IDs
-        local dcsTaskName = config.task
-
-        -- WP1: Main Enroute Task (Must be active from spawn)
-        table.insert(wp1TaskList, {
-            ["id"] = dcsTaskName,
-            ["params"] = {}
-        })
-
-        -- WP1: Frequency Setup
-        if config.frequency then
-            table.insert(wp1TaskList, {
-                ["id"] = "SetFrequency",
-                ["params"] = {
-                    ["frequency"] = config.frequency * 1000000,
-                    ["modulation"] = (config.modulation == "FM") and 1 or 0 -- 0 = AM, 1 = FM
-                }
-            })
-        end
-
-        -- WP1: Callsign Setup
-        if config.callsign then
-            table.insert(wp1TaskList, {
-                ["id"] = "SetCallsign",
-                ["params"] = {
-                    ["callsign"] = config.callsign,
-                    ["number"] = config.callsignNumber or 1
-                }
-            })
-        end
-
-        -- WP2: Configure the Orbit Command dynamically
-        -- Supports config.orbitPattern = "Circle" or "Racetrack" (defaults to Racetrack)
-        local patternChoice = config.orbitPattern or "Circle"
-
-        local orbitParams = {
-            ["pattern"] = patternChoice,
-            ["altitude"] = config.altitude or 8000, -- Already in feet
-            ["speed"] = config.speed or 150 -- Already in knots
+--- Builds frequency setup task for AWACS/Tanker
+function AssetFactories.buildFrequencyTask(frequency, modulation)
+    return {
+        ["id"] = "SetFrequency",
+        ["params"] = {
+            ["frequency"] = frequency * 1000000,
+            ["modulation"] = (modulation == "FM") and 1 or 0 -- 0 = AM, 1 = FM
         }
+    }
+end
 
-        if patternChoice == "Anchored" then
-            orbitParams["hotLegDir"] = 180
-            orbitParams["legLength"] = mist.utils.NMToMeters(config.orbitLength)
-            orbitParams["width"] = mist.utils.NMToMeters(config.orbitWidth)
-            orbitParams["clockWise"] = config.orbitClockwise or false
-        end
-
-        table.insert(wp2TaskList, {
-            ["id"] = "Orbit",
-            ["params"] = orbitParams
-        })
-
-        local payload = {
-            ["visible"] = true,
-            ["category"] = "AIRPLANE",
-            ["country"] = config.country or "USA",
-            ["name"] = config.groupName,
-            ["task"] = config.task,
-            ["units"] = {{
-                ["type"] = config.unitType or "E-3A",
-                ["name"] = config.groupName .. "_Unit_1",
-                ["x"] = wp1_x,
-                ["y"] = wp1_y,
-                ["alt"] = config.altitude or 8000, -- Already in feet
-                ["alt_type"] = "BARO",
-                ["speed"] = config.speed or 150, -- Already in knots
-                ["heading"] = math.rad(config.heading or 0), -- Unit orientation in radians
-                ["skill"] = "Excellent"
-            }},
-            ["route"] = {
-                ["points"] = {
-                    {
-                        ["x"] = wp1_x,
-                        ["y"] = wp1_y,
-                        ["alt"] = config.altitude or 8000, -- Already in feet
-                        ["alt_type"] = "BARO",
-                        ["type"] = "Turning Point",
-                        ["action"] = "Turning Point",
-                        ["speed"] = config.speed or 150, -- Already in knots
-                        ["task"] = {
-                            ["id"] = "ComboTask",
-                            ["params"] = {
-                                ["tasks"] = wp1TaskList -- Initialized on spawn
-                            }
-                        }
-                    },
-                    {
-                        ["x"] = wp2_x,
-                        ["y"] = wp2_y,
-                        ["alt"] = config.altitude or 8000, -- Already in feet
-                        ["alt_type"] = "BARO",
-                        ["type"] = "Turning Point",
-                        ["action"] = "Turning Point",
-                        ["speed"] = config.speed or 150, -- Already in knots
-                        ["task"] = {
-                            ["id"] = "ComboTask",
-                            ["params"] = {
-                                ["tasks"] = wp2TaskList -- Triggers the Orbit at WP2
-                            }
-                        }
-                    }
-                }
-            }
+--- Builds callsign setup task for AWACS/Tanker
+function AssetFactories.buildCallsignTask(callsign, number)
+    return {
+        ["id"] = "SetCallsign",
+        ["params"] = {
+            ["callsign"] = callsign,
+            ["number"] = number or 1
         }
-        return payload
+    }
+end
+
+--- Builds orbit task with various patterns
+-- @param config table AWACS/Tanker configuration with orbit parameters
+-- @return table Orbit task configuration
+function AssetFactories.buildOrbitTask(config)
+    local patternChoice = config.orbitPattern or "Circle"
+
+    local orbitParams = {
+        ["pattern"] = patternChoice,
+        ["altitude"] = config.altitude or 8000,
+        ["speed"] = config.speed or 150
+    }
+
+    if patternChoice == "Anchored" then
+        orbitParams["hotLegDir"] = 180
+        orbitParams["legLength"] = mist.utils.NMToMeters(config.orbitLength or 5)
+        orbitParams["width"] = mist.utils.NMToMeters(config.orbitWidth or 2)
+        orbitParams["clockWise"] = config.orbitClockwise or false
     end
+
+    return {
+        ["id"] = "Orbit",
+        ["params"] = orbitParams
+    }
+end
+
+--- Builds AWACS or Tanker group with proper orbit task routing.
+-- AWACS/Tankers are air units that orbit at a fixed location to provide services.
+-- @param originPoint table Bullseye or reference coordinates {x, y}
+-- @param config table AWACS/Tanker configuration
+-- @return table DCS group payload ready for mist.dynAdd
+function AssetFactories.buildAWACSorTanker(originPoint, config)
+    -- Check for airbase anchoring
+    local placement = config.placement or {}
+    if placement.airbaseName then
+        return AssetFactories.buildAirGroup(config, originPoint.x, originPoint.y, nil)
+    end
+
+    -- Use existing SpatialSolver to get coordinates (handles bearing/distance, direct coords, fallback)
+    local x, y = SpatialSolver.getCoordinates(originPoint, placement)
+
+    -- Build orbit task
+    local orbitTask = AssetFactories.buildOrbitTask(config)
+
+    -- Build frequency/callsign tasks if specified
+    local firstWaypointTasks = {}
+    if config.frequency then
+        table.insert(firstWaypointTasks, AssetFactories.buildFrequencyTask(config.frequency, config.modulation))
+    end
+    if config.callsign then
+        table.insert(firstWaypointTasks, AssetFactories.buildCallsignTask(config.callsign, config.callsignNumber))
+    end
+
+    -- Build route with orbit task at waypoint 2, optional tasks at waypoint 1
+    local waypoints = {
+        {
+            type = "Turning Point",
+            alt = config.altitude,
+            speed = config.speed,
+            offsetX = 0,
+            offsetY = 0,
+            task = #firstWaypointTasks > 0 and {
+                ["id"] = "ComboTask",
+                ["params"] = { ["tasks"] = firstWaypointTasks }
+            } or nil
+        },
+        {
+            type = "Turning Point",
+            alt = config.altitude,
+            speed = config.speed,
+            offsetX = mist.utils.NMToMeters(0.5), -- Small offset for orbit entry
+            offsetY = 0,
+            task = orbitTask
+        }
+    }
+
+    -- Reuse buildAirGroup's unit assembly logic
+    local unitConfig = {
+        category = "AIRPLANE",
+        groupName = config.groupName,
+        country = config.country or "USA",
+        units = {{
+            unitType = config.unitType or "E-3A",
+            name = config.groupName .. "_Unit_1"
+        }},
+        placement = {
+            heading = placement.heading,
+            offsetX = x,
+            offsetY = y,
+            altitude = config.altitude,
+            speed = config.speed
+        },
+        route = waypoints
+    }
+
+    return AssetFactories.buildAirGroup(unitConfig, x, y, nil)
 end
 
 

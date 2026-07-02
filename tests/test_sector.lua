@@ -111,10 +111,10 @@ describe("UnitPlacementConfig", function()
 
         assert_not_nil(config)
         assert_equal(90, config.heading)
-        -- Note: offsetX and offsetY are converted from NM to meters
-        assert_equal(1.5 * 1852, config.offsetX)
-        assert_equal(2.0 * 1852, config.offsetY)
-        assert_equal(0.5 * 1852, config.spawnRadius)
+        -- Use mist.utils for unit conversions
+        assert_equal(mist.utils.NMToMeters(1.5), config.offsetX)
+        assert_equal(mist.utils.NMToMeters(2.0), config.offsetY)
+        assert_equal(mist.utils.NMToMeters(0.5), config.spawnRadius)
     end)
 end)
 
@@ -132,11 +132,11 @@ describe("UnitRouteWaypoint", function()
 
         assert_not_nil(waypoint)
         assert_equal("Turning Point", waypoint.type)
-        -- Note: speed and alt are converted to meters
-        assert_equal(300 * 0.514444, waypoint.speed)
-        assert_equal(10000 * 0.3048, waypoint.alt)
-        assert_equal(5.0 * 1852, waypoint.offsetX)
-        assert_equal(10.0 * 1852, waypoint.offsetY)
+        -- Use mist.utils for unit conversions
+        assert_equal(mist.utils.knotsToMps(300), waypoint.speed)
+        assert_equal(mist.utils.feetToMeters(10000), waypoint.alt)
+        assert_equal(mist.utils.NMToMeters(5.0), waypoint.offsetX)
+        assert_equal(mist.utils.NMToMeters(10.0), waypoint.offsetY)
     end)
 end)
 

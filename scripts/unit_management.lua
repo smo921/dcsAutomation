@@ -240,25 +240,25 @@ end
 -- @return boolean true if it is safe and valid to spawn the group; false otherwise.
 local function shouldGroupSpawn(groupName)
     if not groupName then return false end
-    
+
     local gp = Group.getByName(groupName)
-    
+
     -- STATE 1: Group object does not exist anywhere in the active simulation database.
     -- This means it has never been spawned yet. Safe to deploy!
     if gp == nil or gp:isExist() == false then
         return true
     end
-    
+
     -- STATE 2: The group container exists. Check if any units are still breathing.
     for i = 1, gp:getSize() do
         local unit = gp:getUnit(i)
         if unit and unit:isExist() and unit:isActive() and unit:getLife() > 1 then
             -- Found alive units. The asset is active in the world right now.
             env.info(string.format("[SpawnGuard] Blocked spawn for '%s': Group is already active in theater.", groupName))
-            return false 
+            return false
         end
     end
-    
+
     -- STATE 3: The group container exists, but every single unit has been destroyed.
     -- This prevents dead units from popping back into existence.
     env.info(string.format("[SpawnGuard] Blocked spawn for '%s': Group was already deployed and neutralized.", groupName))
