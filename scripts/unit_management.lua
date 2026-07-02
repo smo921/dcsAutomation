@@ -193,7 +193,12 @@ function ConfigStandards.createPointDefense(config)
     return pd
 end
 
--- Validate a configuration against a template
+--- Validate a configuration against a template.
+-- @param config table The configuration to validate
+-- @param template table The template to validate against
+-- @param path string Optional path for nested validation (internal use)
+-- @return boolean valid True if validation passed
+-- @return string|nil error Error message if validation failed
 function ConfigStandards.validateConfig(config, template, path)
     path = path or "root"
 
@@ -201,9 +206,15 @@ function ConfigStandards.validateConfig(config, template, path)
         return false, string.format("Expected table at %s, got %s", path, type(config))
     end
 
+    -- Check required fields (fields with non-nil values in template)
     for key, expectedValue in pairs(template) do
         local value = config[key]
         local currentPath = path .. "." .. key
+
+        -- Required field check: if template has a non-nil value, config must have it
+        if expectedValue ~= nil and value == nil then
+            return false, string.format("Missing required field '%s' at %s", key, currentPath)
+        end
 
         if type(expectedValue) == "table" and type(value) == "table" then
             local valid, error = ConfigStandards.validateConfig(value, expectedValue, currentPath)
@@ -217,6 +228,29 @@ function ConfigStandards.validateConfig(config, template, path)
     end
 
     return true
+end
+
+--- Enum validation helper - validates that a config value matches one of the allowed values.
+-- @param config table The configuration table
+-- @param fieldName string The field name to validate
+-- @param allowedValues table Array of valid values
+-- @param path string Optional path for nested validation
+-- @return boolean valid True if validation passed
+-- @return string|nil error Error message if validation failed
+function ConfigStandards.validateEnum(config, fieldName, allowedValues, path)
+    local value = config[fieldName]
+    if value == nil then
+        return true -- nil values are handled by required field check
+    end
+
+    for _, allowed in ipairs(allowedValues) do
+        if value == allowed then
+            return true
+        end
+    end
+
+    return false, string.format("Invalid value for '%s' at %s: expected one of %s, got '%s'",
+        fieldName, path or "root", table.concat(allowedValues, ", "), tostring(value))
 end
 
 -- ============================================================================

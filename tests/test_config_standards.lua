@@ -150,14 +150,71 @@ describe("ConfigStandards.validateConfig", function()
     end)
 
     it("should detect type mismatches", function()
+        -- Test with a minimal template that has no required fields
+        local minimalTemplate = {
+            value = 100  -- number type
+        }
         local config = {
-            groupName = 123 -- should be string
+            value = "not_a_number"
+        }
+
+        local valid, error = ConfigStandards.validateConfig(config, minimalTemplate)
+
+        assert_false(valid)
+        assert_true(string.find(error or "", "Type mismatch") ~= nil)
+    end)
+
+    it("should detect missing required fields", function()
+        local config = {
+            -- Missing required groupName
+            triggerType = "RADAR"
         }
 
         local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.SECTOR_TEMPLATE)
 
         assert_false(valid)
-        assert_true(string.find(error or "", "Type mismatch") ~= nil)
+        assert_true(string.find(error or "", "Missing required field") ~= nil)
+    end)
+end)
+
+describe("ConfigStandards.validateEnum", function()
+    it("should pass when value is in allowed list", function()
+        local config = {
+            triggerType = "RADAR"
+        }
+
+        local valid, error = ConfigStandards.validateEnum(config, "triggerType", {
+            "IMMEDIATE", "RADAR", "TRIGGER_ZONE", "OBJECTIVE_COMPLETE"
+        }, "root")
+
+        assert_true(valid)
+        assert_nil(error)
+    end)
+
+    it("should fail when value is not in allowed list", function()
+        local config = {
+            triggerType = "INVALID_TYPE"
+        }
+
+        local valid, error = ConfigStandards.validateEnum(config, "triggerType", {
+            "IMMEDIATE", "RADAR", "TRIGGER_ZONE", "OBJECTIVE_COMPLETE"
+        }, "root")
+
+        assert_false(valid)
+        assert_true(string.find(error or "", "Invalid value") ~= nil)
+    end)
+
+    it("should pass when value is nil", function()
+        local config = {
+            -- triggerType is nil (optional in some contexts)
+        }
+
+        local valid, error = ConfigStandards.validateEnum(config, "triggerType", {
+            "IMMEDIATE", "RADAR", "TRIGGER_ZONE", "OBJECTIVE_COMPLETE"
+        }, "root")
+
+        assert_true(valid)
+        assert_nil(error)
     end)
 end)
 
