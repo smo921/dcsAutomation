@@ -356,7 +356,9 @@ function SpatialSolver.getVector(origin, heading, distance)
     local headingDeg = heading or 180
     local distanceNm = distance or 60
 
-    local headingRad = math.rad(headingDeg)
+    -- In aviation/military convention: 0° = North, 90° = East
+    -- Convert to mathematical convention where 0° = East
+    local headingRad = math.rad(90 - headingDeg)
     local distanceMeters = mist.utils.NMToMeters(distanceNm)
 
     -- Vector Projection away from Bullseye center
@@ -518,22 +520,24 @@ end
 RadarHandler.filterByAircraft = { "KC-135", "E-3A", "MQ-9 Reaper" }
 
 function RadarHandler.isThreat(aircraft)
-    -- Optional: filter by aircraft type
-    local threat = false
-    if aircraft and aircraft.object:isExist() then
-        -- Pull the actual vehicle/aircraft type name (e.g., "F-16C_50" or "AH-64D_BLK_II")
-        local typeName = aircraft.object:getTypeName() or "Unknown Type"
-        for _, filterType in ipairs(RadarHandler.filterByAircraft) do
-            if string.find(typeName, filterType, 1, true) then
-                local message = "[RadarCheck] Skipping " .. typeName .. " not a threat."
-                -- env.info(message)
-                return false -- return not threat immediately
-            else
-                threat = true        
-            end
+    -- Handle nil or missing aircraft data
+    if not aircraft or not aircraft.object or not aircraft.object:isExist() then
+        return false
+    end
+
+    -- Pull the actual vehicle/aircraft type name (e.g., "F-16C_50" or "AH-64D_BLK_II")
+    local typeName = aircraft.object:getTypeName() or "Unknown Type"
+
+    -- Check if aircraft type is in the non-threat filter list
+    for _, filterType in ipairs(RadarHandler.filterByAircraft) do
+        if string.find(typeName, filterType, 1, true) then
+            -- env.info("[RadarCheck] Skipping " .. typeName .. " not a threat.")
+            return false -- Not a threat
         end
     end
-    return threat
+
+    -- If not in the non-threat list, consider it a threat
+    return true
 end
 
 function RadarHandler.logThreat(radarUnit, det)
