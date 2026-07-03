@@ -51,6 +51,13 @@ run_tests.bat
 "C:/Program Files (x86)/Lua/5.1/lua.exe" tests/run_tests.lua
 ```
 
+**To run a single test file (for development):**
+```bash
+lua tests/test_config_standards.lua
+lua tests/test_spatial_solver.lua
+# etc.
+```
+
 **To install testing dependencies:**
 ```bash
 # Install Lua and Busted using Chocolatey
@@ -65,6 +72,22 @@ install_tests.bat
 - `tests/test_waypoint_builder.lua` - Waypoint and route building tests
 - `tests/test_awacs_tanker.lua` - AWACS/Tanker asset factory tests
 - `tests/test_group_check.lua` - Group lifecycle tests
+
+### Script Loading Order
+When initializing in DCS Mission Editor, load scripts in this strict sequence:
+
+1. **`mist.lua`** - Mission Scripting Tools library (prerequisite)
+2. **`asset_factories.lua`** - Low-level unit payload compilation and formatting
+3. **`unit_management.lua`** - Core solver engine, map marker registry, radar loops, and sector classes
+4. **`mission_test.lua`** - Centralized configuration manifest and launch engine loop
+
+---
+
+## Unit Conventions
+Configurations use non-metric units for user clarity; the framework handles conversion to DCS internal units:
+- **Altitude**: Feet (converted to meters)
+- **Distance**: Nautical Miles (converted to meters)
+- **Speed**: Knots (converted to m/s)
 
 ### Debugging
 - Use `env.info()` calls throughout the codebase for logging
@@ -110,6 +133,16 @@ The system implements a unified air placement system with three modes:
 3. **Mode 3: Direct coordinate positioning** - Places units at specific X/Y coordinates
 
 This system is used by aircraft, drones, AWACS, and tanker assets for consistent placement logic.
+
+## Reference Point System
+
+The framework uses a unified reference point system for coordinate positioning. All positions are computed relative to:
+- **Bullseye**: Global theater reference point (X/Y coordinates)
+- **Airbases**: Name-based lookup via `Airbase.getByName()` at runtime (coordinates stored in `mission_test.lua`)
+- **Trigger Zones**: Mission-defined zones in the DCS Mission Editor
+- **Battle Lines**: Custom line segments for linear deployment patterns
+
+This reference point system is also used by the **DCS Mission Editor** Electron app (`mission-editor/`), which provides a visual interface for creating configurations without writing Lua code.
 
 ## Trigger Types
 
