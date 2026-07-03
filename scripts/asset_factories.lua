@@ -540,6 +540,29 @@ function AssetFactories.buildCallsignTask(callsign, number)
     }
 end
 
+--- Builds TACAN frequency task for AWACS/Tanker.
+-- @param channel string TACAN channel (e.g., "1X", "12Y", "30X")
+-- @return table TACAN task configuration
+function AssetFactories.buildTACANTask(channel)
+    -- Extract channel number and band (X or Y)
+    local channelNum, band = string.match(channel, "^(%d+)([XY])$")
+    if not channelNum or not band then
+        env.warning(string.format("[AssetFactories] Invalid TACAN channel: %s", channel))
+        return nil
+    end
+
+    -- TACAN band: 0 = X band, 1 = Y band
+    local bandSetting = (band == "Y") and 1 or 0
+
+    return {
+        ["id"] = "SetTACAN",
+        ["params"] = {
+            ["channel"] = tonumber(channelNum),
+            ["band"] = bandSetting
+        }
+    }
+end
+
 --- Builds orbit task with various patterns.
 -- Altitude and speed are already in meters/m/s from UnitRouteWaypoint.new().
 -- Only converts NM for orbit dimensions (orbitLength, orbitWidth).
@@ -586,13 +609,19 @@ function AssetFactories.buildAWACSorTanker(originPoint, config)
     -- Build orbit task (converts altitude/speed from feet/knots to meters/m/s)
     local orbitTask = AssetFactories.buildOrbitTask(config)
 
-    -- Build frequency/callsign tasks if specified
+    -- Build frequency/callsign/TACAN tasks if specified
     local firstWaypointTasks = {}
     if config.frequency then
         table.insert(firstWaypointTasks, AssetFactories.buildFrequencyTask(config.frequency, config.modulation))
     end
     if config.callsign then
         table.insert(firstWaypointTasks, AssetFactories.buildCallsignTask(config.callsign, config.callsignNumber))
+    end
+    if config.tacanChannel then
+        local tacanTask = AssetFactories.buildTACANTask(config.tacanChannel)
+        if tacanTask then
+            table.insert(firstWaypointTasks, tacanTask)
+        end
     end
 
     -- Build route with orbit task at waypoint 2, optional tasks at waypoint 1
