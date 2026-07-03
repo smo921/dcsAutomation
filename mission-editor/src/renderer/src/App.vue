@@ -3,6 +3,7 @@
     <header class="app-header">
       <h1>DCS Mission Editor</h1>
       <nav class="header-nav">
+        <button @click="onLoadSample">Load Sample Data</button>
         <button @click="onExportJson">Export JSON</button>
         <button @click="onExportLua">Export Lua</button>
       </nav>
@@ -15,6 +16,13 @@
 
         <h2 style="margin-top: 20px;">Templates</h2>
         <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" />
+
+        <h2 style="margin-top: 20px;">Groups</h2>
+        <GroupManager
+          :groups="groups"
+          @group-change="onGroupChange"
+          @group-delete="onGroupDelete"
+        />
       </aside>
 
       <main class="main-content">
@@ -41,6 +49,7 @@ import { useRefpointsStore } from './stores/refpoints'
 import { useTemplatesStore } from './stores/templates'
 import ReferencePointManager from './components/refpoints/ReferencePointManager.vue'
 import TemplateLibrary from './components/templates/TemplateLibrary.vue'
+import GroupManager from './components/groups/GroupManager.vue'
 import GroupEditor from './components/editor/GroupEditor.vue'
 import WaypointEditor from './components/editor/WaypointEditor.vue'
 
@@ -54,10 +63,37 @@ const templateLibraryRef = ref(null)
 const groupEditorRef = ref(null)
 const waypointEditorRef = ref(null)
 
+// Groups state
+const groups = ref([])
+
 // Status tracking
 const status = ref({ message: '', type: 'info' })
 
 // Menu handlers
+const onLoadSample = async () => {
+  try {
+    const result = await window.api?.config?.loadSample?.()
+    if (result?.success) {
+      // Clear existing data and load sample
+      refpointsStore.clear()
+      templatesStore.clear()
+      refpointsStore.loadFromFullConfig(result.config)
+      templatesStore.loadFromFullConfig(result.config)
+
+      // Load groups if available
+      if (result.config.groups) {
+        groups.value = result.config.groups
+      }
+
+      setStatus('Sample data loaded successfully', 'success')
+    } else {
+      setStatus(`Failed to load sample: ${result?.error || 'Unknown error'}`, 'error')
+    }
+  } catch (e) {
+    setStatus(`Error loading sample: ${e.message}`, 'error')
+  }
+}
+
 const onExportJson = () => {
   window.api?.export?.json?.()
 }
@@ -66,10 +102,36 @@ const onExportLua = () => {
   window.api?.export?.lua?.()
 }
 
+// Group handlers
+const onGroupChange = (newGroups) => {
+  groups.value = newGroups
+}
+
+const onGroupDelete = (newGroups) => {
+  groups.value = newGroups
+}
+
 // Template handlers
 const onTemplateApplied = (template) => {
-  // TODO: Apply template to current group
-  setStatus(`Template "${template.name}" loaded`, 'success')
+  // Create a new group from template
+  const newGroup = {
+    groupName: `${template.name.replace(/\s+/g, '_')}_${groups.value.length + 1}`,
+    category: template.category === 'air' ? 'AIRPLANE' : 'GROUND',
+    triggerType: 'IMMEDIATE',
+    country: template.category === 'air' ? 'USA' : 'Russia',
+    task: '',
+    units: template.units || [],
+    placement: {
+      mode: 'BEARING_DISTANCE',
+      reference: 'bullseye',
+      referenceName: 'BULLSEYE_BLUE',
+      bearing: 0,
+      distance: 100
+    },
+    route: template.defaultRoute ? [{ ...template.defaultRoute }] : [{ type: 'orbit', altitude: 3000, speed: 500 }]
+  }
+  groups.value = [...groups.value, newGroup]
+  setStatus(`Template "${template.name}" applied to new group`, 'success')
 }
 
 // Status helper

@@ -44,6 +44,11 @@ function createWindow () {
           click: () => win.webContents.send('menu:export-lua')
         },
         { type: 'separator' },
+        {
+          label: 'Load JSON...',
+          click: () => win.webContents.send('menu:load-json')
+        },
+        { type: 'separator' },
         { role: 'quit' }
       ]
     },
@@ -152,6 +157,35 @@ function registerIpcHandlers () {
     const filePath = path.join(templatesDir, `${name}.json`)
     fs.writeFileSync(filePath, JSON.stringify(template, null, 2))
     return { success: true, path: filePath }
+  })
+
+  // Load JSON configuration
+  ipcMain.handle('config:load-json', async (event, filePath) => {
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File not found' }
+    }
+    try {
+      const content = fs.readFileSync(filePath, 'utf8')
+      const config = JSON.parse(content)
+      return { success: true, config: config }
+    } catch (e) {
+      return { success: false, error: e.message }
+    }
+  })
+
+  // Load sample configuration
+  ipcMain.handle('config:load-sample', async () => {
+    const samplePath = path.join(__dirname, '../../sample-data.json')
+    if (!fs.existsSync(samplePath)) {
+      return { success: false, error: 'Sample file not found' }
+    }
+    try {
+      const content = fs.readFileSync(samplePath, 'utf8')
+      const config = JSON.parse(content)
+      return { success: true, config: config }
+    } catch (e) {
+      return { success: false, error: e.message }
+    }
   })
 }
 

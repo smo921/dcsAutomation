@@ -48,11 +48,8 @@ const categories = ['air', 'ground', 'naval', 'support']
 
 // Load templates on mount
 onMounted(() => {
-  window.api?.templates?.loadAll?.().then(templates => {
-    if (templates) {
-      store.loadTemplates(templates)
-    }
-  })
+  // Templates loaded from store (can be populated via sample data)
+  // The App.vue loads templates into the store on mount
 })
 
 const getTemplatesByCategory = (category) => {

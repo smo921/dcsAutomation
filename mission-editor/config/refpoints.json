@@ -2,9 +2,44 @@
   "bullseyes": [
     {
       "name": "Blue"
+    },
+    {
+      "name": "Red"
     }
   ],
-  "airbases": [],
-  "zones": [],
-  "lines": []
+  "airbases": [
+    {
+      "name": "Kaliningrad"
+    },
+    {
+      "name": "Krymsk"
+    },
+    {
+      "name": "Hanko"
+    }
+  ],
+  "zones": [
+    {
+      "name": "Zone Alpha"
+    },
+    {
+      "name": "Zone Bravo"
+    }
+  ],
+  "lines": [
+    {
+      "name": "BLUE Front",
+      "startX": 400000,
+      "startY": 500000,
+      "endX": 550000,
+      "endY": 500000
+    },
+    {
+      "name": "RED Front",
+      "startX": 400000,
+      "startY": 600000,
+      "endX": 550000,
+      "endY": 600000
+    }
+  ]
 }

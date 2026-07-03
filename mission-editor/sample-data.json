@@ -1,0 +1,232 @@
+{
+  "refpoints": {
+    "bullseyes": [
+      {"name": "Blue"},
+      {"name": "Red"}
+    ],
+    "airbases": [
+      {"name": "Kaliningrad"},
+      {"name": "Krymsk"},
+      {"name": "Hanko"}
+    ],
+    "zones": [
+      {"name": "Zone Alpha"},
+      {"name": "Zone Bravo"}
+    ],
+    "lines": [
+      {"name": "BLUE Front", "startX": 400000, "startY": 500000, "endX": 550000, "endY": 500000},
+      {"name": "RED Front", "startX": 400000, "startY": 600000, "endX": 550000, "endY": 600000}
+    ]
+  },
+  "groups": [
+    {
+      "groupName": "Blue AWACS",
+      "category": "AIRPLANE",
+      "triggerType": "IMMEDIATE",
+      "country": "USA",
+      "task": "AWACS",
+      "frequency": 271,
+      "modulation": "AM",
+      "callsign": "MAGIC",
+      "callsignNumber": 1,
+      "placement": {
+        "mode": "BEARING_DISTANCE",
+        "reference": "BULLSEYE_BLUE",
+        "bearing": 45,
+        "distance": 50
+      },
+      "units": [
+        {"name": "AWACS Lead", "type": "E-3A", "quantity": 2}
+      ],
+      "route": [
+        {"type": "orbit", "radius": 5, "altitude": 31000, "speed": 290}
+      ]
+    },
+    {
+      "groupName": "Blue Tanker",
+      "category": "AIRPLANE",
+      "triggerType": "IMMEDIATE",
+      "country": "USA",
+      "task": "Refueling",
+      "frequency": 266,
+      "modulation": "AM",
+      "callsign": "TEXACO",
+      "callsignNumber": 1,
+      "tacanChannel": "12X",
+      "placement": {
+        "mode": "BEARING_DISTANCE",
+        "reference": "BULLSEYE_BLUE",
+        "bearing": 135,
+        "distance": 50
+      },
+      "units": [
+        {"name": "Tanker 1", "type": "KC-135", "quantity": 2}
+      ],
+      "route": [
+        {"type": "orbit", "radius": 5, "altitude": 31000, "speed": 290}
+      ]
+    },
+    {
+      "groupName": "Red Air Defense",
+      "category": "GROUND",
+      "triggerType": "RADAR",
+      "country": "Russia",
+      "units": [
+        {"name": "Radar 1", "type": "S-300PMU1", "quantity": 1},
+        {"name": "SAM Battery 1", "type": "S-300PMU1", "quantity": 4}
+      ],
+      "placement": {
+        "mode": "COORDINATE",
+        "x": 450000,
+        "y": 580000
+      },
+      "radarFilterEnabled": true,
+      "maxDetectRange": 200000,
+      "pointDefense": {
+        "minRadius": 10000,
+        "maxRadius": 50000,
+        "units": [
+          {"type": "SA-15", "quantity": 4}
+        ]
+      },
+      "triggeredUnits": {
+        "groupName": "Red Interceptors",
+        "category": "AIRPLANE",
+        "units": [
+          {"name": "Interceptor 1", "type": "MiG-29", "quantity": 4}
+        ],
+        "placement": {
+          "mode": "COORDINATE",
+          "x": 452000,
+          "y": 582000
+        },
+        "route": [
+          {"type": "turn_point", "x": 460000, "y": 590000, "altitude": 4000, "speed": 700}
+        ]
+      }
+    },
+    {
+      "groupName": "BLUE Strike Group",
+      "category": "AIRPLANE",
+      "triggerType": "OBJECTIVE_COMPLETE",
+      "parentGroupName": "Blue AWACS",
+      "country": "USA",
+      "units": [
+        {"name": "Strike Lead", "type": "F/A-18C", "quantity": 4},
+        {"name": "Escort 1", "type": "FA-18C", "quantity": 2}
+      ],
+      "placement": {
+        "mode": "AIRBASE_RAMP",
+        "reference": "Hanko",
+        "parking": 1
+      },
+      "route": [
+        {"type": "turn_point", "x": 480000, "y": 550000, "altitude": 3000, "speed": 500},
+        {"type": "orbit", "radius": 10, "altitude": 3000, "speed": 450}
+      ]
+    },
+    {
+      "groupName": "Red Ground Unit",
+      "category": "GROUND",
+      "triggerType": "TRIGGER_ZONE",
+      "zoneName": "Zone Alpha",
+      "country": "Russia",
+      "units": [
+        {"name": "Mech infantry", "type": "BMP-2", "quantity": 6},
+        {"name": "Tanks", "type": "T-90", "quantity": 4}
+      ],
+      "placement": {
+        "mode": "ZONE_CENTER",
+        "reference": "Zone Alpha"
+      },
+      "route": [
+        {"type": "turn_point", "x": 430000, "y": 560000, "altitude": 0, "speed": 40}
+      ]
+    },
+    {
+      "groupName": "NATO Patrol",
+      "category": "GROUND",
+      "triggerType": "RADAR",
+      "country": "NATO",
+      "units": [
+        {"name": "Patrol Lead", "type": "Leopard-2A5", "quantity": 3},
+        {"name": "Support", "type": "M109", "quantity": 2}
+      ],
+      "placement": {
+        "mode": "BEARING_DISTANCE",
+        "reference": "Hanko",
+        "bearing": 180,
+        "distance": 20
+      },
+      "route": [
+        {"type": "heading", "altitude": 0, "speed": 35}
+      ]
+    },
+    {
+      "groupName": "Reserve Force",
+      "category": "GROUND",
+      "triggerType": "IMMEDIATE",
+      "country": "USA",
+      "units": [
+        {"name": "Reserve Tank Platoon", "type": "Abrams", "quantity": 5},
+        {"name": "Reserve Mech", "type": "Bradley", "quantity": 4}
+      ],
+      "placement": {
+        "mode": "COORDINATE",
+        "x": 520000,
+        "y": 520000
+      },
+      "route": [
+        {"type": "orbit", "radius": 5, "altitude": 0, "speed": 30}
+      ]
+    }
+  ],
+  "templates": {
+    "air_templates": [
+      {
+        "id": "awacs_patrol",
+        "name": "AWACS Patrol",
+        "category": "air",
+        "units": [{"name": "AWACS Lead", "type": "E-3A", "quantity": 2}],
+        "defaultRoute": {"type": "orbit", "radius": 15, "altitude": 5000, "speed": 650}
+      },
+      {
+        "id": "air_defense_mig29",
+        "name": "Air Defense Patrol (MiG-29)",
+        "category": "air",
+        "units": [{"name": "Air Defense Lead", "type": "MiG-29", "quantity": 3}],
+        "defaultRoute": {"type": "orbit", "radius": 10, "altitude": 4500, "speed": 650}
+      },
+      {
+        "id": "close_air_support_a10",
+        "name": "Close Air Support (A-10)",
+        "category": "air",
+        "units": [{"name": "CAS Lead", "type": "A-10C", "quantity": 3}],
+        "defaultRoute": {"type": "heading", "altitude": 3000, "speed": 400}
+      }
+    ],
+    "ground_templates": [
+      {
+        "id": "air_defense_battery",
+        "name": "Air Defense Battery",
+        "category": "ground",
+        "units": [{"name": "SAM Battery", "type": "S-300PMU1", "quantity": 4}]
+      },
+      {
+        "id": "mechanized_infantry",
+        "name": "Mechanized Infantry Patrol",
+        "category": "ground",
+        "units": [{"name": "BMP Platoon", "type": "BMP-2", "quantity": 6}]
+      },
+      {
+        "id": "armored_company",
+        "name": "Armored Company",
+        "category": "ground",
+        "units": [
+          {"name": "Tank Platoon", "type": "T-90", "quantity": 4},
+          {"name": "Mech Platoon", "type": "BMP-2", "quantity": 3}
+        ]
+      }
+    ]
+  }
+}

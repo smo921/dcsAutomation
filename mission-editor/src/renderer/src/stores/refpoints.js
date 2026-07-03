@@ -61,6 +61,22 @@ export const useRefpointsStore = defineStore('refpoints', {
       this.lines = config.lines || []
     },
 
+    loadFromFullConfig(fullConfig) {
+      // Load reference points from a full config object
+      const refpoints = fullConfig.refpoints || {}
+      this.bullseyes = (refpoints.bullseyes || []).map(b => ({ name: b.name }))
+      this.airbases = (refpoints.airbases || []).map(ab => ({ name: ab.name }))
+      this.zones = refpoints.zones || []
+      this.lines = refpoints.lines || []
+    },
+
+    clear() {
+      this.bullseyes = []
+      this.airbases = []
+      this.zones = []
+      this.lines = []
+    },
+
     toConfig() {
       return {
         bullseyes: this.bullseyes,

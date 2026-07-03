@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld('api', {
     loadAll: () => ipcRenderer.invoke('template:load-all')
   },
 
+  // Configuration loading
+  config: {
+    loadJson: (filePath) => ipcRenderer.invoke('config:load-json', filePath),
+    loadSample: () => ipcRenderer.invoke('config:load-sample')
+  },
+
   // Export
   export: {
     json: () => ipcRenderer.send('menu:export-json'),
