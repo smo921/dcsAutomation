@@ -1,0 +1,26 @@
+{
+  "name": "dcs-mission-editor",
+  "version": "0.1.0",
+  "description": "DCS World Dynamic Mission Editor",
+  "author": "Stephen Oberther",
+  "license": "ISC",
+  "type": "commonjs",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "pinia": "^2.1.7",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "electron": "^33.2.1",
+    "electron-vite": "^2.3.0",
+    "vite": "^5.4.11"
+  }
+}

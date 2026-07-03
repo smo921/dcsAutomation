@@ -1,0 +1,96 @@
+[
+  {
+    "id": "ground_convoy_trucks",
+    "name": "Ground Convoy (Trucks)",
+    "description": "Truck convoy with light defense",
+    "category": "ground",
+    "units": [
+      {
+        "name": "Lead Truck",
+        "type": "Ural-4320",
+        "quantity": 2,
+        "role": "vehicle"
+      },
+      {
+        "name": "Support Truck",
+        "type": "ZIL-131",
+        "quantity": 2,
+        "role": "vehicle"
+      }
+    ],
+    "defaultRoute": {
+      "type": "waypoint",
+      "altitude": 0,
+      "speed": 60
+    },
+    "defaultPosition": {
+      "type": "battle_line_offset",
+      "reference": "Frontline Road",
+      "distance": 5000
+    }
+  },
+  {
+    "id": "sam_battery_s300",
+    "name": "SAM Battery (S-300)",
+    "description": "S-300PMU air defense battery",
+    "category": "ground",
+    "units": [
+      {
+        "name": "S-300 Launcher 1",
+        "type": "S-300PS",
+        "quantity": 2,
+        "role": "sam"
+      },
+      {
+        "name": "S-300 Radar",
+        "type": "S-300PS",
+        "quantity": 1,
+        "role": "radar"
+      },
+      {
+        "name": "Command Post",
+        "type": "KAMAZ-43101",
+        "quantity": 1,
+        "role": "command"
+      }
+    ],
+    "defaultRoute": null,
+    "defaultPosition": {
+      "type": "zone_offset",
+      "reference": "Defense_Zone",
+      "bearing": 0,
+      "distance": 0
+    }
+  },
+  {
+    "id": "armor_battalion_t72",
+    "name": "Armor Battalion (T-72)",
+    "description": "T-72B3 tank company",
+    "category": "ground",
+    "units": [
+      {
+        "name": "Tank Lead",
+        "type": "T-72B3",
+        "quantity": 4,
+        "role": "tank"
+      },
+      {
+        "name": "Mechanized",
+        "type": "BTR-82",
+        "quantity": 4,
+        "role": "mechanized"
+      }
+    ],
+    "defaultRoute": {
+      "type": "waypoint",
+      "altitude": 0,
+      "speed": 50
+    },
+    "defaultPosition": {
+      "type": "bullseye_offset",
+      "reference": "BULLSEYE_ALPHA",
+      "bearing": 180,
+      "distance": 80000
+    }
+  }
+]

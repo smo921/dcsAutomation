@@ -1,0 +1,116 @@
+[
+  {
+    "id": "awacs_patrol_su30",
+    "name": "AWACS Patrol (Su-30)",
+    "description": "Su-30 AWACS patrol with tanker support",
+    "category": "air",
+    "units": [
+      {
+        "name": "AWACS Lead",
+        "type": "Su-30SM",
+        "quantity": 2,
+        "role": "awacs"
+      },
+      {
+        "name": "Tanker",
+        "type": "IL-78M",
+        "quantity": 1,
+        "role": "tanker"
+      }
+    ],
+    "defaultRoute": {
+      "type": "orbit",
+      "radius": 15,
+      "altitude": 5000,
+      "speed": 700,
+      "pattern": "clockwise"
+    },
+    "defaultPosition": {
+      "type": "airbase_offset",
+      "reference": "Kaliningrad",
+      "bearing": 0,
+      "distance": 50000
+    }
+  },
+  {
+    "id": "air_defense_mig29",
+    "name": "Air Defense Patrol (MiG-29)",
+    "description": "MiG-29 air superiority patrol",
+    "category": "air",
+    "units": [
+      {
+        "name": "Air Defense Lead",
+        "type": "MiG-29",
+        "quantity": 3,
+        "role": "interceptor"
+      }
+    ],
+    "defaultRoute": {
+      "type": "orbit",
+      "radius": 10,
+      "altitude": 4500,
+      "speed": 650
+    },
+    "defaultPosition": {
+      "type": "bullseye_offset",
+      "reference": "BULLSEYE_ALPHA",
+      "bearing": 0,
+      "distance": 100000
+    }
+  },
+  {
+    "id": "strike_tu95",
+    "name": "Strategic Bomber Strike (Tu-95)",
+    "description": "Tu-95MS strike with escort",
+    "category": "air",
+    "units": [
+      {
+        "name": "Bomber Lead",
+        "type": "Tu-95MS",
+        "quantity": 2,
+        "role": "bomber"
+      },
+      {
+        "name": "Escort",
+        "type": "Su-35",
+        "quantity": 2,
+        "role": "escort"
+      }
+    ],
+    "defaultRoute": {
+      "type": "heading",
+      "altitude": 9000,
+      "speed": 800
+    },
+    "defaultPosition": {
+      "type": "airbase_offset",
+      "reference": "Krymsk",
+      "bearing": 0,
+      "distance": 30000
+    }
+  },
+  {
+    "id": "close_air_support_a10",
+    "name": "Close Air Support (A-10)",
+    "description": "A-10 ground attack patrol",
+    "category": "air",
+    "units": [
+      {
+        "name": "CAS Lead",
+        "type": "A-10C",
+        "quantity": 3,
+        "role": "cas"
+      }
+    ],
+    "defaultRoute": {
+      "type": "heading",
+      "altitude": 3000,
+      "speed": 400
+    },
+    "defaultPosition": {
+      "type": "battle_line_offset",
+      "reference": "BLUE Front",
+      "distance": 20000
+    }
+  }
+]

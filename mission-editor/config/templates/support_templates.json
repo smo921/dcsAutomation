@@ -1,0 +1,61 @@
+[
+  {
+    "id": "awacs_support",
+    "name": "AWACS Support",
+    "description": "AWACS and tanker combination",
+    "category": "support",
+    "units": [
+      {
+        "name": "AWACS",
+        "type": "E-3 Sentry",
+        "quantity": 1,
+        "role": "awacs"
+      },
+      {
+        "name": "Tanker",
+        "type": "KC-135",
+        "quantity": 2,
+        "role": "tanker"
+      }
+    ],
+    "defaultRoute": {
+      "type": "orbit",
+      "radius": 20,
+      "altitude": 9000,
+      "speed": 800
+    },
+    "defaultPosition": {
+      "type": "bullseye_offset",
+      "reference": "BULLSEYE_ALPHA",
+      "bearing": 45,
+      "distance": 150000
+    }
+  },
+  {
+    "id": "air_defense_hq",
+    "name": "Air Defense HQ",
+    "description": "Air defense command and control",
+    "category": "support",
+    "units": [
+      {
+        "name": "Command Post",
+        "type": "BTR-80",
+        "quantity": 2,
+        "role": "command"
+      },
+      {
+        "name": "RADAR Station",
+        "type": "P-18",
+        "quantity": 1,
+        "role": "radar"
+      }
+    ],
+    "defaultRoute": null,
+    "defaultPosition": {
+      "type": "airbase_offset",
+      "reference": "Airbase_Alpha",
+      "bearing": 0,
+      "distance": 0
+    }
+  }
+]
