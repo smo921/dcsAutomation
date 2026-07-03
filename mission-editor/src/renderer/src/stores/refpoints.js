@@ -26,8 +26,9 @@ export const useRefpointsStore = defineStore('refpoints', {
       this.airbases.splice(index, 1)
     },
 
-    addZone(name, centerX, centerY, radius) {
-      this.zones.push({ name, centerX, centerY, radius })
+    addZone(name) {
+      // Zones only need name - geometry is defined in DCS Mission Editor
+      this.zones.push({ name })
     },
 
     removeZone(index) {

@@ -14,7 +14,7 @@ function createWindow () {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, '../preload/preload.js')
     },
     backgroundColor: '#1e1e1e',
     autoHideMenuBar: true
@@ -81,7 +81,7 @@ function createWindow () {
 function registerIpcHandlers () {
   // Template loading
   ipcMain.handle('template:load-all', async (event) => {
-    const templatesDir = path.join(__dirname, '../config/templates')
+    const templatesDir = path.join(__dirname, '../../config/templates')
     if (!fs.existsSync(templatesDir)) return []
 
     const files = fs.readdirSync(templatesDir)
@@ -102,13 +102,13 @@ function registerIpcHandlers () {
 
   // Reference points
   ipcMain.handle('refpoints:load', async () => {
-    const refpointsPath = path.join(__dirname, '../config/refpoints.json')
+    const refpointsPath = path.join(__dirname, '../../config/refpoints.json')
     if (!fs.existsSync(refpointsPath)) return { bullseyes: [], airbases: [], zones: [], lines: [] }
     return JSON.parse(fs.readFileSync(refpointsPath, 'utf8'))
   })
 
   ipcMain.handle('refpoints:save', async (event, data) => {
-    const refpointsPath = path.join(__dirname, '../config/refpoints.json')
+    const refpointsPath = path.join(__dirname, '../../config/refpoints.json')
     fs.writeFileSync(refpointsPath, JSON.stringify(data, null, 2))
     return true
   })
@@ -144,7 +144,7 @@ function registerIpcHandlers () {
 
   // Template save
   ipcMain.handle('template:save', async (event, template, name) => {
-    const templatesDir = path.join(__dirname, '../config/templates')
+    const templatesDir = path.join(__dirname, '../../config/templates')
     if (!fs.existsSync(templatesDir)) {
       fs.mkdirSync(templatesDir, { recursive: true })
     }
