@@ -11,24 +11,29 @@
 
     <div class="template-categories">
       <div v-for="category in categories" :key="category" class="category-section">
-        <h4>{{ category }}</h4>
-        <div class="templates-list">
-          <div
-            v-for="template in getTemplatesByCategory(category)"
-            :key="template.id || template.name"
-            class="template-item"
-            @click="applyTemplate(template)"
-          >
-            <div class="template-info">
-              <h5>{{ template.name }}</h5>
-              <p v-if="template.description" class="template-desc">
-                {{ template.description }}
-              </p>
-            </div>
-            <div class="template-meta">
-              <span v-if="template.units" class="unit-count">
-                {{ Array.isArray(template.units) ? template.units.length : 0 }} units
-              </span>
+        <div class="category-header" @click="toggleCategory(category)">
+          <h4>{{ category }}</h4>
+          <span class="expand-icon" :class="{ expanded: expandedCategories[category] }">▼</span>
+        </div>
+        <div v-if="expandedCategories[category]" class="category-content">
+          <div class="templates-list">
+            <div
+              v-for="template in getTemplatesByCategory(category)"
+              :key="template.id || template.name"
+              class="template-item"
+              @click="applyTemplate(template)"
+            >
+              <div class="template-info">
+                <h5>{{ template.name }}</h5>
+                <p v-if="template.description" class="template-desc">
+                  {{ template.description }}
+                </p>
+              </div>
+              <div class="template-meta">
+                <span v-if="template.units" class="unit-count">
+                  {{ Array.isArray(template.units) ? template.units.length : 0 }} units
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -45,6 +50,18 @@ const store = useTemplatesStore()
 
 const searchQuery = ref('')
 const categories = ['air', 'ground', 'naval', 'support']
+
+// Track expanded categories
+const expandedCategories = ref({
+  air: true,
+  ground: true,
+  naval: true,
+  support: true
+})
+
+const toggleCategory = (category) => {
+  expandedCategories.value[category] = !expandedCategories.value[category]
+}
 
 // Load templates on mount
 onMounted(() => {
@@ -106,13 +123,49 @@ const templateSelect = (template) => {
   margin-bottom: 16px;
 }
 
-.category-section h4 {
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  padding: 8px 0;
+}
+
+.category-header:hover {
+  opacity: 0.8;
+}
+
+.category-header h4 {
   font-size: 12px;
   text-transform: uppercase;
   color: #888;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #3e3e42;
+  margin: 0;
+}
+
+.expand-icon {
+  font-size: 10px;
+  color: #888;
+  transition: transform 0.2s;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.category-content {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 500px;
+    opacity: 1;
+  }
 }
 
 .templates-list {

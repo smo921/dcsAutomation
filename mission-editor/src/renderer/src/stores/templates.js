@@ -8,7 +8,8 @@ export const useTemplatesStore = defineStore('templates', {
       ground: [],
       naval: [],
       support: []
-    }
+    },
+    waypointTemplates: []
   }),
 
   actions: {
@@ -26,6 +27,16 @@ export const useTemplatesStore = defineStore('templates', {
       }
     },
 
+    loadWaypointTemplates(waypointTemplates) {
+      // waypointTemplates is object with keys like 'awacs_orbit', 'cas_sweep'
+      if (waypointTemplates) {
+        this.waypointTemplates = Object.entries(waypointTemplates).map(([key, value]) => ({
+          id: key,
+          ...value
+        }))
+      }
+    },
+
     loadFromFullConfig(fullConfig) {
       // Load templates from a full config object
       const templates = fullConfig.templates || {}
@@ -38,12 +49,17 @@ export const useTemplatesStore = defineStore('templates', {
           }
         }
       }
+
+      // Load waypoint templates
+      const waypointTemplates = fullConfig.waypoint_templates || {}
+      this.loadWaypointTemplates(waypointTemplates)
     },
 
     clear() {
       for (const category of Object.keys(this.categories)) {
         this.categories[category] = []
       }
+      this.waypointTemplates = []
     },
 
     getTemplateById(id) {
@@ -52,6 +68,10 @@ export const useTemplatesStore = defineStore('templates', {
         if (found) return found
       }
       return null
+    },
+
+    getWaypointTemplateById(id) {
+      return this.waypointTemplates.find(t => t.id === id) || null
     },
 
     getCategories() {

@@ -10,28 +10,60 @@
     </header>
 
     <div class="app-content">
-      <aside class="sidebar">
-        <h2>Reference Points</h2>
-        <ReferencePointManager ref="refpointManagerRef" />
+      <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }" @mousedown="startSidebarResize">
+        <CollapsibleSection v-model:expanded="sections.referencePoints" title="Reference Points">
+          <ReferencePointManager ref="refpointManagerRef" />
+        </CollapsibleSection>
 
-        <h2 style="margin-top: 20px;">Templates</h2>
-        <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" />
+        <CollapsibleSection v-model:expanded="sections.templates" title="Templates" style="margin-top: 20px;">
+          <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" />
+        </CollapsibleSection>
 
-        <h2 style="margin-top: 20px;">Groups</h2>
-        <GroupManager
-          :groups="groups"
-          :templates="templatesStore.categories"
-          @group-change="onGroupChange"
-          @group-delete="onGroupDelete"
-        />
+        <CollapsibleSection v-model:expanded="sections.waypointTemplates" title="Waypoint Templates" style="margin-top: 20px;">
+          <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" />
+        </CollapsibleSection>
       </aside>
 
       <main class="main-content">
-        <h2>Group Configuration</h2>
-        <GroupEditor ref="groupEditorRef" />
+        <div class="content-tabs">
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'groups' }"
+            @click="activeTab = 'groups'"
+          >
+            Groups
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'waypoints' }"
+            @click="activeTab = 'waypoints'"
+          >
+            Waypoints
+          </button>
+        </div>
 
-        <h2 style="margin-top: 20px;">Waypoints</h2>
-        <WaypointEditor ref="waypointEditorRef" />
+        <!-- Fixed divider - not resizeable -->
+        <div class="content-divider"></div>
+
+        <div class="tab-content">
+          <div v-if="activeTab === 'groups'" class="group-content-layout">
+            <GroupManager
+              ref="groupManagerRef"
+              :groups="groups"
+              :templates="templatesStore.categories"
+              @group-change="onGroupChange"
+              @group-delete="onGroupDelete"
+              @group-select="onGroupSelected"
+            />
+          </div>
+
+          <div v-if="activeTab === 'waypoints'" class="waypoint-content-layout">
+            <WaypointEditor v-model:waypoints="waypoints" />
+            <div v-if="waypoints.length > 0" class="waypoint-count">
+              <p>Waypoints: {{ waypoints.length }} total</p>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
 
@@ -45,14 +77,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRefpointsStore } from './stores/refpoints'
 import { useTemplatesStore } from './stores/templates'
 import ReferencePointManager from './components/refpoints/ReferencePointManager.vue'
 import TemplateLibrary from './components/templates/TemplateLibrary.vue'
+import WaypointTemplateLibrary from './components/templates/WaypointTemplateLibrary.vue'
 import GroupManager from './components/groups/GroupManager.vue'
-import GroupEditor from './components/editor/GroupEditor.vue'
 import WaypointEditor from './components/editor/WaypointEditor.vue'
+import CollapsibleSection from './components/CollapsibleSection.vue'
+import { useResize } from './composables/useResize'
 
 // Stores
 const refpointsStore = useRefpointsStore()
@@ -61,11 +95,40 @@ const templatesStore = useTemplatesStore()
 // Refs for component access
 const refpointManagerRef = ref(null)
 const templateLibraryRef = ref(null)
-const groupEditorRef = ref(null)
-const waypointEditorRef = ref(null)
+const waypointTemplateLibraryRef = ref(null)
+const groupManagerRef = ref(null)
+
+// Track selected group index for waypoint template application
+const selectedGroupIndex = ref(null)
+
+// Tab state
+const activeTab = ref('groups')
+
+// Sidebar sections state - all collapsed by default
+const sections = ref({
+  referencePoints: false,
+  templates: false,
+  waypointTemplates: false
+})
+
+// Sidebar resize state
+const sidebarWidth = ref(320)
+
+// Use resize composable for sidebar
+const { startResize: startSidebarResize } = useResize({
+  size: sidebarWidth,
+  minSize: 280,
+  maxSize: 400,
+  direction: 'horizontal'
+})
+
+// Main content ref (for potential future use)
 
 // Groups state
 const groups = ref([])
+
+// Waypoints state (for standalone editing)
+const waypoints = ref([])
 
 // Status tracking
 const status = ref({ message: '', type: 'info' })
@@ -106,6 +169,10 @@ const onExportLua = () => {
 // Group handlers
 const onGroupChange = (newGroups) => {
   groups.value = newGroups
+}
+
+const onGroupSelected = (index) => {
+  selectedGroupIndex.value = index
 }
 
 const onGroupDelete = (newGroups) => {
@@ -159,6 +226,47 @@ onMounted(() => {
     }
   })
 })
+
+// Waypoint template handlers
+const onWaypointTemplateApplied = (template) => {
+  // Check if there's a selected group to apply the template to
+  if (selectedGroupIndex.value !== null && selectedGroupIndex.value !== undefined) {
+    const group = groups.value[selectedGroupIndex.value]
+    if (group) {
+      // Apply waypoint template to group route
+      group.route = template.waypoints || []
+      groups.value = [...groups.value] // Trigger reactivity
+      setStatus(`Waypoint template "${template.name}" applied to "${group.groupName}"`, 'success')
+      return
+    }
+  }
+
+  // If no group selected, create a new group from the waypoint template
+  const newGroup = {
+    groupName: `${template.name.replace(/\s+/g, '_')}_${groups.value.length + 1}`,
+    category: 'AIRPLANE',
+    triggerType: 'IMMEDIATE',
+    country: 'USA',
+    task: '',
+    units: [
+      {
+        name: `${template.name} Lead`,
+        type: 'F/A-18C',
+        quantity: 2
+      }
+    ],
+    placement: {
+      mode: 'BEARING_DISTANCE',
+      reference: 'bullseye',
+      referenceName: 'BULLSEYE_BLUE',
+      bearing: 0,
+      distance: 100
+    },
+    route: template.waypoints || []
+  }
+  groups.value = [...groups.value, newGroup]
+  setStatus(`Waypoint template "${template.name}" applied to new group`, 'success')
+}
 </script>
 
 <style>
@@ -210,6 +318,35 @@ body {
   background: #1177bb;
 }
 
+/* Tab buttons for Groups/Waypoints */
+.content-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tab-btn {
+  background: #3c3c3c;
+  color: #d4d4d4;
+  border: 1px solid #454545;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  background: #454545;
+}
+
+.tab-btn.active {
+  background: #0e639c;
+  border-color: #0e639c;
+  color: white;
+}
+
 .app-content {
   display: flex;
   flex: 1;
@@ -217,33 +354,82 @@ body {
 }
 
 .sidebar {
+  flex: 0 0 auto;
   width: 320px;
+  height: 100%;
   background: #252526;
   border-right: 1px solid #3e3e42;
   padding: 16px;
   overflow-y: auto;
+  position: relative;
 }
 
-.sidebar h2 {
-  font-size: 14px;
-  text-transform: uppercase;
-  color: #888;
-  margin-bottom: 12px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #3e3e42;
+/* Sidebar resize handle */
+.sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 10;
+}
+
+.sidebar::after:hover {
+  background: #0e639c;
 }
 
 .main-content {
   flex: 1;
   padding: 20px;
-  overflow-y: auto;
+  overflow: hidden;
   background: #1e1e1e;
+  display: flex;
+  flex-direction: column;
 }
 
 .main-content h2 {
   font-size: 16px;
   color: #ffffff;
   margin-bottom: 12px;
+}
+
+/* Fixed divider between tabs and content */
+.content-divider {
+  height: 6px;
+  background: #3e3e42;
+  cursor: default;
+  flex: 0 0 auto;
+}
+
+.tab-content {
+  overflow: hidden;
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Content layout wrappers for groups and waypoints */
+.group-content-layout,
+.waypoint-content-layout {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Waypoint count message */
+.waypoint-count {
+  margin-top: 12px;
+}
+
+.waypoint-count p {
+  font-size: 11px;
+  color: #888;
 }
 
 .app-footer {

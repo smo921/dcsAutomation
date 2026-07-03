@@ -188,21 +188,21 @@
         "name": "AWACS Patrol",
         "category": "air",
         "units": [{"name": "AWACS Lead", "type": "E-3A", "quantity": 2}],
-        "defaultRoute": {"type": "orbit", "radius": 15, "altitude": 5000, "speed": 650}
+        "waypointTemplate": "awacs_orbit"
       },
       {
         "id": "air_defense_mig29",
         "name": "Air Defense Patrol (MiG-29)",
         "category": "air",
         "units": [{"name": "Air Defense Lead", "type": "MiG-29", "quantity": 3}],
-        "defaultRoute": {"type": "orbit", "radius": 10, "altitude": 4500, "speed": 650}
+        "waypointTemplate": "interceptor_scramble"
       },
       {
         "id": "close_air_support_a10",
         "name": "Close Air Support (A-10)",
         "category": "air",
         "units": [{"name": "CAS Lead", "type": "A-10C", "quantity": 3}],
-        "defaultRoute": {"type": "heading", "altitude": 3000, "speed": 400}
+        "waypointTemplate": "cas_sweep"
       }
     ],
     "ground_templates": [
@@ -228,5 +228,44 @@
         ]
       }
     ]
+  },
+  "waypoint_templates": {
+    "awacs_orbit": {
+      "name": "AWACS Orbit Pattern",
+      "waypoints": [
+        {"type": "orbit", "x": 0, "y": 0, "altitude": 31000, "speed": 290, "radius": 5, "pattern": "clockwise"},
+        {"type": "orbit", "x": 5, "y": 0, "altitude": 31000, "speed": 290, "radius": 5, "pattern": "clockwise"}
+      ]
+    },
+    "cas_sweep": {
+      "name": "CAS Sweep Pattern",
+      "waypoints": [
+        {"type": "turn_point", "x": 10, "y": 5, "altitude": 3000, "speed": 500, "heading": 0},
+        {"type": "orbit", "x": 0, "y": 0, "altitude": 3000, "speed": 400, "radius": 3, "pattern": "clockwise"},
+        {"type": "turn_point", "x": -10, "y": 5, "altitude": 3000, "speed": 500, "heading": 180}
+      ]
+    },
+    "striker_flight": {
+      "name": "Striker Flight Attack Pattern",
+      "waypoints": [
+        {"type": "turn_point", "x": 5, "y": 10, "altitude": 5000, "speed": 600, "heading": 0},
+        {"type": "turn_point", "x": 0, "y": 15, "altitude": 5000, "speed": 600, "heading": 0},
+        {"type": "turn_point", "x": -5, "y": 10, "altitude": 5000, "speed": 600, "heading": 0}
+      ]
+    },
+    "tanker_station": {
+      "name": "Tanker Station Pattern",
+      "waypoints": [
+        {"type": "orbit", "x": 0, "y": 0, "altitude": 25000, "speed": 300, "radius": 8, "pattern": "clockwise"},
+        {"type": "orbit", "x": 8, "y": 0, "altitude": 25000, "speed": 300, "radius": 8, "pattern": "clockwise"}
+      ]
+    },
+    "interceptor_scramble": {
+      "name": "Interceptor Scramble Pattern",
+      "waypoints": [
+        {"type": "turn_point", "x": 0, "y": 0, "altitude": 40000, "speed": 700, "heading": 0},
+        {"type": "turn_point", "x": 10, "y": 5, "altitude": 40000, "speed": 700, "heading": 90}
+      ]
+    }
   }
 }

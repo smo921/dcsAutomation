@@ -1,110 +1,138 @@
 <template>
   <div class="waypoint-editor">
-    <div class="waypoint-list">
-      <div
-        v-for="(wp, index) in waypoints"
-        :key="index"
-        class="waypoint-item"
-        :class="{ active: activeWaypoint === index }"
-        @click="setActiveWaypoint(index)"
-      >
-        <div class="waypoint-header">
-          <span class="waypoint-index">{{ index + 1 }}</span>
-          <span class="waypoint-type">{{ wp.type }}</span>
-          <button class="btn-remove" @click.stop="removeWaypoint(index)">✕</button>
+    <!-- Scrollable Waypoint List -->
+    <div class="waypoint-list-scroll" :style="{ height: listHeight + 'px' }">
+      <div class="waypoint-list">
+        <div
+          v-for="(wp, index) in waypoints"
+          :key="index"
+          class="waypoint-item"
+          :class="{ active: activeWaypoint === index }"
+          :data-waypoint-num="index + 1"
+          @click="setActiveWaypoint(index)"
+        >
+          <div class="waypoint-header">
+            <span class="waypoint-index">{{ index + 1 }}</span>
+            <span class="waypoint-type">{{ wp.type }}</span>
+            <button class="btn-remove" @click.stop="removeWaypoint(index)">✕</button>
+          </div>
+          <div class="waypoint-coords" v-if="wp.x !== undefined && wp.y !== undefined">
+            {{ Math.round(wp.x) }}, {{ Math.round(wp.y) }}
+          </div>
+          <div class="waypoint-details" v-else>
+            <span v-if="wp.altitude">Alt: {{ wp.altitude }}</span>
+            <span v-if="wp.altitude && wp.speed"> | </span>
+            <span v-if="wp.speed">Spd: {{ wp.speed }}</span>
+          </div>
         </div>
-        <div class="waypoint-coords" v-if="wp.x && wp.y">
-          {{ Math.round(wp.x) }}, {{ Math.round(wp.y) }}
-        </div>
-      </div>
 
-      <button class="btn-add-waypoint" @click="addWaypoint">
-        <span>+</span> Add Waypoint
-      </button>
+        <button class="btn-add-waypoint" @click="addWaypoint">
+          <span>+</span> Add Waypoint
+        </button>
+      </div>
+    </div>
+
+    <!-- Resizeable Divider -->
+    <div class="content-resizer" @mousedown="startListResize">
+      <span class="resizer-line"></span>
     </div>
 
     <div class="waypoint-editor-form" v-if="activeWaypoint !== null">
-      <h4>Waypoint {{ activeWaypoint + 1 }}</h4>
-
-      <div class="form-group">
-        <label>Waypoint Type</label>
-        <select v-model="activeWp.type" class="form-input">
-          <option value="takeoff">Takeoff</option>
-          <option value="orbit">Orbit</option>
-          <option value="heading">Heading</option>
-          <option value="waypoint">Waypoint</option>
-          <option value="landing">Landing</option>
-        </select>
-      </div>
-
       <div class="form-row">
         <div class="form-group">
-          <label>X</label>
-          <input type="number" v-model="activeWp.x" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label>Y</label>
-          <input type="number" v-model="activeWp.y" class="form-input" />
+          <label>Waypoint Type</label>
+          <select v-model="activeWp.type" class="form-input">
+            <option value="orbit">Orbit</option>
+            <option value="turn_point">Turning Point</option>
+            <option value="heading">Heading</option>
+            <option value="landing">Landing</option>
+          </select>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label>Altitude (m)</label>
+          <label>Altitude (feet)</label>
           <input type="number" v-model="activeWp.altitude" class="form-input" />
         </div>
         <div class="form-group">
-          <label>Speed (km/h)</label>
+          <label>Speed (knots)</label>
           <input type="number" v-model="activeWp.speed" class="form-input" />
         </div>
       </div>
 
-      <div v-if="activeWp.type === 'orbit'" class="form-group">
-        <label>Orbit Radius (km)</label>
-        <input type="number" v-model="activeWp.radius" class="form-input" />
+      <div v-if="activeWp.type === 'orbit'" class="form-row">
+        <div class="form-group">
+          <label>Orbit Radius (NM)</label>
+          <input type="number" v-model="activeWp.radius" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Pattern</label>
+          <select v-model="activeWp.pattern" class="form-input">
+            <option value="clockwise">Clockwise</option>
+            <option value="counterclockwise">Counter-Clockwise</option>
+          </select>
+        </div>
       </div>
 
-      <div v-if="activeWp.type === 'heading'" class="form-group">
-        <label>Heading (°)</label>
-        <input type="number" v-model="activeWp.heading" class="form-input" />
+      <div v-if="activeWp.type === 'turn_point' || activeWp.type === 'heading'" class="form-row">
+        <div class="form-group">
+          <label>X Offset (NM)</label>
+          <input type="number" v-model="activeWp.x" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Y Offset (NM)</label>
+          <input type="number" v-model="activeWp.y" class="form-input" />
+        </div>
       </div>
 
-      <div class="form-group">
-        <label>Airbase (for takeoff/landing)</label>
+      <div v-if="activeWp.type === 'landing'" class="form-group">
+        <label>Landing Airbase</label>
         <select v-model="activeWp.airbase" class="form-input">
           <option v-for="a in refpoints.airbases" :key="a.name" :value="a.name">
             {{ a.name }}
           </option>
         </select>
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bearing (°)</label>
+          <input type="number" v-model="activeWp.heading" min="0" max="360" class="form-input" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
+import { useResize } from '../../composables/useResize'
 
 const store = useRefpointsStore()
 
 const refpoints = ref({
-  bullseyes: store.bullseyes,
-  airbases: store.airbases,
-  zones: store.zones,
-  lines: store.lines
+  airbases: store.airbases
 })
+
+// Watch store changes to update refpoints
+watch(() => store.airbases, (newAirbases) => {
+  refpoints.value.airbases = newAirbases
+}, { immediate: true })
 
 const waypoints = ref([])
 const activeWaypoint = ref(null)
 
-const activeWp = reactive({
-  type: 'heading',
+const activeWp = ref({
+  type: 'orbit',
   x: 0,
   y: 0,
   altitude: 3000,
-  speed: 600,
+  speed: 500,
   heading: 0,
   radius: 10,
+  pattern: 'clockwise',
   airbase: ''
 })
 
@@ -114,31 +142,21 @@ const setActiveWaypoint = (index) => {
     return
   }
   activeWaypoint.value = index
-  // Load waypoint data
   const wp = waypoints.value[index]
-  Object.assign(activeWp, {
-    type: wp.type || 'heading',
-    x: wp.x || 0,
-    y: wp.y || 0,
-    altitude: wp.altitude || 3000,
-    speed: wp.speed || 600,
-    heading: wp.heading || 0,
-    radius: wp.radius || 10,
-    airbase: wp.airbase || ''
-  })
+  activeWp.value = { ...wp }
 }
 
+// Use resize composable for list/form divider
+const listHeight = ref(250)
+const { startResize: startListResize, stopResize: stopListResize, onResize: onListResize } = useResize({
+  size: listHeight,
+  minSize: 100,
+  maxSize: 500,
+  direction: 'vertical'
+})
+
 const addWaypoint = () => {
-  waypoints.value.push({
-    type: 'heading',
-    x: 0,
-    y: 0,
-    altitude: 3000,
-    speed: 600,
-    heading: 0,
-    radius: 10,
-    airbase: ''
-  })
+  waypoints.value.push({ ...activeWp.value })
   activeWaypoint.value = waypoints.value.length - 1
 }
 
@@ -152,23 +170,58 @@ const removeWaypoint = (index) => {
   }
 }
 
-onMounted(() => {
-  window.api?.refpoints?.load?.().then(config => {
-    if (config) {
-      refpoints.value.airbases = config.airbases || []
-    }
-  })
-})
+const emit = defineEmits(['update:waypoints'])
+watch(waypoints, (newWaypoints) => {
+  emit('update:waypoints', newWaypoints)
+}, { deep: true })
 </script>
 
 <style scoped>
 .waypoint-editor {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollable Waypoint List Container */
+.waypoint-list-scroll {
+  flex: 0 0 auto;
+  overflow-y: auto;
+  min-height: 100px;
+  margin-bottom: 12px;
+}
+
+/* Resizeable Divider between list and editor */
+.content-resizer {
+  height: 8px;
+  background: #3e3e42;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+  border-radius: 4px;
+  transition: background 0.2s;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.content-resizer:hover {
+  background: #0e639c;
+}
+
+.resizer-line {
+  width: 32px;
+  height: 2px;
+  background: #666;
+  border-radius: 2px;
+}
+
+.content-resizer:hover .resizer-line {
+  background: #0e639c;
 }
 
 .waypoint-list {
-  max-height: 200px;
-  overflow-y: auto;
   border: 1px solid #3e3e42;
   border-radius: 4px;
   background: #252526;
@@ -203,12 +256,21 @@ onMounted(() => {
 }
 
 .waypoint-index {
-  font-size: 11px;
-  color: #666;
+  font-size: 12px;
+  color: #0e639c;
+  background: #1e1e22;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-weight: bold;
+  border: 1px solid #2a2a35;
+  min-width: 28px;
+  text-align: center;
 }
 
 .waypoint-item.active .waypoint-index {
-  color: #d4d4d4;
+  background: #0e639c;
+  color: white;
+  border-color: #0e639c;
 }
 
 .waypoint-type {
@@ -217,7 +279,14 @@ onMounted(() => {
 }
 
 .waypoint-coords {
-  font-size: 11px;
+  font-size: 10px;
+  color: #888;
+  margin-left: 12px;
+  font-family: monospace;
+}
+
+.waypoint-details {
+  font-size: 10px;
   color: #888;
   margin-left: 12px;
 }
@@ -260,12 +329,14 @@ onMounted(() => {
   padding: 12px;
   background: #252526;
   border-radius: 4px;
+  flex: 0 0 auto;
+  min-height: 200px;
 }
 
-.waypoint-editor-form h4 {
-  font-size: 13px;
-  color: #ffffff;
-  margin-bottom: 12px;
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .form-group {
@@ -288,9 +359,8 @@ onMounted(() => {
   border-radius: 3px;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+.form-input:focus {
+  outline: none;
+  border-color: #0e639c;
 }
 </style>

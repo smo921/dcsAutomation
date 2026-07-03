@@ -1,5 +1,6 @@
 <template>
   <div class="group-manager">
+    <!-- Group List Header -->
     <div class="group-list-header">
       <h3>Groups</h3>
       <div class="header-actions">
@@ -13,7 +14,9 @@
       </div>
     </div>
 
-    <div class="group-list">
+    <!-- Scrollable Group List -->
+    <div class="group-list-scroll" :style="{ height: listHeight + 'px' }">
+      <div class="group-list">
       <div
         v-for="group in groups"
         :key="group.groupName"
@@ -51,6 +54,12 @@
       <div v-if="groups.length === 0" class="empty-state">
         <p>No groups configured. Click "Add Group" to create one.</p>
       </div>
+      </div>
+    </div>
+
+    <!-- Resizeable Divider -->
+    <div class="content-resizer" @mousedown="startListResize">
+      <span class="resizer-line"></span>
     </div>
 
     <!-- Group Editor Panel -->
@@ -108,28 +117,31 @@
       <!-- Units Section -->
       <div class="editor-section">
         <h4>Units</h4>
-        <div v-for="(unit, index) in currentGroup.units" :key="index" class="unit-row">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Unit Type</label>
-              <input type="text" v-model="unit.type" class="form-input" />
+        <div v-for="(unit, index) in currentGroup.units" :key="index" class="unit-row" :data-unit-num="index + 1">
+          <div class="unit-number-badge">{{ index + 1 }}</div>
+          <div class="unit-content">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Unit Type</label>
+                <input type="text" v-model="unit.type" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" v-model="unit.quantity" min="1" class="form-input" />
+              </div>
             </div>
-            <div class="form-group">
-              <label>Quantity</label>
-              <input type="number" v-model="unit.quantity" min="1" class="form-input" />
+            <div class="form-row">
+              <div class="form-group">
+                <label>Name</label>
+                <input type="text" v-model="unit.name" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label>Role</label>
+                <input type="text" v-model="unit.role" class="form-input" />
+              </div>
             </div>
+            <button @click="removeUnit(index)" class="btn-remove-unit">Remove</button>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Name</label>
-              <input type="text" v-model="unit.name" class="form-input" />
-            </div>
-            <div class="form-group">
-              <label>Role</label>
-              <input type="text" v-model="unit.role" class="form-input" />
-            </div>
-          </div>
-          <button @click="removeUnit(index)" class="btn-remove-unit">Remove Unit</button>
         </div>
         <button @click="addUnit" class="btn-add-unit">+ Add Unit</button>
       </div>
@@ -266,29 +278,32 @@
       <!-- Route Section -->
       <div class="editor-section">
         <h4>Route</h4>
-        <div v-for="(wp, index) in currentGroup.route" :key="index" class="waypoint-row">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Type</label>
-              <select v-model="wp.type" class="form-input">
-                <option value="orbit">Orbit</option>
-                <option value="turn_point">Turning Point</option>
-                <option value="heading">Heading</option>
-                <option value="landing">Landing</option>
-              </select>
+        <div v-for="(wp, index) in currentGroup.route" :key="index" class="waypoint-row" :data-waypoint-num="index + 1">
+          <div class="waypoint-number-badge">{{ index + 1 }}</div>
+          <div class="waypoint-content">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Type</label>
+                <select v-model="wp.type" class="form-input">
+                  <option value="orbit">Orbit</option>
+                  <option value="turn_point">Turning Point</option>
+                  <option value="heading">Heading</option>
+                  <option value="landing">Landing</option>
+                </select>
+              </div>
             </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Altitude</label>
+                <input type="number" v-model="wp.altitude" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label>Speed</label>
+                <input type="number" v-model="wp.speed" class="form-input" />
+              </div>
+            </div>
+            <button @click="removeWaypoint(index)" class="btn-remove-waypoint">Remove</button>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Altitude</label>
-              <input type="number" v-model="wp.altitude" class="form-input" />
-            </div>
-            <div class="form-group">
-              <label>Speed</label>
-              <input type="number" v-model="wp.speed" class="form-input" />
-            </div>
-          </div>
-          <button @click="removeWaypoint(index)" class="btn-remove-waypoint">Remove Waypoint</button>
         </div>
         <button @click="addWaypoint" class="btn-add-waypoint">+ Add Waypoint</button>
       </div>
@@ -300,8 +315,9 @@
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useTemplatesStore } from '../../stores/templates'
+import { useResize } from '../../composables/useResize'
 
-const emit = defineEmits(['group-change', 'group-delete'])
+const emit = defineEmits(['group-change', 'group-delete', 'group-select'])
 
 const props = defineProps({
   groups: {
@@ -339,11 +355,23 @@ const selectedGroup = ref('')
 const currentGroup = ref(null)
 const showTemplateMenu = ref(false)
 
+// Use resize composable for list/editor divider
+const listHeight = ref(300)
+const { startResize: startListResize, stopResize: stopListResize, onResize: onListResize } = useResize({
+  size: listHeight,
+  minSize: 100,
+  maxSize: 500,
+  direction: 'vertical'
+})
+
 const selectGroup = (groupName) => {
   selectedGroup.value = groupName
   const group = props.groups.find(g => g.groupName === groupName)
   if (group) {
     currentGroup.value = JSON.parse(JSON.stringify(group))
+    // Emit the selected group index to parent
+    const selectedIndex = props.groups.findIndex(g => g.groupName === groupName)
+    emit('group-select', selectedIndex)
   }
 }
 
@@ -473,8 +501,12 @@ watch(currentGroup, (newVal) => {
 <style scoped>
 .group-manager {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
+/* Group List Header */
 .group-list-header {
   display: flex;
   justify-content: space-between;
@@ -502,10 +534,19 @@ watch(currentGroup, (newVal) => {
   background: #1177bb;
 }
 
+/* Group List */
 .group-list {
   background: #252526;
   border-radius: 4px;
-  overflow: hidden;
+  border: 1px solid #3e3e42;
+}
+
+/* Scrollable Group List Container */
+.group-list-scroll {
+  flex: 0 0 auto;
+  overflow-y: auto;
+  min-height: 100px;
+  margin-bottom: 12px;
 }
 
 .group-item {
@@ -658,11 +699,46 @@ watch(currentGroup, (newVal) => {
   font-size: 13px;
 }
 
+/* Resizeable Divider between list and editor */
+.content-resizer {
+  height: 8px;
+  background: #3e3e42;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+  border-radius: 4px;
+  transition: background 0.2s;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.content-resizer:hover {
+  background: #0e639c;
+}
+
+.resizer-line {
+  width: 32px;
+  height: 2px;
+  background: #666;
+  border-radius: 2px;
+}
+
+.content-resizer:hover .resizer-line {
+  background: #0e639c;
+}
+
+/* Group Editor Panel */
 .group-editor-panel {
-  margin-top: 20px;
   background: #252526;
   border-radius: 4px;
   overflow: hidden;
+  border: 1px solid #3e3e42;
+  flex: 0 0 auto;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
 }
 
 .group-editor-panel h3 {
@@ -671,11 +747,13 @@ watch(currentGroup, (newVal) => {
   margin: 0;
   padding: 12px;
   border-bottom: 1px solid #3e3e42;
+  flex: 0 0 auto;
 }
 
 .editor-section {
   padding: 12px;
   border-bottom: 1px solid #3e3e42;
+  flex: 0 0 auto;
 }
 
 .editor-section:last-child {
@@ -730,6 +808,72 @@ watch(currentGroup, (newVal) => {
   border-left: 2px solid #3c3c3c;
 }
 
+.unit-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: #2d2d30;
+  border-radius: 4px;
+  margin-top: 12px;
+  border: 1px solid #3e3e42;
+}
+
+.unit-row + .unit-row {
+  margin-top: 20px;
+  border-top: 2px solid #0e639c;
+}
+
+.unit-number-badge {
+  flex: 0 0 32px;
+  height: 32px;
+  background: #0e639c;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 14px;
+  user-select: none;
+}
+
+.unit-content {
+  flex: 1;
+}
+
+.waypoint-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: #2d2d30;
+  border-radius: 4px;
+  margin-top: 12px;
+  border: 1px solid #3e3e42;
+}
+
+.waypoint-row + .waypoint-row {
+  margin-top: 20px;
+  border-top: 2px solid #0e639c;
+}
+
+.waypoint-number-badge {
+  flex: 0 0 32px;
+  height: 32px;
+  background: #0e639c;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 14px;
+  user-select: none;
+}
+
+.waypoint-content {
+  flex: 1;
+}
+
 .btn-remove-unit,
 .btn-remove-waypoint {
   background: #3c3c3c;
@@ -739,7 +883,7 @@ watch(currentGroup, (newVal) => {
   border-radius: 3px;
   cursor: pointer;
   font-size: 11px;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .btn-remove-unit:hover,
