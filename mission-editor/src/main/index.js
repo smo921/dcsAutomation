@@ -23,7 +23,7 @@ function createWindow () {
   win.loadURL(
     isDev
       ? 'http://localhost:5173'
-      : `file://${path.join(__dirname, '../out/renderer/index.html')}`
+      : `file://${path.join(__dirname, '../../out/renderer/index.html')}`
   )
 
   if (isDev) {
