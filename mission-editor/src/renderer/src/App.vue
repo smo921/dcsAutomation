@@ -68,7 +68,6 @@ const onExportLua = () => {
 
 // Template handlers
 const onTemplateApplied = (template) => {
-  console.log('Template applied:', template)
   // TODO: Apply template to current group
   setStatus(`Template "${template.name}" loaded`, 'success')
 }

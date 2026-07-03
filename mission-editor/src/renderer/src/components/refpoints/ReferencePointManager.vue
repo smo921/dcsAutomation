@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, toRaw } from 'vue'
 import BullseyeEditor from './BullseyeEditor.vue'
 import AirbaseEditor from './AirbaseEditor.vue'
 import ZoneEditor from './ZoneEditor.vue'
@@ -33,6 +33,7 @@ const store = useRefpointsStore()
 
 const activeTab = ref('bullseye')
 const activeEditorRef = ref(null)
+let saveTimeout = null
 
 const tabs = [
   { name: 'bullseye', label: 'Bullseye' },
@@ -42,7 +43,13 @@ const tabs = [
 ]
 
 const currentComponent = computed(() => {
-  return `${activeTab.value}Editor`
+  const componentMap = {
+    'bullseye': BullseyeEditor,
+    'airbase': AirbaseEditor,
+    'zone': ZoneEditor,
+    'line': BattleLineEditor
+  }
+  return componentMap[activeTab.value]
 })
 
 const emit = defineEmits(['update'])
@@ -63,7 +70,7 @@ const loadConfig = () => {
 
 // Save config when update is triggered
 const saveConfig = () => {
-  const config = store.toConfig()
+  const config = JSON.parse(JSON.stringify(store.toConfig()))
   window.api?.refpoints?.save?.(config)
 }
 
@@ -75,8 +82,6 @@ watch(() => store.toConfig(), (newConfig) => {
     saveConfig()
   }, 500)
 }, { deep: true })
-
-let saveTimeout = null
 
 // Initialize
 loadConfig()

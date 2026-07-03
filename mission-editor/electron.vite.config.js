@@ -13,21 +13,25 @@ export default defineConfig({
       outDir: 'out/main',
       rollupOptions: {
         external: ['electron']
-      }
-    },
-    preload: {
+      },
+      emptyOutDir: false
+    }
+  },
+  preload: {
+    build: {
       entry: './src/preload/preload.js',
       outDir: 'out/main',
-      fileName: 'preload'
+      fileName: 'preload',
+      emptyOutDir: false
     }
   },
   renderer: {
-    root: './src/renderer',
+    root: path.resolve(__dirname, 'src/renderer'),
     plugins: [vue()],
     build: {
       outDir: path.resolve(__dirname, 'out/renderer'),
       rollupOptions: {
-        input: 'index.html'
+        input: path.resolve(__dirname, 'src/renderer/index.html')
       },
       emptyOutDir: true
     }
