@@ -1,5 +1,9 @@
 {
-  "bullseyes": [],
+  "bullseyes": [
+    {
+      "name": "Blue"
+    }
+  ],
   "airbases": [],
   "zones": [],
   "lines": []

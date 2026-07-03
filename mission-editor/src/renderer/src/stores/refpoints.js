@@ -10,16 +10,23 @@ export const useRefpointsStore = defineStore('refpoints', {
   }),
 
   actions: {
-    addBullseye(name, x, y) {
-      this.bullseyes.push({ name, x, y })
+    // Valid bullseye names - coalitions in DCS
+    VALID_BULLSEYES: ['Red', 'Blue', 'Neutral'],
+
+    addBullseye(name) {
+      const validatedName = this.VALID_BULLSEYES.find(n => n.toLowerCase() === name.toLowerCase())
+      if (validatedName) {
+        this.bullseyes.push({ name: validatedName })
+      }
     },
 
     removeBullseye(index) {
       this.bullseyes.splice(index, 1)
     },
 
-    addAirbase(name, x, y, runwayHeading = 0) {
-      this.airbases.push({ name, x, y, runwayHeading })
+    // Airbase names are stored without coordinates - resolved dynamically at runtime via Airbase.getByName()
+    addAirbase(name) {
+      this.airbases.push({ name })
     },
 
     removeAirbase(index) {
@@ -44,8 +51,12 @@ export const useRefpointsStore = defineStore('refpoints', {
     },
 
     loadFromConfig(config) {
-      this.bullseyes = config.bullseyes || []
-      this.airbases = config.airbases || []
+      this.bullseyes = (config.bullseyes || []).map(b => ({
+        name: b.name
+      }))
+      this.airbases = (config.airbases || []).map(ab => ({
+        name: ab.name
+      }))
       this.zones = config.zones || []
       this.lines = config.lines || []
     },

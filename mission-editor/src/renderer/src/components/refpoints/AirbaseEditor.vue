@@ -22,40 +22,6 @@
         />
         <button class="btn-remove" @click="removeAirbase(index)">✕</button>
       </div>
-
-      <div class="coordinate-inputs">
-        <div class="input-group">
-          <label>X Coordinate</label>
-          <input
-            type="number"
-            v-model="airbase.x"
-            placeholder="e.g., 120000"
-            class="coord-input"
-          />
-        </div>
-
-        <div class="input-group">
-          <label>Y Coordinate</label>
-          <input
-            type="number"
-            v-model="airbase.y"
-            placeholder="e.g., 700000"
-            class="coord-input"
-          />
-        </div>
-
-        <div class="input-group">
-          <label>Runway Heading</label>
-          <input
-            type="number"
-            v-model="airbase.runwayHeading"
-            placeholder="e.g., 180"
-            class="coord-input"
-            min="0"
-            max="360"
-          />
-        </div>
-      </div>
     </div>
 
     <div v-if="showAddModal" class="modal-overlay" @click.self="showAddModal = false">
@@ -71,35 +37,6 @@
               class="name-input"
               @keyup.enter="addAirbase"
               autofocus
-            />
-          </div>
-          <div class="input-group">
-            <label>X Coordinate</label>
-            <input
-              type="number"
-              v-model="newAirbaseX"
-              placeholder="e.g., 120000"
-              class="coord-input"
-            />
-          </div>
-          <div class="input-group">
-            <label>Y Coordinate</label>
-            <input
-              type="number"
-              v-model="newAirbaseY"
-              placeholder="e.g., 700000"
-              class="coord-input"
-            />
-          </div>
-          <div class="input-group">
-            <label>Runway Heading</label>
-            <input
-              type="number"
-              v-model="newAirbaseRunwayHeading"
-              placeholder="e.g., 180"
-              class="coord-input"
-              min="0"
-              max="360"
             />
           </div>
         </div>
@@ -121,24 +58,13 @@ const store = useRefpointsStore()
 const airbases = ref(store.airbases)
 const showAddModal = ref(false)
 const newAirbaseName = ref('')
-const newAirbaseX = ref(0)
-const newAirbaseY = ref(0)
-const newAirbaseRunwayHeading = ref(0)
 
 const emit = defineEmits(['update'])
 
 const addAirbase = () => {
   if (newAirbaseName.value.trim()) {
-    store.addAirbase(
-      newAirbaseName.value.trim(),
-      newAirbaseX.value,
-      newAirbaseY.value,
-      newAirbaseRunwayHeading.value
-    )
+    store.addAirbase(newAirbaseName.value.trim())
     newAirbaseName.value = ''
-    newAirbaseX.value = 0
-    newAirbaseY.value = 0
-    newAirbaseRunwayHeading.value = 0
     showAddModal.value = false
     emit('update')
   }
@@ -212,7 +138,6 @@ watch(() => store.airbases, (newVal) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
 }
 
 .name-input {
@@ -242,27 +167,6 @@ watch(() => store.airbases, (newVal) => {
   background: #c41616;
 }
 
-.coordinate-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-}
-
-.input-group label {
-  display: block;
-  font-size: 11px;
-  color: #aaa;
-  margin-bottom: 4px;
-}
-
-.coord-input {
-  width: 100%;
-  background: #3c3c3c;
-  border: 1px solid #454545;
-  color: white;
-  padding: 6px;
-  border-radius: 3px;
-}
 
 /* Modal Styles */
 .modal-overlay {

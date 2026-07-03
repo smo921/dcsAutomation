@@ -9,6 +9,7 @@
 
     <div v-if="bullseyes.length === 0" class="empty-state">
       <p>No bullseye configured. Click "Add Bullseye" to create one.</p>
+      <p class="note">Bullseye coordinates are determined dynamically at runtime from DCS coalition data.</p>
     </div>
 
     <div v-for="(bullseye, index) in bullseyes" :key="index" class="bullseye-item">
@@ -18,31 +19,15 @@
           v-model="bullseye.name"
           placeholder="Bullseye Name"
           class="name-input"
+          :list="bullseyeSuggestions"
         />
         <button class="btn-remove" @click="removeBullseye(index)">✕</button>
       </div>
-
-      <div class="coordinate-inputs">
-        <div class="input-group">
-          <label>X Coordinate</label>
-          <input
-            type="number"
-            v-model="bullseye.x"
-            placeholder="e.g., 123456"
-            class="coord-input"
-          />
-        </div>
-
-        <div class="input-group">
-          <label>Y Coordinate</label>
-          <input
-            type="number"
-            v-model="bullseye.y"
-            placeholder="e.g., 654321"
-            class="coord-input"
-          />
-        </div>
-      </div>
+      <datalist :id="bullseyeSuggestions">
+        <option value="Red" />
+        <option value="Blue" />
+        <option value="Neutral" />
+      </datalist>
     </div>
 
     <div v-if="showAddModal" class="modal-overlay" @click.self="showAddModal = false">
@@ -51,32 +36,17 @@
         <div class="modal-body">
           <div class="input-group">
             <label>Name</label>
-            <input
-              type="text"
+            <select
               v-model="newBullseyeName"
-              placeholder="e.g., BULLSEYE_1"
               class="name-input"
               @keyup.enter="addBullseye"
               autofocus
-            />
-          </div>
-          <div class="input-group">
-            <label>X Coordinate</label>
-            <input
-              type="number"
-              v-model="newBullseyeX"
-              placeholder="e.g., 123456"
-              class="coord-input"
-            />
-          </div>
-          <div class="input-group">
-            <label>Y Coordinate</label>
-            <input
-              type="number"
-              v-model="newBullseyeY"
-              placeholder="e.g., 654321"
-              class="coord-input"
-            />
+            >
+              <option value="">Select a coalition...</option>
+              <option value="Red">Red</option>
+              <option value="Blue">Blue</option>
+              <option value="Neutral">Neutral</option>
+            </select>
           </div>
         </div>
         <div class="modal-actions">
@@ -97,17 +67,14 @@ const store = useRefpointsStore()
 const bullseyes = ref(store.bullseyes)
 const showAddModal = ref(false)
 const newBullseyeName = ref('')
-const newBullseyeX = ref(0)
-const newBullseyeY = ref(0)
+const bullseyeSuggestions = 'bullseyeSuggestions'
 
 const emit = defineEmits(['update'])
 
 const addBullseye = () => {
   if (newBullseyeName.value.trim()) {
-    store.addBullseye(newBullseyeName.value.trim(), newBullseyeX.value, newBullseyeY.value)
+    store.addBullseye(newBullseyeName.value.trim())
     newBullseyeName.value = ''
-    newBullseyeX.value = 0
-    newBullseyeY.value = 0
     showAddModal.value = false
     emit('update')
   }
@@ -165,6 +132,13 @@ watch(() => store.bullseyes, (newVal) => {
   font-size: 13px;
 }
 
+.empty-state .note {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+  margin-top: 4px;
+}
+
 .bullseye-item {
   background: #252526;
   padding: 12px;
@@ -176,7 +150,6 @@ watch(() => store.bullseyes, (newVal) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
 }
 
 .name-input {
@@ -206,27 +179,6 @@ watch(() => store.bullseyes, (newVal) => {
   background: #c41616;
 }
 
-.coordinate-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.input-group label {
-  display: block;
-  font-size: 11px;
-  color: #aaa;
-  margin-bottom: 4px;
-}
-
-.coord-input {
-  width: 100%;
-  background: #3c3c3c;
-  border: 1px solid #454545;
-  color: white;
-  padding: 6px;
-  border-radius: 3px;
-}
 
 /* Modal Styles */
 .modal-overlay {
