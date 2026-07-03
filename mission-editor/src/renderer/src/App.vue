@@ -20,6 +20,7 @@
         <h2 style="margin-top: 20px;">Groups</h2>
         <GroupManager
           :groups="groups"
+          :templates="templatesStore.categories"
           @group-change="onGroupChange"
           @group-delete="onGroupDelete"
         />

@@ -61,10 +61,15 @@ const getTemplatesByCategory = (category) => {
   )
 }
 
-const emit = defineEmits(['template-apply'])
+const emit = defineEmits(['template-apply', 'template-select'])
 
 const applyTemplate = (template) => {
   emit('template-apply', template)
+}
+
+// Also emit when user just selects/hovers over a template
+const templateSelect = (template) => {
+  emit('template-select', template)
 }
 </script>
 

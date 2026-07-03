@@ -2,7 +2,15 @@
   <div class="group-manager">
     <div class="group-list-header">
       <h3>Groups</h3>
-      <button @click="onAddGroup" class="btn-add">+ Add Group</button>
+      <div class="header-actions">
+        <button @click="onAddGroup" class="btn-add">+ Add Group</button>
+        <button @click="showTemplateMenu = !showTemplateMenu" class="btn-add-template">+ New from Template</button>
+        <div v-if="showTemplateMenu" class="template-menu" @click.stop>
+          <div v-for="template in getAllTemplates()" :key="template.id || template.name" class="template-menu-item" @click="onAddFromTemplate(template)">
+            {{ template.name }}
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="group-list">
@@ -22,6 +30,20 @@
           </div>
         </div>
         <div class="group-actions">
+          <!-- Template dropdown -->
+          <div class="template-select-wrapper">
+            <select
+              v-model="group.appliedTemplate"
+              @change="onTemplateChange(group, $event.target.value)"
+              @click.stop
+              class="template-select"
+            >
+              <option value="">(no template)</option>
+              <template v-for="template in getAllTemplates()" :key="template.id || template.name">
+                <option :value="template.id || template.name">{{ template.name }}</option>
+              </template>
+            </select>
+          </div>
           <button @click.stop="onDeleteGroup(group.groupName)" class="btn-delete">×</button>
         </div>
       </div>
@@ -277,6 +299,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
+import { useTemplatesStore } from '../../stores/templates'
 
 const emit = defineEmits(['group-change', 'group-delete'])
 
@@ -284,10 +307,15 @@ const props = defineProps({
   groups: {
     type: Array,
     default: () => []
+  },
+  templates: {
+    type: Object,
+    default: () => ({ air: [], ground: [], naval: [], support: [] })
   }
 })
 
 const refpointsStore = useRefpointsStore()
+const templatesStore = useTemplatesStore()
 
 // Refpoints for dropdowns
 const refpoints = ref({
@@ -309,6 +337,7 @@ watch(() => ({
 
 const selectedGroup = ref('')
 const currentGroup = ref(null)
+const showTemplateMenu = ref(false)
 
 const selectGroup = (groupName) => {
   selectedGroup.value = groupName
@@ -348,6 +377,29 @@ const onDeleteGroup = (groupName) => {
   currentGroup.value = null
 }
 
+const onAddFromTemplate = (template) => {
+  const newGroup = {
+    groupName: `${template.name.replace(/\s+/g, '_')}_${props.groups.length + 1}`,
+    category: template.category === 'air' ? 'AIRPLANE' : 'GROUND',
+    triggerType: 'IMMEDIATE',
+    country: template.category === 'air' ? 'USA' : 'Russia',
+    task: '',
+    units: template.units || [{ type: '', quantity: 1 }],
+    placement: {
+      mode: 'BEARING_DISTANCE',
+      reference: 'bullseye',
+      referenceName: 'BULLSEYE_BLUE',
+      bearing: 0,
+      distance: 100
+    },
+    route: template.defaultRoute ? [{ ...template.defaultRoute }] : [{ type: 'orbit', altitude: 3000, speed: 500 }],
+    appliedTemplate: template.id || template.name
+  }
+  emit('group-change', [...props.groups, newGroup])
+  showTemplateMenu.value = false
+  selectGroup(newGroup.groupName)
+}
+
 const addUnit = () => {
   currentGroup.value.units.push({ type: '', quantity: 1, name: '', role: '' })
 }
@@ -362,6 +414,50 @@ const addWaypoint = () => {
 
 const removeWaypoint = (index) => {
   currentGroup.value.route.splice(index, 1)
+}
+
+// Template functions
+const getAllTemplates = () => {
+  const allTemplates = []
+  for (const category of Object.values(props.templates)) {
+    if (Array.isArray(category)) {
+      allTemplates.push(...category)
+    }
+  }
+  return allTemplates
+}
+
+const onTemplateChange = (group, templateId) => {
+  if (!templateId) {
+    // Remove template association
+    delete group.appliedTemplate
+    emit('group-change', props.groups.map(g =>
+      g.groupName === group.groupName ? g : g
+    ))
+    return
+  }
+
+  const template = getAllTemplates().find(t => (t.id || t.name) === templateId)
+  if (template) {
+    // Apply template to group
+    const updatedGroup = { ...group }
+    if (template.units) {
+      updatedGroup.units = template.units
+    }
+    if (template.defaultRoute) {
+      updatedGroup.route = [{ ...template.defaultRoute }]
+    }
+    delete updatedGroup.appliedTemplate // Template is applied, remove association
+    emit('group-change', props.groups.map(g =>
+      g.groupName === group.groupName ? updatedGroup : g
+    ))
+    setStatus(`Template "${template.name}" applied to ${group.groupName}`, 'success')
+  }
+}
+
+const setStatus = (message, type = 'info') => {
+  // Dispatch a custom event to notify parent about status changes
+  window.dispatchEvent(new CustomEvent('group-status', { detail: { message, type } }))
 }
 
 // Save changes when currentGroup changes
@@ -470,6 +566,26 @@ watch(currentGroup, (newVal) => {
 .group-actions {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.template-select-wrapper {
+  position: relative;
+}
+
+.template-select {
+  background: #3c3c3c;
+  border: 1px solid #454545;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.template-select:focus {
+  outline: none;
+  border-color: #0e639c;
 }
 
 .btn-delete {
@@ -488,6 +604,51 @@ watch(currentGroup, (newVal) => {
 
 .btn-delete:hover {
   background: #c32323;
+}
+
+.header-actions {
+  position: relative;
+}
+
+.btn-add-template {
+  background: #0e639c;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.btn-add-template:hover {
+  background: #1177bb;
+}
+
+.template-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  min-width: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  margin-top: 4px;
+}
+
+.template-menu-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.template-menu-item:hover {
+  background: #303030;
 }
 
 .empty-state {
