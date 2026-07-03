@@ -41,7 +41,9 @@ ConfigStandards.SECTOR_TEMPLATE = {
         groupName = nil,
         waypoint = nil,
         startType = nil,
-        airbaseName = nil
+        airbaseName = nil,
+        refType = nil,       -- Reference type: 'bullseye', 'airbase', 'zone'
+        referenceName = nil  -- Reference name (bullseye name, airbase name, or zone name)
     },
     route = {},
     task = nil,
@@ -426,21 +428,28 @@ end
 -- 1. Bearing + distance (offsetHeading + offsetDistance) - both in NM
 -- 2. Direct coordinates (offsetX + offsetY) - in NM
 -- 3. Group waypoint positioning (groupName + waypoint)
+-- 4. Reference-based offset positioning (refType + referenceName + offsetX/Y)
+-- Note: offsetX/Y are already in meters (converted in UnitPlacementConfig.new)
 -- @param origin table Origin coordinates {x, y}
--- @param placementConfig table Placement configuration (NM for distances)
+-- @param placementConfig table Placement configuration (meters for offsets, NM for bearing/distance)
 -- @return number x, number y Resolved coordinates
 function SpatialSolver.getCoordinates(origin, placementConfig)
     local x, y = origin.x, origin.y
 
+    -- Check for reference-based offset positioning (relative to reference)
+    if placementConfig.refType and placementConfig.referenceName then
+        local refOrigin = SpatialSolver.getReferenceOrigin(placementConfig.refType, placementConfig.referenceName)
+        if refOrigin then
+            x, y = refOrigin.x, refOrigin.y
+        end
+    end
+
     -- Check for bearing/distance positioning first (both in NM)
     if placementConfig.offsetHeading and placementConfig.offsetDistance then
-        return SpatialSolver.getVector(origin, placementConfig.offsetHeading, placementConfig.offsetDistance)
-    -- Then check for direct coordinate positioning (in NM)
+        return SpatialSolver.getVector({x = x, y = y}, placementConfig.offsetHeading, placementConfig.offsetDistance)
+    -- Then check for direct coordinate positioning (already in meters from UnitPlacementConfig.new)
     elseif placementConfig.offsetX and placementConfig.offsetY then
-        -- Convert NM to meters for coordinate offset
-        local offsetX = mist.utils.NMToMeters(placementConfig.offsetX)
-        local offsetY = mist.utils.NMToMeters(placementConfig.offsetY)
-        return x + offsetX, y + offsetY
+        return x + placementConfig.offsetX, y + placementConfig.offsetY
     -- Then check for group waypoint positioning
     elseif placementConfig.groupName and placementConfig.waypoint then
         env.info(string.format("[SpatialSolver] Placing unit near group: %s waypoint: %s",
@@ -450,6 +459,28 @@ function SpatialSolver.getCoordinates(origin, placementConfig)
     else
         return x, y
     end
+end
+
+--- Get coordinates for a named reference point.
+-- @param refType string Reference type: 'bullseye', 'airbase', 'zone'
+-- @param refName string Reference name
+-- @return table|nil {x, y} coordinates or nil if not found
+function SpatialSolver.getReferenceOrigin(refType, refName)
+    if refType == 'bullseye' then
+        return SpatialSolver.getBullseye("blue") or {x = 0, y = 0}
+    elseif refType == 'airbase' then
+        local airbaseObj = Airbase.getByName(refName)
+        if airbaseObj then
+            local pos = airbaseObj:getPosition().p
+            return {x = pos.x, y = pos.z}
+        end
+    elseif refType == 'zone' then
+        local zoneData = trigger.misc.getZone(refName)
+        if zoneData then
+            return {x = zoneData.point.x, y = zoneData.point.z}
+        end
+    end
+    return nil
 end
 
 --- Calculate vector coordinates from origin using heading and distance.
@@ -919,7 +950,7 @@ UnitSpawner = {}
 function UnitSpawner.resolveSpawnCoordinates(config, defaultBullseye, groupName)
     local placement = config.placement or {}
 
-    -- Mode 1: Airbase anchoring (for air units)
+    -- Handle airbase anchoring (for air units)
     if placement.airbaseName then
         local airbaseObj = Airbase.getByName(placement.airbaseName)
         if airbaseObj then
@@ -928,6 +959,15 @@ function UnitSpawner.resolveSpawnCoordinates(config, defaultBullseye, groupName)
         else
             env.warn(string.format("[UnitSpawner] Airbase '%s' not found for '%s', using fallback.",
                 placement.airbaseName, groupName or "unknown"))
+        end
+    end
+
+    -- Handle reference-based offset coordinates (new feature)
+    if placement.refType and placement.referenceName then
+        local refOrigin = SpatialSolver.getReferenceOrigin(placement.refType, placement.referenceName)
+        if refOrigin then
+            local x, y = SpatialSolver.getCoordinates(refOrigin, placement)
+            return x, y
         end
     end
 

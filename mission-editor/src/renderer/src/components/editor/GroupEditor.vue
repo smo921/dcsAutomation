@@ -73,29 +73,60 @@
     <!-- Position Configuration -->
     <div class="editor-section">
       <h4>Position Configuration</h4>
+
+      <!-- Step 1: Placement Mode -->
       <div class="form-row">
         <div class="form-group">
-          <label>Reference Type</label>
-          <select v-model="group.position.type" class="form-input">
-            <option value="bullseye_offset">Bullseye Offset</option>
-            <option value="airbase_offset">Airbase Offset</option>
-            <option value="zone_offset">Zone Offset</option>
-            <option value="battle_line_offset">Battle Line Offset</option>
-            <option value="direct_xy">Direct X/Y</option>
+          <label>Placement Mode</label>
+          <select v-model="group.position.mode" class="form-input">
+            <option value="offset_bearing">Bearing + Distance</option>
+            <option value="offset_direct">Offset Coordinates</option>
+            <option value="zone_random">Random Location</option>
+            <option value="waypoint">Near Waypoint</option>
           </select>
         </div>
       </div>
 
-      <!-- Bullseye Offset -->
-      <div v-if="group.position.type === 'bullseye_offset'" class="offset-config">
+      <!-- Reference Type (for offset_bearing, offset_direct, and zone_random) -->
+      <div v-if="group.position.mode === 'offset_bearing' || group.position.mode === 'offset_direct' || group.position.mode === 'zone_random'" class="form-row">
         <div class="form-group">
-          <label>Bullseye Reference</label>
-          <select v-model="group.position.reference" class="form-input">
-            <option v-for="b in refpoints.bullseyes" :key="b.name" :value="b.name">
-              {{ b.name }}
-            </option>
+          <label>Reference Type</label>
+          <select v-model="group.position.refType" class="form-input">
+            <option value="bullseye">Bullseye</option>
+            <option value="airbase">Airbase</option>
+            <option value="zone">Trigger Zone</option>
           </select>
         </div>
+      </div>
+
+      <!-- Reference Name (shared for all reference types) -->
+      <div v-if="group.position.refType === 'bullseye'" class="form-group">
+        <label>Bullseye Reference</label>
+        <select v-model="group.position.referenceName" class="form-input">
+          <option v-for="b in refpoints.bullseyes" :key="b.name" :value="b.name">
+            {{ b.name }}
+          </option>
+        </select>
+      </div>
+      <div v-if="group.position.refType === 'airbase'" class="form-group">
+        <label>Airbase</label>
+        <select v-model="group.position.referenceName" class="form-input">
+          <option v-for="a in refpoints.airbases" :key="a.name" :value="a.name">
+            {{ a.name }}
+          </option>
+        </select>
+      </div>
+      <div v-if="group.position.refType === 'zone'" class="form-group">
+        <label>Zone Name</label>
+        <select v-model="group.position.referenceName" class="form-input">
+          <option v-for="z in refpoints.zones" :key="z.name" :value="z.name">
+            {{ z.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Bearing + Distance Configuration -->
+      <div v-if="group.position.mode === 'offset_bearing'" class="offset-config">
         <div class="form-row">
           <div class="form-group">
             <label>Bearing (°)</label>
@@ -108,7 +139,7 @@
             />
           </div>
           <div class="form-group">
-            <label>Distance (m)</label>
+            <label>Distance (NM)</label>
             <input
               type="number"
               v-model="group.position.distance"
@@ -119,36 +150,52 @@
         </div>
       </div>
 
-      <!-- Airbase Offset -->
-      <div v-if="group.position.type === 'airbase_offset'" class="offset-config">
+      <!-- Offset Coordinates Configuration -->
+      <div v-if="group.position.mode === 'offset_direct'" class="offset-config">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Offset X (NM)</label>
+            <input
+              type="number"
+              v-model="group.position.offsetX"
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label>Offset Y (NM)</label>
+            <input
+              type="number"
+              v-model="group.position.offsetY"
+              class="form-input"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Random Location (within zone) -->
+      <div v-if="group.position.mode === 'zone_random'" class="offset-config">
+        <p style="font-size: 11px; color: #888; margin: 0;">Spawns unit at a random location within the selected trigger zone.</p>
+      </div>
+
+      <!-- Waypoint Anchoring -->
+      <div v-if="group.position.mode === 'waypoint'" class="offset-config">
         <div class="form-group">
-          <label>Airbase</label>
-          <select v-model="group.position.reference" class="form-input">
-            <option v-for="a in refpoints.airbases" :key="a.name" :value="a.name">
+          <label>Group Name</label>
+          <select v-model="group.position.waypointGroup" class="form-input">
+            <option value="">Select existing group...</option>
+            <option v-for="a in refpoints.airbases" :key="'wp-' + a.name" :value="a.name">
               {{ a.name }}
             </option>
           </select>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Bearing (°)</label>
-            <input
-              type="number"
-              v-model="group.position.bearing"
-              min="0"
-              max="360"
-              class="form-input"
-            />
-          </div>
-          <div class="form-group">
-            <label>Distance (m)</label>
-            <input
-              type="number"
-              v-model="group.position.distance"
-              min="0"
-              class="form-input"
-            />
-          </div>
+        <div class="form-group">
+          <label>Waypoint Number</label>
+          <input
+            type="number"
+            v-model="group.position.waypointNumber"
+            min="1"
+            class="form-input"
+          />
         </div>
       </div>
     </div>
@@ -207,12 +254,15 @@ const group = reactive({
   units: [],
   quantity: 3,
   position: {
-    type: 'bullseye_offset',
-    reference: '',
+    mode: 'offset_bearing',      // 'offset_bearing', 'offset_direct', 'zone_random', 'waypoint'
+    refType: 'bullseye',         // 'bullseye', 'airbase', 'zone' (for offset_bearing, offset_direct, zone_random)
+    referenceName: '',             // unified reference name (bullseye, airbase, or zone)
     bearing: 0,
     distance: 0,
-    x: 0,
-    y: 0
+    offsetX: 0,
+    offsetY: 0,
+    waypointGroup: '',             // group name for waypoint anchoring
+    waypointNumber: 1              // waypoint number (1-based)
   },
   airbase: '',
   parking: 'hot_start',
@@ -243,6 +293,17 @@ watch(selectedUnitType, (newType) => {
     quantity: group.quantity,
     role: getRoleForUnitType(newType)
   }]
+})
+
+// Watch mode changes to clear refType and referenceName when switching to waypoint mode
+watch(() => group.position.mode, (newMode) => {
+  if (newMode === 'waypoint') {
+    group.position.refType = null
+    group.position.referenceName = ''
+  } else {
+    // When switching away from waypoint, default to bullseye
+    group.position.refType = 'bullseye'
+  }
 })
 
 const getRoleForUnitType = (type) => {
