@@ -1,4 +1,10 @@
 IDEAS.md
 *_PLAN.md
 LUA*
-MISSION_EDITOR_*.md
+
+# DCS Mission Editor (Electron app)
+# See mission-editor/CLAUDE.md for details
+mission-editor/node_modules
+mission-editor/dist
+mission-editor/out
+mission-editor/*.log

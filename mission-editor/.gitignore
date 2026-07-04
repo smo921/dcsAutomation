@@ -5,3 +5,8 @@ out
 *.log
 .DS_Store
 *.zip
+
+# Markdown documentation (moved here from parent directory)
+!/VISION.md
+!/TECH_DESIGN.md
+!/TASKS.md
