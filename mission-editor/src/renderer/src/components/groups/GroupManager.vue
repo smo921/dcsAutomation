@@ -4,8 +4,8 @@
     <div class="group-list-header">
       <h3>Groups</h3>
       <div class="header-actions">
-        <button @click="onAddGroup" class="btn-add">+ Add Group</button>
-        <button @click="showTemplateMenu = !showTemplateMenu" class="btn-add-template">+ New from Template</button>
+        <Button @click="onAddGroup" variant="primary">+ Add Group</Button>
+        <Button @click="showTemplateMenu = !showTemplateMenu" variant="secondary">+ New from Template</Button>
         <div v-if="showTemplateMenu" class="template-menu" @click.stop>
           <div v-for="template in getAllTemplates()" :key="template.id || template.name" class="template-menu-item" @click="onAddFromTemplate(template)">
             {{ template.name }}
@@ -47,7 +47,7 @@
               </template>
             </select>
           </div>
-          <button @click.stop="onDeleteGroup(group.groupName)" class="btn-delete">×</button>
+          <Button @click.stop="onDeleteGroup(group.groupName)" variant="danger" icon-only title="Delete Group">✕</Button>
         </div>
       </div>
 
@@ -140,10 +140,10 @@
                 <input type="text" v-model="unit.role" class="form-input" />
               </div>
             </div>
-            <button @click="removeUnit(index)" class="btn-remove-unit">Remove</button>
+            <Button @click="removeUnit(index)" variant="ghost" icon-only title="Remove Unit">✕</Button>
           </div>
         </div>
-        <button @click="addUnit" class="btn-add-unit">+ Add Unit</button>
+        <Button @click="addUnit" variant="ghost">+ Add Unit</Button>
       </div>
 
       <!-- Placement Section -->
@@ -302,10 +302,10 @@
                 <input type="number" v-model="wp.speed" class="form-input" />
               </div>
             </div>
-            <button @click="removeWaypoint(index)" class="btn-remove-waypoint">Remove</button>
+            <Button @click="removeWaypoint(index)" variant="ghost" icon-only title="Remove Waypoint">✕</Button>
           </div>
         </div>
-        <button @click="addWaypoint" class="btn-add-waypoint">+ Add Waypoint</button>
+        <Button @click="addWaypoint" variant="ghost">+ Add Waypoint</Button>
       </div>
     </div>
   </div>
@@ -316,6 +316,7 @@ import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useTemplatesStore } from '../../stores/templates'
 import { useResize } from '../../composables/useResize'
+import { Button } from '../ui'
 
 const emit = defineEmits(['group-change', 'group-delete', 'group-select'])
 
