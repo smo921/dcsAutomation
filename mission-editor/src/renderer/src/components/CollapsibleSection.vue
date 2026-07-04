@@ -43,41 +43,17 @@ export default defineComponent({
 </script>
 
 <style scoped>
+/* Using shared styles from components.css */
 .collapsible-section {
   width: 100%;
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.2s;
-}
-
+/* Override the hover background since shared style uses CSS variable */
 .section-header:hover {
   background: #303030;
 }
 
-.section-title {
-  font-size: 12px;
-  color: #d4d4d4;
-  margin: 0;
-  font-weight: 500;
-}
-
-.toggle-icon {
-  font-size: 10px;
-  color: #888;
-  transition: transform 0.2s;
-}
-
-.toggle-icon.expanded {
-  transform: rotate(180deg);
-}
-
+/* Animation override for nested scoped styles */
 .section-content {
   overflow: hidden;
   animation: slideDown 0.3s ease-out;

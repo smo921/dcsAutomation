@@ -316,6 +316,7 @@ const onWaypointTemplateApplied = (template) => {
 }
 
 .tab-btn {
+  composes: u-btn;
   background: var(--color-bg-2);
   color: var(--color-text-0);
   border: 1px solid var(--color-border);

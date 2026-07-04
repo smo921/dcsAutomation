@@ -94,32 +94,32 @@ loadConfig()
 
 .refpoint-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
 }
 
 .tab-btn {
-  background: #3c3c3c;
-  color: #d4d4d4;
-  border: 1px solid #454545;
-  padding: 6px 12px;
-  border-radius: 3px 3px 0 0;
+  background: var(--color-bg-2);
+  color: var(--color-text-0);
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs) var(--spacing-xxs) 0 0;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   flex: 1;
   text-align: center;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .tab-btn:hover {
-  background: #454545;
+  background: var(--color-bg-3);
 }
 
 .tab-btn.active {
-  background: #252526;
-  border-bottom: 1px solid #252526;
-  color: #ffffff;
-  font-weight: 600;
+  background: var(--color-bg-1);
+  border-bottom: 1px solid var(--color-bg-1);
+  color: var(--color-text-4);
+  font-weight: var(--font-weight-semibold);
 }
 
 .refpoint-content {
