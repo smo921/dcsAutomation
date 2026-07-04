@@ -13,7 +13,16 @@
       <div v-for="category in categories" :key="category" class="category-section">
         <div class="category-header" @click="toggleCategory(category)">
           <h4>{{ category }}</h4>
-          <span class="expand-icon" :class="{ expanded: expandedCategories[category] }">▼</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="toggle-btn"
+            @click.stop="toggleCategory(category)"
+          >
+            <template #icon>
+              <span class="expand-icon" :class="{ expanded: expandedCategories[category] }">▼</span>
+            </template>
+          </Button>
         </div>
         <div v-if="expandedCategories[category]" class="category-content">
           <div class="templates-list">
@@ -45,6 +54,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useTemplatesStore } from '../../stores/templates'
+import { Button } from '../ui'
 
 const store = useTemplatesStore()
 
@@ -96,22 +106,22 @@ const templateSelect = (template) => {
 }
 
 .library-header {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 }
 
 .search-input {
   width: 100%;
-  background: #3c3c3c;
-  border: 1px solid #454545;
-  color: white;
-  padding: 8px;
-  border-radius: 3px;
-  font-size: 12px;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-4);
+  padding: var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--font-size-sm);
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #0e639c;
+  border-color: var(--color-border-focus);
 }
 
 .template-categories {
@@ -120,7 +130,7 @@ const templateSelect = (template) => {
 }
 
 .category-section {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 
 .category-header {
@@ -129,7 +139,7 @@ const templateSelect = (template) => {
   align-items: center;
   cursor: pointer;
   user-select: none;
-  padding: 8px 0;
+  padding: var(--spacing-xs) 0;
 }
 
 .category-header:hover {
@@ -137,16 +147,21 @@ const templateSelect = (template) => {
 }
 
 .category-header h4 {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   text-transform: uppercase;
-  color: #888;
+  color: var(--color-text-1);
   margin: 0;
 }
 
+.toggle-btn :deep(.btn) {
+  padding: var(--spacing-xs);
+  margin-left: var(--spacing-xs);
+}
+
 .expand-icon {
-  font-size: 10px;
-  color: #888;
-  transition: transform 0.2s;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
+  transition: transform var(--transition-fast);
 }
 
 .expand-icon.expanded {
@@ -154,7 +169,7 @@ const templateSelect = (template) => {
 }
 
 .category-content {
-  animation: slideDown 0.3s ease-out;
+  animation: slideDown var(--transition-normal);
 }
 
 @keyframes slideDown {
@@ -171,22 +186,22 @@ const templateSelect = (template) => {
 .templates-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .template-item {
-  background: #252526;
-  padding: 10px;
-  border-radius: 3px;
+  background: var(--color-bg-1);
+  padding: var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .template-item:hover {
-  background: #303030;
+  background: var(--color-bg-3);
 }
 
 .template-info {
@@ -194,25 +209,25 @@ const templateSelect = (template) => {
 }
 
 .template-info h5 {
-  font-size: 13px;
-  color: #ffffff;
-  margin-bottom: 4px;
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin-bottom: var(--spacing-xs);
 }
 
 .template-desc {
-  font-size: 11px;
-  color: #888;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
   line-height: 1.4;
 }
 
 .template-meta {
-  font-size: 11px;
-  color: #666;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-2);
 }
 
 .unit-count {
-  background: #3c3c3c;
-  padding: 2px 6px;
-  border-radius: 3px;
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
 }
 </style>

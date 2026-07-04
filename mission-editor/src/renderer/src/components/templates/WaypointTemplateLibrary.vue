@@ -23,7 +23,9 @@
           </p>
         </div>
         <div class="template-meta">
-          <span class="apply-indicator">Apply</span>
+          <Button variant="primary" size="sm" @click.stop="applyTemplate(template)">
+            Apply
+          </Button>
         </div>
       </div>
 
@@ -37,6 +39,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useTemplatesStore } from '../../stores/templates'
+import { Button } from '../ui'
 
 const store = useTemplatesStore()
 
@@ -63,22 +66,22 @@ const applyTemplate = (template) => {
 }
 
 .library-header {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 }
 
 .search-input {
   width: 100%;
-  background: #3c3c3c;
-  border: 1px solid #454545;
-  color: white;
-  padding: 8px;
-  border-radius: 3px;
-  font-size: 12px;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-4);
+  padding: var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--font-size-sm);
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #0e639c;
+  border-color: var(--color-border-focus);
 }
 
 .waypoint-template-list {
@@ -87,19 +90,19 @@ const applyTemplate = (template) => {
 }
 
 .waypoint-template-item {
-  background: #252526;
-  padding: 10px;
-  border-radius: 3px;
+  background: var(--color-bg-1);
+  padding: var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
 }
 
 .waypoint-template-item:hover {
-  background: #303030;
+  background: var(--color-bg-3);
 }
 
 .waypoint-template-item:last-child {
@@ -111,32 +114,25 @@ const applyTemplate = (template) => {
 }
 
 .template-info h5 {
-  font-size: 13px;
-  color: #ffffff;
-  margin-bottom: 4px;
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin-bottom: var(--spacing-xs);
 }
 
 .template-desc {
-  font-size: 11px;
-  color: #888;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
   line-height: 1.4;
 }
 
 .template-meta {
-  font-size: 10px;
-  color: #666;
-}
-
-.apply-indicator {
-  background: #0e639c;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-weight: bold;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-2);
 }
 
 .no-results {
-  padding: 20px;
+  padding: var(--spacing-lg);
   text-align: center;
-  color: #666;
+  color: var(--color-text-2);
 }
 </style>
