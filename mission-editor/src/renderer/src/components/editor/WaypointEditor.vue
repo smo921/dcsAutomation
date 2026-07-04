@@ -189,52 +189,52 @@ watch(waypoints, (newWaypoints) => {
   flex: 0 0 auto;
   overflow-y: auto;
   min-height: 100px;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 }
 
 /* Resizeable Divider between list and editor */
 .content-resizer {
   height: 8px;
-  background: #3e3e42;
+  background: var(--color-border);
   cursor: ns-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 4px 0;
-  border-radius: 4px;
-  transition: background 0.2s;
+  margin: var(--spacing-xs) 0;
+  border-radius: var(--spacing-xs);
+  transition: background var(--transition-fast);
   pointer-events: auto;
   z-index: 10;
 }
 
 .content-resizer:hover {
-  background: #0e639c;
+  background: var(--color-primary);
 }
 
 .resizer-line {
   width: 32px;
   height: 2px;
-  background: #666;
-  border-radius: 2px;
+  background: var(--color-text-2);
+  border-radius: var(--spacing-xs);
 }
 
 .content-resizer:hover .resizer-line {
-  background: #0e639c;
+  background: var(--color-text-4);
 }
 
 .waypoint-list {
-  border: 1px solid #3e3e42;
-  border-radius: 4px;
-  background: #252526;
+  border: 1px solid var(--color-border);
+  border-radius: var(--spacing-xs);
+  background: var(--color-bg-1);
 }
 
 .waypoint-item {
   display: flex;
   align-items: center;
-  padding: 8px;
-  border-bottom: 1px solid #3e3e42;
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .waypoint-item:last-child {
@@ -242,94 +242,94 @@ watch(waypoints, (newWaypoints) => {
 }
 
 .waypoint-item:hover {
-  background: #303030;
+  background: var(--color-bg-3);
 }
 
 .waypoint-item.active {
-  background: #0e639c;
+  background: var(--color-primary);
 }
 
 .waypoint-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
   flex: 1;
 }
 
 .waypoint-index {
-  font-size: 12px;
-  color: #0e639c;
-  background: #1e1e22;
-  padding: 4px 8px;
-  border-radius: 3px;
-  font-weight: bold;
-  border: 1px solid #2a2a35;
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  background: var(--color-bg-4);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-weight: var(--font-weight-bold);
+  border: 1px solid var(--color-bg-2);
   min-width: 28px;
   text-align: center;
 }
 
 .waypoint-item.active .waypoint-index {
-  background: #0e639c;
+  background: var(--color-primary);
   color: white;
-  border-color: #0e639c;
+  border-color: var(--color-primary);
 }
 
 .waypoint-type {
-  font-size: 12px;
-  color: #d4d4d4;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-0);
 }
 
 .waypoint-coords {
-  font-size: 10px;
-  color: #888;
-  margin-left: 12px;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
+  margin-left: var(--spacing-sm);
   font-family: monospace;
 }
 
 .waypoint-details {
-  font-size: 10px;
-  color: #888;
-  margin-left: 12px;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
+  margin-left: var(--spacing-sm);
 }
 
 .btn-remove {
-  background: #a31313;
+  background: var(--color-error);
   color: white;
   border: none;
   width: 20px;
   height: 20px;
-  border-radius: 3px;
+  border-radius: var(--spacing-xxs);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 8px;
+  margin-left: var(--spacing-sm);
 }
 
 .btn-add-waypoint {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   width: 100%;
-  padding: 8px;
-  background: #2d5a8e;
+  padding: var(--spacing-sm);
+  background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--spacing-xs);
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
 }
 
 .btn-add-waypoint:hover {
-  background: #3d6ebf;
+  background: var(--color-primary-hover);
 }
 
 .waypoint-editor-form {
-  margin-top: 12px;
-  padding: 12px;
-  background: #252526;
-  border-radius: 4px;
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg-1);
+  border-radius: var(--spacing-xs);
   flex: 0 0 auto;
   min-height: 200px;
 }
@@ -337,31 +337,31 @@ watch(waypoints, (newWaypoints) => {
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .form-group {
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .form-group label {
   display: block;
-  font-size: 11px;
-  color: #aaa;
-  margin-bottom: 4px;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-3);
+  margin-bottom: var(--spacing-xs);
 }
 
 .form-input {
   width: 100%;
-  background: #3c3c3c;
-  border: 1px solid #454545;
-  color: white;
-  padding: 6px;
-  border-radius: 3px;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-4);
+  padding: var(--spacing-xs);
+  border-radius: var(--spacing-xxs);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #0e639c;
+  border-color: var(--color-border-focus);
 }
 </style>

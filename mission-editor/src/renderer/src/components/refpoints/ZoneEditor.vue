@@ -164,7 +164,7 @@ watch(() => store.zones, (newVal) => {
 }
 
 .btn-remove:hover {
-  background: #c41616;
+  background: var(--color-error-hover);
 }
 
 .input-group label {

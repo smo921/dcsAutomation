@@ -172,7 +172,7 @@ watch(() => store.bullseyes, (newVal) => {
 }
 
 .btn-remove:hover {
-  background: #c41616;
+  background: var(--color-error-hover);
 }
 
 /* Input group label */

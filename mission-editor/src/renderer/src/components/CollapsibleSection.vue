@@ -48,15 +48,15 @@ export default defineComponent({
   width: 100%;
 }
 
-/* Override the hover background since shared style uses CSS variable */
+/* CollapsibleSection specific override */
 .section-header:hover {
-  background: #303030;
+  background: var(--color-bg-3);
 }
 
-/* Animation override for nested scoped styles */
+/* CollapsibleSection specific animation - matches shared .section-content animation */
 .section-content {
   overflow: hidden;
-  animation: slideDown 0.3s ease-out;
+  animation: slideDown var(--transition-normal);
 }
 
 @keyframes slideDown {

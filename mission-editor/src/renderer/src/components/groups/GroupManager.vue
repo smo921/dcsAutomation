@@ -500,46 +500,25 @@ watch(currentGroup, (newVal) => {
 </script>
 
 <style scoped>
-.group-manager {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
 /* Group List Header */
 .group-list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 }
 
 .group-list-header h3 {
-  font-size: 14px;
-  color: #ffffff;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-4);
   margin: 0;
-}
-
-.btn-add {
-  background: #0e639c;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.btn-add:hover {
-  background: #1177bb;
 }
 
 /* Group List */
 .group-list {
-  background: #252526;
-  border-radius: 4px;
-  border: 1px solid #3e3e42;
+  background: var(--color-bg-1);
+  border-radius: var(--spacing-xs);
+  border: 1px solid var(--color-border);
 }
 
 /* Scrollable Group List Container */
@@ -547,25 +526,25 @@ watch(currentGroup, (newVal) => {
   flex: 0 0 auto;
   overflow-y: auto;
   min-height: 100px;
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 }
 
 .group-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
-  border-bottom: 1px solid #3e3e42;
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .group-item:hover {
-  background: #303030;
+  background: var(--color-bg-3);
 }
 
 .group-item.active {
-  background: #0e639c;
+  background: var(--color-primary);
 }
 
 .group-info {
@@ -573,42 +552,42 @@ watch(currentGroup, (newVal) => {
 }
 
 .group-info h4 {
-  font-size: 13px;
-  color: #ffffff;
-  margin: 0 0 4px 0;
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin: 0 0 var(--spacing-xs) 0;
 }
 
 .group-meta {
   display: flex;
-  gap: 8px;
-  font-size: 11px;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xxs);
 }
 
 .group-category {
-  background: #3c3c3c;
-  padding: 2px 6px;
-  border-radius: 3px;
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
   color: #66b3ff;
 }
 
 .group-trigger {
-  background: #3c3c3c;
-  padding: 2px 6px;
-  border-radius: 3px;
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
   color: #9cdcfe;
 }
 
 .group-country {
-  background: #3c3c3c;
-  padding: 2px 6px;
-  border-radius: 3px;
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
   color: #dcdcdc;
 }
 
 .group-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .template-select-wrapper {
@@ -616,126 +595,89 @@ watch(currentGroup, (newVal) => {
 }
 
 .template-select {
-  background: #3c3c3c;
-  border: 1px solid #454545;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 3px;
-  font-size: 11px;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-4);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--font-size-xxs);
   cursor: pointer;
 }
 
 .template-select:focus {
   outline: none;
-  border-color: #0e639c;
-}
-
-.btn-delete {
-  background: #a31313;
-  color: white;
-  border: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-delete:hover {
-  background: #c32323;
-}
-
-.header-actions {
-  position: relative;
-}
-
-.btn-add-template {
-  background: #0e639c;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 12px;
-  margin-left: 8px;
-}
-
-.btn-add-template:hover {
-  background: #1177bb;
+  border-color: var(--color-border-focus);
 }
 
 .template-menu {
   position: absolute;
   top: 100%;
   left: 0;
-  background: #252526;
-  border: 1px solid #3e3e42;
-  border-radius: 4px;
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--spacing-xs);
   min-width: 180px;
   max-height: 300px;
   overflow-y: auto;
   z-index: 100;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
 }
 
 .template-menu-item {
-  padding: 10px 12px;
+  padding: var(--spacing-sm) var(--spacing-md);
   cursor: pointer;
-  font-size: 13px;
-  transition: background 0.2s;
+  font-size: var(--font-size-md);
+  transition: background var(--transition-fast);
 }
 
 .template-menu-item:hover {
-  background: #303030;
+  background: var(--color-bg-3);
 }
 
 .empty-state {
-  padding: 20px;
+  padding: var(--spacing-lg);
   text-align: center;
-  color: #888;
-  font-size: 13px;
+  color: var(--color-text-1);
+  font-size: var(--font-size-md);
 }
 
 /* Resizeable Divider between list and editor */
 .content-resizer {
   height: 8px;
-  background: #3e3e42;
+  background: var(--color-border);
   cursor: ns-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 4px 0;
-  border-radius: 4px;
-  transition: background 0.2s;
+  margin: var(--spacing-xs) 0;
+  border-radius: var(--spacing-xs);
+  transition: background var(--transition-fast);
   pointer-events: auto;
   z-index: 10;
 }
 
 .content-resizer:hover {
-  background: #0e639c;
+  background: var(--color-primary);
 }
 
 .resizer-line {
   width: 32px;
   height: 2px;
-  background: #666;
-  border-radius: 2px;
+  background: var(--color-text-2);
+  border-radius: var(--spacing-xs);
 }
 
 .content-resizer:hover .resizer-line {
-  background: #0e639c;
+  background: var(--color-text-4);
 }
 
 /* Group Editor Panel */
 .group-editor-panel {
-  background: #252526;
-  border-radius: 4px;
+  background: var(--color-bg-1);
+  border-radius: var(--spacing-xs);
   overflow: hidden;
-  border: 1px solid #3e3e42;
+  border: 1px solid var(--color-border);
   flex: 0 0 auto;
   min-height: 200px;
   display: flex;
@@ -743,17 +685,17 @@ watch(currentGroup, (newVal) => {
 }
 
 .group-editor-panel h3 {
-  font-size: 14px;
-  color: #ffffff;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-4);
   margin: 0;
-  padding: 12px;
-  border-bottom: 1px solid #3e3e42;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
   flex: 0 0 auto;
 }
 
 .editor-section {
-  padding: 12px;
-  border-bottom: 1px solid #3e3e42;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
   flex: 0 0 auto;
 }
 
@@ -762,79 +704,79 @@ watch(currentGroup, (newVal) => {
 }
 
 .editor-section h4 {
-  font-size: 13px;
-  color: #ffffff;
-  margin: 0 0 10px 0;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #3e3e42;
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin: 0 0 var(--spacing-sm) 0;
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
 }
 
 .form-group {
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
 }
 
 .form-group label {
   display: block;
-  font-size: 11px;
-  color: #aaa;
-  margin-bottom: 4px;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-3);
+  margin-bottom: var(--spacing-xs);
 }
 
 .form-input {
   width: 100%;
-  background: #3c3c3c;
-  border: 1px solid #454545;
-  color: white;
-  padding: 6px;
-  border-radius: 3px;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-4);
+  padding: var(--spacing-xs);
+  border-radius: var(--spacing-xxs);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #0e639c;
+  border-color: var(--color-border-focus);
 }
 
 .placement-config,
 .waypoint-row,
 .unit-row {
-  margin-top: 8px;
-  padding-left: 8px;
-  border-left: 2px solid #3c3c3c;
+  margin-top: var(--spacing-xs);
+  padding-left: var(--spacing-sm);
+  border-left: 2px solid var(--color-bg-2);
 }
 
 .unit-row {
   display: flex;
-  gap: 8px;
-  padding: 12px;
-  background: #2d2d30;
-  border-radius: 4px;
-  margin-top: 12px;
-  border: 1px solid #3e3e42;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg-4);
+  border-radius: var(--spacing-xs);
+  margin-top: var(--spacing-md);
+  border: 1px solid var(--color-border);
 }
 
 .unit-row + .unit-row {
-  margin-top: 20px;
-  border-top: 2px solid #0e639c;
+  margin-top: var(--spacing-xl);
+  border-top: 2px solid var(--color-primary);
 }
 
 .unit-number-badge {
   flex: 0 0 32px;
   height: 32px;
-  background: #0e639c;
+  background: var(--color-primary);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
-  font-weight: bold;
-  font-size: 14px;
+  border-radius: var(--spacing-xxs);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
   user-select: none;
 }
 
@@ -844,30 +786,30 @@ watch(currentGroup, (newVal) => {
 
 .waypoint-row {
   display: flex;
-  gap: 8px;
-  padding: 12px;
-  background: #2d2d30;
-  border-radius: 4px;
-  margin-top: 12px;
-  border: 1px solid #3e3e42;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg-4);
+  border-radius: var(--spacing-xs);
+  margin-top: var(--spacing-md);
+  border: 1px solid var(--color-border);
 }
 
 .waypoint-row + .waypoint-row {
-  margin-top: 20px;
-  border-top: 2px solid #0e639c;
+  margin-top: var(--spacing-xl);
+  border-top: 2px solid var(--color-primary);
 }
 
 .waypoint-number-badge {
   flex: 0 0 32px;
   height: 32px;
-  background: #0e639c;
+  background: var(--color-primary);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
-  font-weight: bold;
-  font-size: 14px;
+  border-radius: var(--spacing-xxs);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
   user-select: none;
 }
 
@@ -877,38 +819,38 @@ watch(currentGroup, (newVal) => {
 
 .btn-remove-unit,
 .btn-remove-waypoint {
-  background: #3c3c3c;
-  color: #aaa;
+  background: var(--color-bg-2);
+  color: var(--color-text-1);
   border: none;
-  padding: 4px 8px;
-  border-radius: 3px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
   cursor: pointer;
-  font-size: 11px;
-  margin-top: 8px;
+  font-size: var(--font-size-xxs);
+  margin-top: var(--spacing-xs);
 }
 
 .btn-remove-unit:hover,
 .btn-remove-waypoint:hover {
-  color: white;
-  background: #454545;
+  color: var(--color-text-4);
+  background: var(--color-bg-3);
 }
 
 .btn-add-unit,
 .btn-add-waypoint {
-  background: #3c3c3c;
-  color: #d4d4d4;
+  background: var(--color-bg-2);
+  color: var(--color-text-0);
   border: none;
-  padding: 6px 12px;
-  border-radius: 3px;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--spacing-xxs);
   cursor: pointer;
-  font-size: 12px;
-  margin-top: 8px;
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
   width: 100%;
 }
 
 .btn-add-unit:hover,
 .btn-add-waypoint:hover {
-  background: #454545;
-  color: white;
+  background: var(--color-bg-3);
+  color: var(--color-text-4);
 }
 </style>

@@ -248,7 +248,7 @@ watch(() => store.lines, (newVal) => {
 }
 
 .btn-remove:hover {
-  background: #c41616;
+  background: var(--color-error-hover);
 }
 
 .coordinate-inputs {

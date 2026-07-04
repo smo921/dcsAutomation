@@ -97,31 +97,86 @@ npm run format
 ```
 Formats code with Pretter.
 
+### UI Component Library
+
+The app includes a library of reusable UI components in `src/renderer/src/components/ui/`:
+
+**Modal** (`Modal.vue`):
+- `v-model:open` - Control visibility
+- `title` - Modal title
+- `close-text` - Close button text (default: "Close")
+- `closable` - Show close button (default: true)
+- `closeOnBackground` - Close on background click (default: true)
+- Slots: `content`, `actions`
+- Features: Focus trap, Escape key close, accessible
+
+**Button** (`Button.vue`):
+- `variant` - Button style: `primary`, `danger`, `secondary`, `ghost`
+- `size` - Button size: `sm`, `md`, `lg`
+- `type` - HTML type: `button`, `submit`, `reset`
+- `disabled` - Disabled state
+- `block` - Full width
+- `iconOnly` - Circular icon button
+- Slots: Default (label), `icon`
+
 ### Styling
 The app uses CSS design tokens for consistent theming. All styles are located in `src/renderer/src/styles/`:
 
 - **Token files** (`styles/tokens/`): Define CSS custom properties for colors, spacing, typography, and transitions
 - **Global styles** (`styles/global.css`): Reset, utility classes, and universal styles
+- **Component styles** (`styles/components.css`): Reusable component patterns
 
-**Colors**: Defined in `src/renderer/src/styles/tokens/colors.css`
+#### Design Tokens
+
+**Colors** (`src/renderer/src/styles/tokens/colors.css`):
 - Backgrounds: `--color-bg-0` through `--color-bg-4`
 - Text: `--color-text-0` through `--color-text-4`
 - Primary: `--color-primary`, `--color-primary-hover`
-- Status: `--color-success`, `--color-error`, `--color-warning`
-- Borders: `--color-border`
+- Status: `--color-success`, `--color-success-hover`, `--color-error`, `--color-error-hover`, `--color-warning`
+- Borders: `--color-border`, `--color-border-focus`
 
-**Spacing**: Defined in `src/renderer/src/styles/tokens/spacing.css`
+**Spacing** (`src/renderer/src/styles/tokens/spacing.css`):
 - Scale: `--spacing-xxs` (2px) through `--spacing-4xl` (40px)
 
-**Typography**: Defined in `src/renderer/src/styles/tokens/typography.css`
+**Typography** (`src/renderer/src/styles/tokens/typography.css`):
 - Font family, sizes (`--font-size-xxs` through `--font-size-3xl`)
-- Weights, line heights
+- Weights (`--font-weight-normal`, `--font-weight-medium`, `--font-weight-semibold`, `--font-weight-bold`)
+- Line heights, letter spacing
 
-**Utilities**: Utility classes available in templates
+**Transitions** (`src/renderer/src/styles/tokens/transitions.css`):
+- `--transition-fast`, `--transition-normal`, `--transition-slow`
+
+#### Reusable Component Classes
+
+**Buttons** (`styles/components.css`):
+- `.btn-primary`, `.btn-danger`, `.btn-secondary`, `.btn-ghost`
+- Size modifiers: `.btn-sm`, `.btn-lg`
+- Icon buttons: `.btn-icon-only`
+- Block buttons: `.btn-block`
+
+**Forms**:
+- `.form-row`, `.form-group`, `.form-input`, `.form-select`
+
+**Layout**:
+- `.resizer`, `.resizer-line`
+- `.list-container`, `.list-item`, `.list-header`
+- `.editor-panel`, `.editor-section`
+
+**Badges**:
+- `.badge-primary`, `.badge-success`, `.badge-error`, `.badge-info`
+
+**Collapsible Section**:
+- `.collapsible-section`, `.section-header`, `.section-title`
+- `.toggle-icon` (rotates with `.expanded` class)
+- `.section-content` (slides down with animation)
+
+#### Utility Classes (`styles/global.css`):
 - Text sizing: `.u-text-xs`, `.u-text-sm`, etc.
 - Spacing: `.u-spacing-xs`, `.u-spacing-sm`, etc.
 - Layout: `.u-flex`, `.u-grid`, `.u-hidden`
 - Interaction: `.u-pointer`, `.u-select-none`
+
+### UI Component Library
 
 ## Configuration
 
