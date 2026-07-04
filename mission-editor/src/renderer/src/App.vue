@@ -270,18 +270,8 @@ const onWaypointTemplateApplied = (template) => {
 </script>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  overflow: hidden;
-}
+/* Import design tokens */
+@import './styles/index.css';
 
 .app {
   display: flex;
@@ -293,57 +283,57 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
-  background: #252526;
-  border-bottom: 1px solid #3e3e42;
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: var(--color-bg-1);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .app-header h1 {
-  font-size: 18px;
-  color: #ffffff;
+  font-size: var(--font-size-3xl);
+  color: var(--color-text-4);
 }
 
 .header-nav button {
-  background: #0e639c;
+  background: var(--color-primary);
   color: white;
   border: none;
-  padding: 6px 12px;
-  border-radius: 3px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--spacing-xxs);
   cursor: pointer;
-  margin-left: 8px;
-  font-size: 12px;
+  margin-left: var(--spacing-sm);
+  font-size: var(--font-size-sm);
 }
 
 .header-nav button:hover {
-  background: #1177bb;
+  background: var(--color-primary-hover);
 }
 
 /* Tab buttons for Groups/Waypoints */
 .content-tabs {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
 .tab-btn {
-  background: #3c3c3c;
-  color: #d4d4d4;
-  border: 1px solid #454545;
-  padding: 8px 16px;
-  border-radius: 4px;
+  background: var(--color-bg-2);
+  color: var(--color-text-0);
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--spacing-xs);
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-normal);
 }
 
 .tab-btn:hover {
-  background: #454545;
+  background: var(--color-bg-3);
 }
 
 .tab-btn.active {
-  background: #0e639c;
-  border-color: #0e639c;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: white;
 }
 
@@ -357,9 +347,9 @@ body {
   flex: 0 0 auto;
   width: 320px;
   height: 100%;
-  background: #252526;
-  border-right: 1px solid #3e3e42;
-  padding: 16px;
+  background: var(--color-bg-1);
+  border-right: 1px solid var(--color-border);
+  padding: var(--spacing-lg);
   overflow-y: auto;
   position: relative;
 }
@@ -378,28 +368,28 @@ body {
 }
 
 .sidebar::after:hover {
-  background: #0e639c;
+  background: var(--color-primary);
 }
 
 .main-content {
   flex: 1;
-  padding: 20px;
+  padding: var(--spacing-xl);
   overflow: hidden;
-  background: #1e1e1e;
+  background: var(--color-bg-0);
   display: flex;
   flex-direction: column;
 }
 
 .main-content h2 {
-  font-size: 16px;
-  color: #ffffff;
-  margin-bottom: 12px;
+  font-size: var(--font-size-xl);
+  color: var(--color-text-4);
+  margin-bottom: var(--spacing-md);
 }
 
 /* Fixed divider between tabs and content */
 .content-divider {
   height: 6px;
-  background: #3e3e42;
+  background: var(--color-border);
   cursor: default;
   flex: 0 0 auto;
 }
@@ -424,45 +414,45 @@ body {
 
 /* Waypoint count message */
 .waypoint-count {
-  margin-top: 12px;
+  margin-top: var(--spacing-md);
 }
 
 .waypoint-count p {
-  font-size: 11px;
-  color: #888;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
 }
 
 .app-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 20px;
-  background: #252526;
-  border-top: 1px solid #3e3e42;
-  font-size: 12px;
+  padding: var(--spacing-xs) var(--spacing-xl);
+  background: var(--color-bg-1);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
 }
 
 .status-message {
-  padding: 4px 8px;
-  border-radius: 3px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
 }
 
 .status-message.success {
-  background: #1e7a3b;
+  background: var(--color-success);
   color: white;
 }
 
 .status-message.error {
-  background: #a31313;
+  background: var(--color-error);
   color: white;
 }
 
 .status-message.info {
-  background: #0e639c;
+  background: var(--color-primary);
   color: white;
 }
 
 .version {
-  color: #888;
+  color: var(--color-text-1);
 }
 </style>

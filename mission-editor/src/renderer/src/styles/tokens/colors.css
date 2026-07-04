@@ -1,0 +1,35 @@
+/* Color Design Tokens */
+:root {
+  /* Backgrounds */
+  --color-bg-0: #1e1e1e;      /* App background */
+  --color-bg-1: #252526;      /* Sidebar, panels */
+  --color-bg-2: #3c3c3c;      /* Inputs, badges */
+  --color-bg-3: #454545;      /* Hover states */
+  --color-bg-4: #2d2d30;      /* Active list items, form rows */
+
+  /* Text */
+  --color-text-0: #d4d4d4;    /* Primary text */
+  --color-text-1: #888;       /* Secondary text */
+  --color-text-2: #666;       /* Tertiary text */
+  --color-text-3: #aaa;       /* Labels */
+  --color-text-4: #ffffff;    /* Light text on dark */
+
+  /* Primary */
+  --color-primary: #0e639c;
+  --color-primary-hover: #1177bb;
+
+  /* Status */
+  --color-success: #1e7a3b;
+  --color-success-hover: #268a45;
+  --color-error: #a31313;
+  --color-error-hover: #c41616;
+  --color-warning: #d69e2e;
+
+  /* Borders */
+  --color-border: #3e3e42;
+  --color-border-focus: #0e639c;
+
+  /* Utility */
+  --color-transparent: rgba(0, 0, 0, 0);
+  --color-overlay: rgba(0, 0, 0, 0.7);
+}

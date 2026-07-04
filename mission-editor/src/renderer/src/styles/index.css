@@ -1,0 +1,3 @@
+/* Global Styles Import - Main Entry Point */
+@import './tokens/index.css';
+@import './global.css';

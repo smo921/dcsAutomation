@@ -95,7 +95,33 @@ Fixes ESLint issues automatically.
 ```bash
 npm run format
 ```
-Formats code with Prettier.
+Formats code with Pretter.
+
+### Styling
+The app uses CSS design tokens for consistent theming. All styles are located in `src/renderer/src/styles/`:
+
+- **Token files** (`styles/tokens/`): Define CSS custom properties for colors, spacing, typography, and transitions
+- **Global styles** (`styles/global.css`): Reset, utility classes, and universal styles
+
+**Colors**: Defined in `src/renderer/src/styles/tokens/colors.css`
+- Backgrounds: `--color-bg-0` through `--color-bg-4`
+- Text: `--color-text-0` through `--color-text-4`
+- Primary: `--color-primary`, `--color-primary-hover`
+- Status: `--color-success`, `--color-error`, `--color-warning`
+- Borders: `--color-border`
+
+**Spacing**: Defined in `src/renderer/src/styles/tokens/spacing.css`
+- Scale: `--spacing-xxs` (2px) through `--spacing-4xl` (40px)
+
+**Typography**: Defined in `src/renderer/src/styles/tokens/typography.css`
+- Font family, sizes (`--font-size-xxs` through `--font-size-3xl`)
+- Weights, line heights
+
+**Utilities**: Utility classes available in templates
+- Text sizing: `.u-text-xs`, `.u-text-sm`, etc.
+- Spacing: `.u-spacing-xs`, `.u-spacing-sm`, etc.
+- Layout: `.u-flex`, `.u-grid`, `.u-hidden`
+- Interaction: `.u-pointer`, `.u-select-none`
 
 ## Configuration
 
