@@ -2,7 +2,7 @@
 
 > **Status**: Draft - 2026-07-02
 > **Focus**: Foundational architecture and MVP scope
-> **Updated**: 2026-07-02 - Revised to bullseye-centric coordinate system
+> **Updated**: 2026-07-06 - Template creation/editing in-app, GroupManager, scrollbar fixes
 > **Deprioritized**: Battle lines, pattern generators, advanced map visualization
 
 ---

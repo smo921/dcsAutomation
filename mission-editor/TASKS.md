@@ -71,9 +71,9 @@ This file tracks the implementation tasks for the DCS Mission Editor MVP.
 - [ ] Visual preview of generated route
 
 ### Phase 4: Advanced Features
-- [ ] Template creation/editing in-app
-- [ ] Dynamic template management (add/remove)
-- [ ] Multiple group management
+- [x] Template creation/editing in-app
+- [x] Dynamic template management (add/remove)
+- [x] Multiple group management
 
 ### Phase 5: Placement Mode Refactor (2026-07-02) - COMPLETED
 - [x] Decouple placement mode from reference type - make them independent choices
