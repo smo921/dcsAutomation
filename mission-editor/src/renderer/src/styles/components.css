@@ -71,7 +71,13 @@
   background: var(--color-error);
   color: white;
   border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--spacing-xxs);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-remove:hover {

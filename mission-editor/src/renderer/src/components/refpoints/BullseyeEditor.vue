@@ -21,7 +21,9 @@
           class="name-input"
           :list="bullseyeSuggestions"
         />
-        <button class="btn-remove" @click="removeBullseye(index)">✕</button>
+        <button class="btn-remove" @click="removeBullseye(index)">
+          <span class="btn-remove-icon">✕</span>
+        </button>
       </div>
       <datalist :id="bullseyeSuggestions">
         <option value="Red" />

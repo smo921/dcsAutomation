@@ -20,7 +20,9 @@
           placeholder="Airbase Name"
           class="name-input"
         />
-        <button class="btn-remove" @click="removeAirbase(index)">✕</button>
+        <button class="btn-remove" @click="removeAirbase(index)">
+          <span class="btn-remove-icon">✕</span>
+        </button>
       </div>
     </div>
 

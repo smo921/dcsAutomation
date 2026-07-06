@@ -14,7 +14,7 @@
           <div class="waypoint-header">
             <span class="waypoint-index">{{ index + 1 }}</span>
             <span class="waypoint-type">{{ wp.type }}</span>
-            <Button @click.stop="removeWaypoint(index)" variant="danger" icon-only title="Remove Waypoint">✕</Button>
+            <button class="btn-remove" @click.stop="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">✕</span></button>
           </div>
           <div class="waypoint-coords" v-if="wp.x !== undefined && wp.y !== undefined">
             {{ Math.round(wp.x) }}, {{ Math.round(wp.y) }}
@@ -106,10 +106,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useResize } from '../../composables/useResize'
-import { Button } from '../ui'
 
 const store = useRefpointsStore()
 

@@ -19,7 +19,9 @@
           placeholder="Line Name"
           class="name-input"
         />
-        <button class="btn-remove" @click="removeLine(index)">✕</button>
+        <button class="btn-remove" @click="removeLine(index)">
+          <span class="btn-remove-icon">✕</span>
+        </button>
       </div>
 
       <div class="coordinate-inputs">

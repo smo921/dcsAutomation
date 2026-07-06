@@ -20,7 +20,9 @@
           placeholder="Zone Name"
           class="name-input"
         />
-        <button class="btn-remove" @click="removeZone(index)">✕</button>
+        <button class="btn-remove" @click="removeZone(index)">
+          <span class="btn-remove-icon">✕</span>
+        </button>
       </div>
     </div>
 
