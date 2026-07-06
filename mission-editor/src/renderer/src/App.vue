@@ -19,6 +19,10 @@
           <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" />
         </CollapsibleSection>
 
+        <CollapsibleSection v-model:expanded="sections.templateManagement" title="Template Management" style="margin-top: 20px;">
+          <TemplateManager ref="templateManagerRef" @template-save="onTemplateSave" @template-delete="onTemplateDelete" />
+        </CollapsibleSection>
+
         <CollapsibleSection v-model:expanded="sections.waypointTemplates" title="Waypoint Templates" style="margin-top: 20px;">
           <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" />
         </CollapsibleSection>
@@ -82,6 +86,7 @@ import { useRefpointsStore } from './stores/refpoints'
 import { useTemplatesStore } from './stores/templates'
 import ReferencePointManager from './components/refpoints/ReferencePointManager.vue'
 import TemplateLibrary from './components/templates/TemplateLibrary.vue'
+import TemplateManager from './components/templates/TemplateManager.vue'
 import WaypointTemplateLibrary from './components/templates/WaypointTemplateLibrary.vue'
 import GroupManager from './components/groups/GroupManager.vue'
 import WaypointEditor from './components/editor/WaypointEditor.vue'
@@ -95,6 +100,7 @@ const templatesStore = useTemplatesStore()
 // Refs for component access
 const refpointManagerRef = ref(null)
 const templateLibraryRef = ref(null)
+const templateManagerRef = ref(null)
 const waypointTemplateLibraryRef = ref(null)
 const groupManagerRef = ref(null)
 
@@ -108,6 +114,7 @@ const activeTab = ref('groups')
 const sections = ref({
   referencePoints: false,
   templates: false,
+  templateManagement: false,
   waypointTemplates: false
 })
 
@@ -208,6 +215,40 @@ const setStatus = (message, type = 'info') => {
   setTimeout(() => {
     status.value = { message: '', type: 'info' }
   }, 3000)
+}
+
+// Template management handlers
+const onTemplateSave = (template) => {
+  const category = template.category || 'air'
+  const existingCategory = templatesStore.categories[category] || []
+
+  // Check for duplicate ID or name
+  const existingIndex = existingCategory.findIndex(t =>
+    (t.id && t.id === template.id) || (!t.id && t.name === template.name)
+  )
+
+  if (existingIndex !== -1) {
+    // Update existing template using store method
+    templatesStore.updateTemplate(category, existingIndex, template)
+    setStatus(`Template "${template.name}" updated`, 'success')
+  } else {
+    // Add new template using store method
+    templatesStore.addTemplate(category, template)
+    setStatus(`Template "${template.name}" created`, 'success')
+  }
+}
+
+const onTemplateDelete = (template) => {
+  const category = template.category || 'air'
+  const categoryTemplates = templatesStore.categories[category] || []
+  const templateIndex = categoryTemplates.findIndex(t =>
+    (t.id && t.id === template.id) || (!t.id && t.name === template.name)
+  )
+
+  if (templateIndex !== -1) {
+    templatesStore.deleteTemplate(category, templateIndex)
+    setStatus(`Template "${template.name}" deleted`, 'info')
+  }
 }
 
 // Initialize
@@ -341,7 +382,8 @@ const onWaypointTemplateApplied = (template) => {
 .app-content {
   display: flex;
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  height: 100%;
 }
 
 .sidebar {
@@ -374,8 +416,8 @@ const onWaypointTemplateApplied = (template) => {
 
 .main-content {
   flex: 1;
+  min-height: 0;
   padding: var(--spacing-xl);
-  overflow: hidden;
   background: var(--color-bg-0);
   display: flex;
   flex-direction: column;
@@ -396,8 +438,9 @@ const onWaypointTemplateApplied = (template) => {
 }
 
 .tab-content {
-  overflow: hidden;
   flex: 1;
+  min-height: 0;
+  height: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -407,10 +450,11 @@ const onWaypointTemplateApplied = (template) => {
 .group-content-layout,
 .waypoint-content-layout {
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 /* Waypoint count message */

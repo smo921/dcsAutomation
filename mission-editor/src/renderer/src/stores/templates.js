@@ -76,6 +76,34 @@ export const useTemplatesStore = defineStore('templates', {
 
     getCategories() {
       return Object.keys(this.categories)
+    },
+
+    addTemplate(category, template) {
+      if (!this.categories[category]) {
+        this.categories[category] = []
+      }
+      this.categories[category].push(template)
+    },
+
+    updateTemplate(category, templateIndex, template) {
+      if (this.categories[category]) {
+        this.categories[category][templateIndex] = template
+      }
+    },
+
+    deleteTemplate(category, templateIndex) {
+      if (this.categories[category]) {
+        this.categories[category].splice(templateIndex, 1)
+      }
+    },
+
+    deleteTemplateById(category, templateId) {
+      if (this.categories[category]) {
+        const index = this.categories[category].findIndex(t => t.id === templateId)
+        if (index !== -1) {
+          this.categories[category].splice(index, 1)
+        }
+      }
     }
   }
 })

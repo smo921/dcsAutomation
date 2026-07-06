@@ -46,27 +46,28 @@ export default defineComponent({
 /* Using shared styles from components.css */
 .collapsible-section {
   width: 100%;
+  flex: 0 0 auto;
+  min-height: 0;
 }
 
 /* CollapsibleSection specific override */
+.section-header {
+  background: var(--color-bg-2);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
 .section-header:hover {
   background: var(--color-bg-3);
 }
 
 /* CollapsibleSection specific animation - matches shared .section-content animation */
 .section-content {
+  min-height: 0;
   overflow: hidden;
-  animation: slideDown var(--transition-normal);
 }
 
-@keyframes slideDown {
-  from {
-    max-height: 0;
-    opacity: 0;
-  }
-  to {
-    max-height: 2000px;
-    opacity: 1;
-  }
+/* When inside a flex container that needs to shrink */
+.editor-section {
+  min-height: 0;
 }
 </style>
