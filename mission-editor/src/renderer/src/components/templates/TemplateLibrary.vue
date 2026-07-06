@@ -9,59 +9,33 @@
       />
     </div>
 
-    <div class="template-categories">
-      <div v-for="category in categories" :key="category" class="category-section">
-        <div class="category-header" @click="toggleCategory(category)">
-          <h4>{{ category }}</h4>
-          <Button
-            variant="ghost"
-            size="sm"
-            class="toggle-btn"
-            @click.stop="toggleCategory(category)"
-          >
-            <template #icon>
-              <span class="expand-icon" :class="{ expanded: expandedCategories[category] }">▼</span>
-            </template>
-          </Button>
+    <div class="category-tabs">
+      <button
+        v-for="category in categories"
+        :key="category"
+        :class="['tab-btn', { active: activeCategory === category }]"
+        @click="activeCategory = category"
+      >
+        {{ category.charAt(0).toUpperCase() + category.slice(1) }}
+      </button>
+    </div>
+
+    <div class="category-content">
+      <div v-if="getTemplatesByCategory(activeCategory).length === 0" class="empty-state">
+        <p>No {{ activeCategory }} templates configured.</p>
+      </div>
+      <div v-for="template in getTemplatesByCategory(activeCategory)" :key="template.id || template.name" class="template-item">
+        <div class="template-info" @click.stop="applyTemplate(template, activeCategory)">
+          <h5>{{ template.name }}</h5>
+          <p v-if="template.description" class="template-desc">
+            {{ template.description }}
+          </p>
         </div>
-        <div v-if="expandedCategories[category]" class="category-content">
-          <div class="templates-list">
-            <div
-              v-for="template in getTemplatesByCategory(category)"
-              :key="template.id || template.name"
-              class="template-item"
-            >
-              <div class="template-info" @click.stop="applyTemplate(template, category)">
-                <h5>{{ template.name }}</h5>
-                <p v-if="template.description" class="template-desc">
-                  {{ template.description }}
-                </p>
-              </div>
-              <div class="template-actions">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  iconOnly
-                  title="Edit Template"
-                  @click.stop="editTemplate(template, category)"
-                >
-                  ✎
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  iconOnly
-                  title="Delete Template"
-                  @click.stop="deleteTemplate(template, category)"
-                >
-                  ✕
-                </Button>
-                <span v-if="template.units" class="unit-count">
-                  {{ Array.isArray(template.units) ? template.units.length : 0 }} units
-                </span>
-              </div>
-            </div>
-          </div>
+        <div class="template-actions">
+          <button class="btn-remove" @click.stop="deleteTemplate(template, activeCategory)" title="Delete Template">✕</button>
+          <span v-if="template.units" class="unit-count">
+            {{ Array.isArray(template.units) ? template.units.length : 0 }} units
+          </span>
         </div>
       </div>
     </div>
@@ -69,9 +43,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useTemplatesStore } from '../../stores/templates'
 import { Button } from '../ui'
+import { Icon } from '../ui'
 
 const emit = defineEmits(['template-apply', 'template-edit', 'template-delete'])
 
@@ -79,18 +54,7 @@ const store = useTemplatesStore()
 
 const searchQuery = ref('')
 const categories = ['air', 'ground', 'naval', 'support']
-
-// Track expanded categories
-const expandedCategories = ref({
-  air: true,
-  ground: true,
-  naval: true,
-  support: true
-})
-
-const toggleCategory = (category) => {
-  expandedCategories.value[category] = !expandedCategories.value[category]
-}
+const activeCategory = ref('air')
 
 const getTemplatesByCategory = (category) => {
   const templates = store.categories[category] || []
@@ -112,12 +76,6 @@ const editTemplate = (template, category) => {
 const deleteTemplate = (template, category) => {
   emit('template-delete', { template, category })
 }
-
-// Load templates on mount
-onMounted(() => {
-  // Templates loaded from store (can be populated via sample data)
-  // The App.vue loads templates into the store on mount
-})
 </script>
 
 <style scoped>
@@ -144,69 +102,46 @@ onMounted(() => {
   border-color: var(--color-border-focus);
 }
 
-.template-categories {
+/* Category Tabs */
+.category-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.tab-btn {
+  background: var(--color-bg-2);
+  color: var(--color-text-0);
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs) var(--spacing-xxs) 0 0;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+}
+
+.tab-btn:hover {
+  background: var(--color-bg-3);
+}
+
+.tab-btn.active {
+  background: var(--color-bg-1);
+  border-bottom: 1px solid var(--color-bg-1);
+  color: var(--color-text-4);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Category Content */
+.category-content {
   max-height: 400px;
   overflow-y: auto;
 }
 
-.category-section {
-  margin-bottom: var(--spacing-md);
-}
-
-.category-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-  padding: var(--spacing-xs) 0;
-}
-
-.category-header:hover {
-  opacity: 0.8;
-}
-
-.category-header h4 {
+.empty-state {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-1);
   font-size: var(--font-size-sm);
-  text-transform: uppercase;
-  color: var(--color-text-1);
-  margin: 0;
-}
-
-.toggle-btn :deep(.btn) {
-  padding: var(--spacing-xs);
-  margin-left: var(--spacing-xs);
-}
-
-.expand-icon {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-1);
-  transition: transform var(--transition-fast);
-}
-
-.expand-icon.expanded {
-  transform: rotate(180deg);
-}
-
-.category-content {
-  animation: slideDown var(--transition-normal);
-}
-
-@keyframes slideDown {
-  from {
-    max-height: 0;
-    opacity: 0;
-  }
-  to {
-    max-height: 500px;
-    opacity: 1;
-  }
-}
-
-.templates-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
 }
 
 .template-item {
@@ -242,14 +177,16 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.template-meta {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-2);
-}
-
 .template-actions {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+}
+
+.unit-count {
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--font-size-xxs);
 }
 </style>
