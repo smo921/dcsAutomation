@@ -14,16 +14,18 @@
         v-for="template in filteredTemplates"
         :key="template.id"
         class="waypoint-template-item"
-        @click="applyTemplate(template)"
       >
-        <div class="template-info">
+        <div class="template-info" @click="applyTemplate(template)">
           <h5>{{ template.name }}</h5>
-          <p class="template-desc">
+          <span class="template-badge">
             {{ template.waypoints?.length || 0 }} waypoints
-          </p>
+          </span>
         </div>
         <div class="template-meta">
-          <Button variant="primary" size="sm" @click.stop="applyTemplate(template)">
+          <button class="btn-remove" @click.stop="deleteTemplate(template)" title="Delete Template">
+            <span class="btn-remove-icon">✕</span>
+          </button>
+          <Button variant="primary" size="sm" @click.stop="applyTemplate(template)" title="Apply Template">
             Apply
           </Button>
         </div>
@@ -53,16 +55,24 @@ const filteredTemplates = computed(() => {
   )
 })
 
-const emit = defineEmits(['waypoint-template-apply'])
+const emit = defineEmits(['waypoint-template-apply', 'waypoint-template-delete'])
 
 const applyTemplate = (template) => {
   emit('waypoint-template-apply', template)
+}
+
+const deleteTemplate = (template) => {
+  emit('waypoint-template-delete', template)
 }
 </script>
 
 <style scoped>
 .waypoint-template-library {
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .library-header {
@@ -119,15 +129,27 @@ const applyTemplate = (template) => {
   margin-bottom: var(--spacing-xs);
 }
 
-.template-desc {
+.template-badge {
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
   font-size: var(--font-size-xxs);
   color: var(--color-text-1);
-  line-height: 1.4;
+  margin-top: var(--spacing-xs);
+  display: inline-block;
 }
 
 .template-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Make apply button same height as delete icon (24px) */
+.template-meta .btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  height: 24px;
   font-size: var(--font-size-xxs);
-  color: var(--color-text-2);
 }
 
 .no-results {

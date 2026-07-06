@@ -47,13 +47,17 @@ export default defineComponent({
 .collapsible-section {
   width: 100%;
   flex: 0 0 auto;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* CollapsibleSection specific override */
 .section-header {
   background: var(--color-bg-2);
   padding: var(--spacing-sm) var(--spacing-md);
+  flex: 0 0 auto;
+  cursor: pointer;
+  user-select: none;
 }
 
 .section-header:hover {
@@ -62,8 +66,11 @@ export default defineComponent({
 
 /* CollapsibleSection specific animation - matches shared .section-content animation */
 .section-content {
-  min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
 }
 
 /* When inside a flex container that needs to shrink */

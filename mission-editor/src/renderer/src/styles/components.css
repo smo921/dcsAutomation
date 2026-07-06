@@ -374,6 +374,105 @@
 }
 
 /* ========================================
+   Template Styles
+   ======================================== */
+
+.template-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.template-item:hover {
+  background: var(--color-bg-3);
+}
+
+.template-item:last-child {
+  border-bottom: none;
+}
+
+.template-info {
+  flex: 1;
+}
+
+.template-info h4,
+.template-info h5 {
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.template-desc {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
+  line-height: 1.4;
+}
+
+.template-meta {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-2);
+}
+
+.template-badge {
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
+  display: inline-block;
+}
+
+.template-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.unit-count {
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--font-size-xxs);
+}
+
+/* Template library editor styles */
+.template-library {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.template-library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.template-library-header h3 {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-4);
+  margin: 0;
+}
+
+/* ========================================
+   Flex Fill - for sidebar content containers
+   ======================================== */
+
+.flex-fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================================
    Empty State Styles
    ======================================== */
 
@@ -448,4 +547,152 @@
     max-height: 2000px;
     opacity: 1;
   }
+}
+
+/* ========================================
+   Flex Fill Container - for sidebar content
+   ======================================== */
+
+.flex-fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-fill-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* ========================================
+   Refpoint Editor - shared styles for all refpoint editors
+   ======================================== */
+
+.refpoint-editor {
+  padding: var(--spacing-md);
+  background: var(--color-bg-0);
+  border-radius: var(--spacing-xs);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.refpoint-editor .editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.refpoint-editor .editor-header h3 {
+  font-size: var(--font-size-lg);
+}
+
+.refpoint-editor .btn-add {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  cursor: pointer;
+  font-size: var(--font-size-xxs);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.refpoint-editor .btn-add:hover {
+  background: var(--color-primary-hover);
+}
+
+.refpoint-editor .empty-state {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-1);
+  font-size: var(--font-size-sm);
+}
+
+.refpoint-editor .empty-state p {
+  margin-bottom: var(--spacing-xs);
+}
+
+.refpoint-editor .empty-state .note {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-2);
+  font-style: italic;
+  margin-top: var(--spacing-xs);
+}
+
+/* Shared item styles */
+.refpoint-editor .item-row {
+  background: var(--color-bg-1);
+  padding: var(--spacing-md);
+  border-radius: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+.refpoint-editor .item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.refpoint-editor .name-input {
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-4);
+  padding: var(--spacing-xs);
+  border-radius: var(--spacing-xxs);
+  flex: 1;
+  margin-right: var(--spacing-sm);
+}
+
+.refpoint-editor .btn-remove {
+  background: var(--color-error);
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--spacing-xxs);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refpoint-editor .btn-remove:hover {
+  background: var(--color-error-hover);
+}
+
+/* Input group label */
+.refpoint-editor .input-group label {
+  display: block;
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-3);
+  margin-bottom: var(--spacing-xs);
+}
+
+.refpoint-editor .input-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.refpoint-editor .input-group input,
+.refpoint-editor .input-group select {
+  width: 100%;
+  background: var(--color-bg-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-4);
+  padding: var(--spacing-xs);
+  border-radius: var(--spacing-xxs);
+}
+
+.refpoint-editor .input-group input:focus,
+.refpoint-editor .input-group select:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
 }

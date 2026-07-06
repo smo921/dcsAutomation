@@ -81,6 +81,10 @@ const deleteTemplate = (template, category) => {
 <style scoped>
 .template-library {
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .library-header {

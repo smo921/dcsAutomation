@@ -12,8 +12,8 @@
       <p class="note">Bullseye coordinates are determined dynamically at runtime from DCS coalition data.</p>
     </div>
 
-    <div v-for="(bullseye, index) in bullseyes" :key="index" class="bullseye-item">
-      <div class="bullseye-header">
+    <div v-for="(bullseye, index) in bullseyes" :key="index" class="item-row">
+      <div class="item-header">
         <input
           type="text"
           v-model="bullseye.name"
@@ -90,103 +90,9 @@ watch(() => store.bullseyes, (newVal) => {
 </script>
 
 <style scoped>
-.refpoint-editor {
-  padding: var(--spacing-md);
-  background: var(--color-bg-0);
-  border-radius: var(--spacing-xs);
-}
-
-.editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
-}
-
-.editor-header h3 {
-  font-size: var(--font-size-lg);
-}
-
-.btn-add {
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  font-size: var(--font-size-xxs);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.btn-add:hover {
-  background: var(--color-primary-hover);
-}
-
-.empty-state p {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-1);
-  margin-bottom: var(--spacing-xs);
-}
-
-.empty-state .note {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-2);
-  font-style: italic;
-  margin-top: var(--spacing-xs);
-}
-
-.bullseye-item {
-  background: var(--color-bg-1);
-  padding: var(--spacing-md);
-  border-radius: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
-}
-
-.bullseye-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.name-input {
-  background: var(--color-bg-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-4);
-  padding: var(--spacing-xs);
-  border-radius: var(--spacing-xxs);
-  flex: 1;
-  margin-right: var(--spacing-sm);
-}
-
-.btn-remove {
-  background: var(--color-error);
-  color: white;
-  border: none;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-remove:hover {
-  background: var(--color-error-hover);
-}
-
-/* Input group label */
-.input-group label {
-  display: block;
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-3);
-  margin-bottom: var(--spacing-xs);
-}
-
-/* Reusing existing modal styles for consistency */
-.input-group {
+/* Uses shared .refpoint-editor class from components.css */
+/* Bullseye-specific overrides */
+.bullseye-editor .input-group {
   margin-bottom: var(--spacing-md);
 }
 </style>

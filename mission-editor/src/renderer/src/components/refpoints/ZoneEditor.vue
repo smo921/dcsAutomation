@@ -9,11 +9,11 @@
 
     <div v-if="zones.length === 0" class="empty-state">
       <p>No trigger zones configured.</p>
-      <p class="note"> Zones are defined in the DCS Mission Editor. Enter the zone name here to reference it.</p>
+      <p class="note">Zones are defined in the DCS Mission Editor. Enter the zone name here to reference it.</p>
     </div>
 
-    <div v-for="(zone, index) in zones" :key="index" class="zone-item">
-      <div class="zone-header">
+    <div v-for="(zone, index) in zones" :key="index" class="item-row">
+      <div class="item-header">
         <input
           type="text"
           v-model="zone.name"
@@ -80,103 +80,5 @@ watch(() => store.zones, (newVal) => {
 </script>
 
 <style scoped>
-.refpoint-editor {
-  padding: var(--spacing-md);
-  background: var(--color-bg-0);
-  border-radius: var(--spacing-xs);
-}
-
-.editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
-}
-
-.editor-header h3 {
-  font-size: var(--font-size-lg);
-}
-
-.btn-add {
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  font-size: var(--font-size-xxs);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.btn-add:hover {
-  background: var(--color-primary-hover);
-}
-
-.empty-state {
-  padding: var(--spacing-lg);
-  text-align: center;
-  color: var(--color-text-1);
-  font-size: var(--font-size-sm);
-}
-
-.empty-state .note {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-2);
-  font-style: italic;
-  margin-top: var(--spacing-xs);
-}
-
-.zone-item {
-  background: var(--color-bg-1);
-  padding: var(--spacing-md);
-  border-radius: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
-}
-
-.zone-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-xs);
-}
-
-.name-input {
-  background: var(--color-bg-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-4);
-  padding: var(--spacing-xs);
-  border-radius: var(--spacing-xxs);
-  flex: 1;
-  margin-right: var(--spacing-sm);
-}
-
-.btn-remove {
-  background: var(--color-error);
-  color: white;
-  border: none;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-remove:hover {
-  background: var(--color-error-hover);
-}
-
-.input-group label {
-  display: block;
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-3);
-  margin-bottom: var(--spacing-xs);
-}
-
-.input-group {
-  margin-bottom: var(--spacing-md);
-}
+/* Uses shared .refpoint-editor class from components.css */
 </style>

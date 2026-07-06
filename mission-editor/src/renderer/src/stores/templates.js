@@ -104,6 +104,13 @@ export const useTemplatesStore = defineStore('templates', {
           this.categories[category].splice(index, 1)
         }
       }
+    },
+
+    deleteWaypointTemplate(id) {
+      const index = this.waypointTemplates.findIndex(t => t.id === id)
+      if (index !== -1) {
+        this.waypointTemplates.splice(index, 1)
+      }
     }
   }
 })

@@ -21,7 +21,7 @@
           />
         </CollapsibleSection>
 
-        <CollapsibleSection v-model:expanded="sections.referencePoints" title="Reference Points">
+        <CollapsibleSection v-model:expanded="sections.referencePoints" title="Reference Points" style="margin-top: 20px;">
           <ReferencePointManager ref="refpointManagerRef" />
         </CollapsibleSection>
 
@@ -30,7 +30,7 @@
         </CollapsibleSection>
 
         <CollapsibleSection v-model:expanded="sections.waypointTemplates" title="Waypoint Templates" style="margin-top: 20px;">
-          <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" />
+          <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" @waypoint-template-delete="onWaypointTemplateDelete" />
         </CollapsibleSection>
       </aside>
 
@@ -330,6 +330,12 @@ const onWaypointTemplateApplied = (template) => {
   groups.value = [...groups.value, newGroup]
   setStatus(`Waypoint template "${template.name}" applied to new group`, 'success')
 }
+
+const onWaypointTemplateDelete = (template) => {
+  // Delete the template from the store
+  templatesStore.deleteWaypointTemplate(template.id)
+  setStatus(`Waypoint template "${template.name}" deleted`, 'info')
+}
 </script>
 
 <style>
@@ -416,7 +422,18 @@ const onWaypointTemplateApplied = (template) => {
   border-right: 1px solid var(--color-border);
   padding: var(--spacing-lg);
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sidebar section content filling */
+.sidebar .flex-fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Sidebar resize handle */
