@@ -11,16 +11,22 @@
 
     <div class="app-content">
       <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }" @mousedown="startSidebarResize">
+        <CollapsibleSection v-model:expanded="sections.groups" title="Groups" style="margin-top: 20px;">
+          <GroupManager
+            ref="groupManagerRef"
+            :groups="groups"
+            listOnly
+            @group-change="onGroupChange"
+            @group-select="onGroupSelected"
+          />
+        </CollapsibleSection>
+
         <CollapsibleSection v-model:expanded="sections.referencePoints" title="Reference Points">
           <ReferencePointManager ref="refpointManagerRef" />
         </CollapsibleSection>
 
         <CollapsibleSection v-model:expanded="sections.templates" title="Templates" style="margin-top: 20px;">
-          <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" />
-        </CollapsibleSection>
-
-        <CollapsibleSection v-model:expanded="sections.templateManagement" title="Template Management" style="margin-top: 20px;">
-          <TemplateManager ref="templateManagerRef" @template-save="onTemplateSave" @template-delete="onTemplateDelete" />
+          <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" @template-edit="onTemplateEdit" @template-delete="onTemplateDelete" />
         </CollapsibleSection>
 
         <CollapsibleSection v-model:expanded="sections.waypointTemplates" title="Waypoint Templates" style="margin-top: 20px;">
@@ -29,43 +35,30 @@
       </aside>
 
       <main class="main-content">
-        <div class="content-tabs">
-          <button
-            class="tab-btn"
-            :class="{ active: activeTab === 'groups' }"
-            @click="activeTab = 'groups'"
-          >
-            Groups
-          </button>
-          <button
-            class="tab-btn"
-            :class="{ active: activeTab === 'waypoints' }"
-            @click="activeTab = 'waypoints'"
-          >
-            Waypoints
-          </button>
-        </div>
+        <div class="main-editor">
+          <!-- Template Editor - shown when editing a template -->
+          <TemplateEditor
+            v-if="editingTemplate"
+            ref="templateEditorRef"
+            :templates="templatesStore.categories"
+            :editingTemplate="editingTemplate"
+            @template-change="onTemplateChange"
+            @template-delete="onTemplateDelete"
+            @template-select="onTemplateSelected"
+          />
 
-        <!-- Fixed divider - not resizeable -->
-        <div class="content-divider"></div>
+          <!-- Group Editor - shown when editing a group -->
+          <GroupEditor
+            v-else-if="selectedGroupIndex !== null"
+            ref="groupEditorRef"
+            :group="groups[selectedGroupIndex]"
+            :groups="groups"
+            @group-change="onGroupEditorChange"
+          />
 
-        <div class="tab-content">
-          <div v-if="activeTab === 'groups'" class="group-content-layout">
-            <GroupManager
-              ref="groupManagerRef"
-              :groups="groups"
-              :templates="templatesStore.categories"
-              @group-change="onGroupChange"
-              @group-delete="onGroupDelete"
-              @group-select="onGroupSelected"
-            />
-          </div>
-
-          <div v-if="activeTab === 'waypoints'" class="waypoint-content-layout">
-            <WaypointEditor v-model:waypoints="waypoints" />
-            <div v-if="waypoints.length > 0" class="waypoint-count">
-              <p>Waypoints: {{ waypoints.length }} total</p>
-            </div>
+          <!-- No selection state -->
+          <div v-else class="no-selection">
+            <p>Select an item from the sidebar to edit</p>
           </div>
         </div>
       </main>
@@ -81,14 +74,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRefpointsStore } from './stores/refpoints'
 import { useTemplatesStore } from './stores/templates'
 import ReferencePointManager from './components/refpoints/ReferencePointManager.vue'
 import TemplateLibrary from './components/templates/TemplateLibrary.vue'
-import TemplateManager from './components/templates/TemplateManager.vue'
+import TemplateEditor from './components/templates/TemplateEditor.vue'
 import WaypointTemplateLibrary from './components/templates/WaypointTemplateLibrary.vue'
 import GroupManager from './components/groups/GroupManager.vue'
+import GroupEditor from './components/groups/GroupEditor.vue'
 import WaypointEditor from './components/editor/WaypointEditor.vue'
 import CollapsibleSection from './components/CollapsibleSection.vue'
 import { useResize } from './composables/useResize'
@@ -100,21 +94,20 @@ const templatesStore = useTemplatesStore()
 // Refs for component access
 const refpointManagerRef = ref(null)
 const templateLibraryRef = ref(null)
-const templateManagerRef = ref(null)
 const waypointTemplateLibraryRef = ref(null)
 const groupManagerRef = ref(null)
+const templateEditorRef = ref(null)
+const groupEditorRef = ref(null)
 
-// Track selected group index for waypoint template application
+// Track selected group index and editing template
 const selectedGroupIndex = ref(null)
+const editingTemplate = ref(null)
 
-// Tab state
-const activeTab = ref('groups')
-
-// Sidebar sections state - all collapsed by default
+// Sidebar sections state - groups expanded by default
 const sections = ref({
+  groups: true,
   referencePoints: false,
   templates: false,
-  templateManagement: false,
   waypointTemplates: false
 })
 
@@ -182,13 +175,20 @@ const onGroupSelected = (index) => {
   selectedGroupIndex.value = index
 }
 
-const onGroupDelete = (newGroups) => {
-  groups.value = newGroups
+const onGroupEditorChange = (updatedGroup) => {
+  // GroupEditor emits a single updated group
+  if (selectedGroupIndex.value !== null) {
+    const newGroups = [...groups.value]
+    newGroups[selectedGroupIndex.value] = updatedGroup
+    groups.value = newGroups
+  }
 }
 
-// Template handlers
-const onTemplateApplied = (template) => {
-  // Create a new group from template
+// Template handlers - templates are now managed in the sidebar
+const onTemplateApplied = (payload) => {
+  // payload = { template, category }
+  const { template, category } = payload
+  // Create a new group from template - same as before
   const newGroup = {
     groupName: `${template.name.replace(/\s+/g, '_')}_${groups.value.length + 1}`,
     category: template.category === 'air' ? 'AIRPLANE' : 'GROUND',
@@ -209,6 +209,14 @@ const onTemplateApplied = (template) => {
   setStatus(`Template "${template.name}" applied to new group`, 'success')
 }
 
+const onTemplateEdit = (payload) => {
+  // payload = { template, category }
+  const { template, category } = payload
+  // Set the template as being edited - TemplateEditor will show it
+  editingTemplate.value = { ...template, category }
+  setStatus(`Editing template: "${template.name}"`, 'info')
+}
+
 // Status helper
 const setStatus = (message, type = 'info') => {
   status.value = { message, type }
@@ -216,6 +224,23 @@ const setStatus = (message, type = 'info') => {
     status.value = { message: '', type: 'info' }
   }, 3000)
 }
+
+// Initialize
+onMounted(() => {
+  // Load refpoints
+  window.api?.refpoints?.load?.().then(config => {
+    if (config) {
+      refpointsStore.loadFromConfig(config)
+    }
+  })
+
+  // Load templates
+  window.api?.templates?.loadAll?.().then(templates => {
+    if (templates) {
+      templatesStore.loadTemplates(templates)
+    }
+  })
+})
 
 // Template management handlers
 const onTemplateSave = (template) => {
@@ -238,8 +263,9 @@ const onTemplateSave = (template) => {
   }
 }
 
-const onTemplateDelete = (template) => {
-  const category = template.category || 'air'
+const onTemplateDelete = (payload) => {
+  // payload = { template, category }
+  const { template, category } = payload
   const categoryTemplates = templatesStore.categories[category] || []
   const templateIndex = categoryTemplates.findIndex(t =>
     (t.id && t.id === template.id) || (!t.id && t.name === template.name)
@@ -248,25 +274,21 @@ const onTemplateDelete = (template) => {
   if (templateIndex !== -1) {
     templatesStore.deleteTemplate(category, templateIndex)
     setStatus(`Template "${template.name}" deleted`, 'info')
+    // Reset editing template if the deleted template was being edited
+    if (editingTemplate.value && editingTemplate.value.name === template.name) {
+      editingTemplate.value = null
+    }
   }
 }
 
-// Initialize
-onMounted(() => {
-  // Load refpoints
-  window.api?.refpoints?.load?.().then(config => {
-    if (config) {
-      refpointsStore.loadFromConfig(config)
-    }
-  })
+const onTemplateChange = (template) => {
+  // Called when a template is saved in the editor
+  onTemplateSave(template)
+}
 
-  // Load templates
-  window.api?.templates?.loadAll?.().then(templates => {
-    if (templates) {
-      templatesStore.loadTemplates(templates)
-    }
-  })
-})
+const onTemplateSelected = (template) => {
+  // Template selected in editor - could be used for keyboard shortcuts later
+}
 
 // Waypoint template handlers
 const onWaypointTemplateApplied = (template) => {
@@ -429,7 +451,7 @@ const onWaypointTemplateApplied = (template) => {
   margin-bottom: var(--spacing-md);
 }
 
-/* Fixed divider between tabs and content */
+/* Fixed divider between tabs and content - kept for backward compatibility */
 .content-divider {
   height: 6px;
   background: var(--color-border);
@@ -438,12 +460,7 @@ const onWaypointTemplateApplied = (template) => {
 }
 
 .tab-content {
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  position: relative;
-  display: flex;
-  flex-direction: column;
+  display: none;
 }
 
 /* Content layout wrappers for groups and waypoints */
@@ -499,5 +516,24 @@ const onWaypointTemplateApplied = (template) => {
 
 .version {
   color: var(--color-text-1);
+}
+
+/* Main editor area */
+.main-editor {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* No selection state */
+.no-selection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-1);
+  font-size: var(--font-size-md);
 }
 </style>

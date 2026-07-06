@@ -30,15 +30,32 @@
               v-for="template in getTemplatesByCategory(category)"
               :key="template.id || template.name"
               class="template-item"
-              @click="applyTemplate(template)"
             >
-              <div class="template-info">
+              <div class="template-info" @click.stop="applyTemplate(template, category)">
                 <h5>{{ template.name }}</h5>
                 <p v-if="template.description" class="template-desc">
                   {{ template.description }}
                 </p>
               </div>
-              <div class="template-meta">
+              <div class="template-actions">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  title="Edit Template"
+                  @click.stop="editTemplate(template, category)"
+                >
+                  ✎
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  title="Delete Template"
+                  @click.stop="deleteTemplate(template, category)"
+                >
+                  ✕
+                </Button>
                 <span v-if="template.units" class="unit-count">
                   {{ Array.isArray(template.units) ? template.units.length : 0 }} units
                 </span>
@@ -55,6 +72,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useTemplatesStore } from '../../stores/templates'
 import { Button } from '../ui'
+
+const emit = defineEmits(['template-apply', 'template-edit', 'template-delete'])
 
 const store = useTemplatesStore()
 
@@ -73,12 +92,6 @@ const toggleCategory = (category) => {
   expandedCategories.value[category] = !expandedCategories.value[category]
 }
 
-// Load templates on mount
-onMounted(() => {
-  // Templates loaded from store (can be populated via sample data)
-  // The App.vue loads templates into the store on mount
-})
-
 const getTemplatesByCategory = (category) => {
   const templates = store.categories[category] || []
   if (!searchQuery.value) return templates
@@ -88,16 +101,23 @@ const getTemplatesByCategory = (category) => {
   )
 }
 
-const emit = defineEmits(['template-apply', 'template-select'])
-
-const applyTemplate = (template) => {
-  emit('template-apply', template)
+const applyTemplate = (template, category) => {
+  emit('template-apply', { template, category })
 }
 
-// Also emit when user just selects/hovers over a template
-const templateSelect = (template) => {
-  emit('template-select', template)
+const editTemplate = (template, category) => {
+  emit('template-edit', { template, category })
 }
+
+const deleteTemplate = (template, category) => {
+  emit('template-delete', { template, category })
+}
+
+// Load templates on mount
+onMounted(() => {
+  // Templates loaded from store (can be populated via sample data)
+  // The App.vue loads templates into the store on mount
+})
 </script>
 
 <style scoped>
@@ -198,10 +218,12 @@ const templateSelect = (template) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border: 1px solid var(--color-border);
 }
 
 .template-item:hover {
   background: var(--color-bg-3);
+  border-color: var(--color-primary);
 }
 
 .template-info {
@@ -225,9 +247,9 @@ const templateSelect = (template) => {
   color: var(--color-text-2);
 }
 
-.unit-count {
-  background: var(--color-bg-2);
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
+.template-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 </style>
