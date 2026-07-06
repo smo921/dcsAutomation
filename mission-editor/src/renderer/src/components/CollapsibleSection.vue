@@ -47,6 +47,7 @@ export default defineComponent({
 .collapsible-section {
   width: 100%;
   flex: 0 0 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -70,7 +71,6 @@ export default defineComponent({
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  min-height: 100px;
 }
 
 /* When inside a flex container that needs to shrink */

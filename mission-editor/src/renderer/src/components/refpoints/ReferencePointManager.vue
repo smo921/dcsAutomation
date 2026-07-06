@@ -121,8 +121,4 @@ loadConfig()
   color: var(--color-text-4);
   font-weight: var(--font-weight-semibold);
 }
-
-.refpoint-content {
-  min-height: 200px;
-}
 </style>

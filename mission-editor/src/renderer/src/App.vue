@@ -11,7 +11,7 @@
 
     <div class="app-content">
       <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }" @mousedown="startSidebarResize">
-        <CollapsibleSection v-model:expanded="sections.groups" title="Groups" style="margin-top: 20px;">
+        <CollapsibleSection v-model:expanded="sections.groups" title="Groups">
           <GroupManager
             ref="groupManagerRef"
             :groups="groups"
@@ -21,15 +21,15 @@
           />
         </CollapsibleSection>
 
-        <CollapsibleSection v-model:expanded="sections.referencePoints" title="Reference Points" style="margin-top: 20px;">
+        <CollapsibleSection v-model:expanded="sections.referencePoints" title="Reference Points">
           <ReferencePointManager ref="refpointManagerRef" />
         </CollapsibleSection>
 
-        <CollapsibleSection v-model:expanded="sections.templates" title="Templates" style="margin-top: 20px;">
+        <CollapsibleSection v-model:expanded="sections.templates" title="Templates">
           <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" @template-edit="onTemplateEdit" @template-delete="onTemplateDelete" />
         </CollapsibleSection>
 
-        <CollapsibleSection v-model:expanded="sections.waypointTemplates" title="Waypoint Templates" style="margin-top: 20px;">
+        <CollapsibleSection v-model:expanded="sections.waypointTemplates" title="Waypoint Templates">
           <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" @waypoint-template-delete="onWaypointTemplateDelete" />
         </CollapsibleSection>
       </aside>
@@ -415,8 +415,9 @@ const onWaypointTemplateDelete = (template) => {
 }
 
 .sidebar {
-  flex: 0 0 auto;
   width: 320px;
+  flex: 1;
+  min-height: 0;
   height: 100%;
   background: var(--color-bg-1);
   border-right: 1px solid var(--color-border);
@@ -426,14 +427,7 @@ const onWaypointTemplateDelete = (template) => {
   position: relative;
   display: flex;
   flex-direction: column;
-}
-
-/* Sidebar section content filling */
-.sidebar .flex-fill {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+  gap: var(--spacing-lg);
 }
 
 /* Sidebar resize handle */
@@ -552,5 +546,27 @@ const onWaypointTemplateDelete = (template) => {
   height: 100%;
   color: var(--color-text-1);
   font-size: var(--font-size-md);
+}
+
+/* Custom Scrollbar Styles for Sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: var(--color-bg-1);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-bg-3);
+  border-radius: var(--spacing-xxs);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-2);
+}
+
+.sidebar::-webkit-scrollbar-corner {
+  background: var(--color-bg-1);
 }
 </style>
