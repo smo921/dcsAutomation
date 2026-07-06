@@ -1,5 +1,11 @@
 <template>
   <div class="group-editor">
+    <!-- Save/Cancel Toolbar -->
+    <div class="editor-toolbar">
+      <Button @click="onSave" variant="primary">Save</Button>
+      <Button @click="onCancel" variant="secondary">Cancel</Button>
+    </div>
+
     <div class="editor-content">
       <!-- Basic Settings -->
       <CollapsibleSection v-model:expanded="expandedSections.basic" title="Basic Settings">
@@ -78,7 +84,7 @@
                   <input type="text" v-model="unit.role" class="form-input" />
                 </div>
               </div>
-              <Button @click="removeUnit(index)" variant="ghost" icon-only title="Remove Unit">✕</Button>
+              <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit"><span class="btn-remove-icon">✕</span></button>
             </div>
           </div>
           <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">+ Add Unit</Button>
@@ -118,19 +124,19 @@
                 <select v-model="group.placement.referenceName" class="form-input">
                   <option value="" disabled>Select a reference...</option>
                   <!-- Bullseye options -->
-                  <template v-for="b in refpoints.bullseyes" :key="'bs-' + b.name">
+                  <template v-for="b in refpoints.bullseyes" :key="'bs-' + b.name" v-if="group.placement.reference === 'bullseye'">
                     <option :value="b.name">{{ b.name }}</option>
                   </template>
                   <!-- Airbase options -->
-                  <template v-for="a in refpoints.airbases" :key="'ab-' + a.name">
+                  <template v-for="a in refpoints.airbases" :key="'ab-' + a.name" v-if="group.placement.reference === 'airbase'">
                     <option :value="a.name">{{ a.name }}</option>
                   </template>
                   <!-- Zone options -->
-                  <template v-for="z in refpoints.zones" :key="'z-' + z.name">
+                  <template v-for="z in refpoints.zones" :key="'z-' + z.name" v-if="group.placement.reference === 'zone'">
                     <option :value="z.name">{{ z.name }}</option>
                   </template>
                   <!-- Line options -->
-                  <template v-for="l in refpoints.lines" :key="'l-' + l.name">
+                  <template v-for="l in refpoints.lines" :key="'l-' + l.name" v-if="group.placement.reference === 'battle_line'">
                     <option :value="l.name">{{ l.name }}</option>
                   </template>
                 </select>
@@ -242,7 +248,7 @@
                   <input type="number" v-model="wp.speed" class="form-input" />
                 </div>
               </div>
-              <Button @click="removeWaypoint(index)" variant="ghost" icon-only title="Remove Waypoint">✕</Button>
+              <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">✕</span></button>
             </div>
           </div>
           <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">+ Add Waypoint</Button>
@@ -256,9 +262,10 @@
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { Button } from '../ui'
+import { Icon } from '../ui'
 import CollapsibleSection from '../CollapsibleSection.vue'
 
-const emit = defineEmits(['group-change'])
+const emit = defineEmits(['group-change', 'save', 'cancel'])
 
 const props = defineProps({
   group: {
@@ -323,6 +330,14 @@ const removeWaypoint = (index) => {
 watch(() => props.group, (newVal) => {
   emit('group-change', newVal)
 }, { deep: true })
+
+const onSave = () => {
+  emit('save', props.group)
+}
+
+const onCancel = () => {
+  emit('cancel')
+}
 </script>
 
 <style scoped>
@@ -332,6 +347,16 @@ watch(() => props.group, (newVal) => {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+}
+
+/* Editor toolbar */
+.editor-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-2);
 }
 
 /* Editor content container - scrollable area */

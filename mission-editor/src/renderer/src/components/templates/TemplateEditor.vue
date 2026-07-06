@@ -96,7 +96,7 @@
                     <input type="text" v-model="unit.role" class="form-input" />
                   </div>
                 </div>
-                <Button @click="removeUnit(index)" variant="ghost" icon-only title="Remove Unit">✕</Button>
+                <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit"><span class="btn-remove-icon">✕</span></button>
               </div>
             </div>
             <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">+ Add Unit</Button>
@@ -130,7 +130,7 @@
                     <input type="number" v-model="wp.speed" class="form-input" />
                   </div>
                 </div>
-                <Button @click="removeWaypoint(index)" variant="ghost" icon-only title="Remove Waypoint">✕</Button>
+                <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">✕</span></button>
               </div>
             </div>
             <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">+ Add Waypoint</Button>
