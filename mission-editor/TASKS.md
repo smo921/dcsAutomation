@@ -46,7 +46,21 @@ This file tracks the implementation tasks for the DCS Mission Editor MVP.
 ### Phase 3: State Management
 - [x] Create Pinia stores (refpoints, templates)
 
-### Phase 2: Reference Point Configuration (Completed 2026-07-02)
+### Phase 3: Sidebar Layout Refactor (Completed 2026-07-06)
+- [x] Update CollapsibleSection to properly size content with flex: 0 0 auto
+- [x] Add min-height: 0 to CollapsibleSection for proper flex behavior
+- [x] Update App.vue sidebar to use flex: 1 and overflow-y: auto
+- [x] Add custom scrollbar styles for sidebar
+- [x] Remove min-height: 200px from ReferencePointManager refpoint-content
+- [x] Fix spacing between collapsible sections
+- [x] Add reference type filtering for reference name dropdowns
+- [x] Standardize delete button styling across all components
+- [x] Add tabbed layout to Groups, Templates, and Reference Points
+- [x] Add delete functionality for Waypoint Templates
+- [x] Refactor duplicated CSS into shared styles in components.css
+- [x] Add .flex-fill helper class for flex containers
+
+### Phase 4: Reference Point Configuration (Completed 2026-07-02)
 - [x] Bullseye editor UI (fully connected with add/remove, auto-save)
 - [x] Airbase manual entry (name + coordinates + runway heading)
 - [x] Trigger zone editor (name input, auto-save on changes)
@@ -55,6 +69,13 @@ This file tracks the implementation tasks for the DCS Mission Editor MVP.
 
 ### Phase 4: Templates
 - [x] Create default template files (air, ground, support)
+
+### Phase 5: Templates & Waypoint Templates
+- [x] Create TemplateLibrary component with search
+- [x] Create WaypointTemplateLibrary component
+- [x] Add template application to groups
+- [x] Add template creation/editing in-app
+- [x] Add dynamic template management (add/remove)
 
 ### Phase 5: IPC & Export
 - [x] Implement JSON export functionality
@@ -65,17 +86,16 @@ This file tracks the implementation tasks for the DCS Mission Editor MVP.
 
 ## Remaining Tasks
 
-### Phase 3: Visualization
+### Phase 6: Visualization
 - [ ] Add map preview component
 - [ ] Coordinate conversion utilities (Vue-side)
 - [ ] Visual preview of generated route
 
-### Phase 4: Advanced Features
-- [x] Template creation/editing in-app
-- [x] Dynamic template management (add/remove)
+### Phase 7: Advanced Features
 - [x] Multiple group management
+- [x] Template association to groups
 
-### Phase 5: Placement Mode Refactor (2026-07-02) - COMPLETED
+### Phase 8: Placement Mode Refactor (2026-07-02) - COMPLETED
 - [x] Decouple placement mode from reference type - make them independent choices
   - Previously: Each position type bundled both mode (bearing+distance) and origin (bullseye/airbase)
   - Now: User selects placement mode first, then reference type separately
@@ -85,7 +105,7 @@ This file tracks the implementation tasks for the DCS Mission Editor MVP.
 - [x] Ensure distance inputs use NM (nautical miles) as per Lua code conventions
 - [x] Update Lua unit_management.lua to support refType and referenceName
 
-### Phase 6: Group Management (Completed 2026-07-03)
+### Phase 9: Group Management (Completed 2026-07-03)
 - [x] Replace GroupEditor with GroupManager component
 - [x] Add template association to groups
 - [x] Add GroupManager with group list and editor panel
@@ -93,22 +113,18 @@ This file tracks the implementation tasks for the DCS Mission Editor MVP.
 - [x] Add waypoint template application support
 - [x] Support for creating groups from templates
 
+### Phase 9: Zone Randomization & Waypoint Anchoring
 - [x] Zone Randomization support in Lua (ZONE_RANDOM strategy)
 - [x] Waypoint anchoring support in Lua (groupName + waypoint)
 
-### Phase 6: Template Library
-- [x] Create TemplateLibrary component with search
-- [x] Create WaypointTemplateLibrary component
-- [x] Add template application to groups
-
-### Phase 7: .miz Integration
+### Phase 10: .miz Integration
 - [ ] .miz file opening (zip extraction)
 - [ ] Lua parsing and extraction
 - [ ] Configuration injection
 - [ ] File repackaging
 - [ ] Backup functionality
 
-### Phase 7: Testing & Validation
+### Phase 11: Testing & Validation
 - [ ] Test with existing unit_management.lua
 - [ ] Integration testing
 - [ ] Documentation updates
