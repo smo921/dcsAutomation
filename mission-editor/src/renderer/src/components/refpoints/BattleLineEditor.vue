@@ -2,66 +2,60 @@
   <div class="refpoint-editor battleline-editor">
     <div class="editor-header">
       <h3>Battle Lines</h3>
-      <button class="btn-add" @click="showAddModal = true">
+      <Button @click="showAddModal = true" variant="primary">
         <span>+</span> Add Line
-      </button>
+      </Button>
     </div>
 
-    <div v-if="lines.length === 0" class="empty-state">
+    <EmptyState v-if="lines.length === 0">
       <p>No battle lines configured.</p>
-    </div>
+    </EmptyState>
 
     <div v-for="(line, index) in lines" :key="index" class="item-row">
       <div class="item-header">
-        <input
-          type="text"
+        <FormInput
           v-model="line.name"
           placeholder="Line Name"
-          class="name-input"
         />
-        <button class="btn-remove" @click="removeLine(index)">
+        <Button variant="danger" size="sm" @click="removeLine(index)">
           <span class="btn-remove-icon">✕</span>
-        </button>
+        </Button>
       </div>
 
       <div class="coordinate-inputs">
         <div class="input-group">
-          <label>Start X</label>
-          <input
-            type="number"
+          <FormLabel label="Start X" />
+          <FormInput
             v-model="line.startX"
+            type="number"
             placeholder="e.g., 100000"
-            class="coord-input"
           />
         </div>
 
         <div class="input-group">
-          <label>Start Y</label>
-          <input
-            type="number"
+          <FormLabel label="Start Y" />
+          <FormInput
             v-model="line.startY"
+            type="number"
             placeholder="e.g., 600000"
-            class="coord-input"
           />
         </div>
 
         <div class="input-group">
-          <label>End X</label>
-          <input
-            type="number"
+          <FormLabel label="End X" />
+          <FormInput
             v-model="line.endX"
+            type="number"
             placeholder="e.g., 200000"
-            class="coord-input"
           />
         </div>
 
         <div class="input-group">
-          <label>End Y</label>
-          <input
-            type="number"
+          <FormLabel label="End Y" />
+          <FormInput
             v-model="line.endY"
+            type="number"
             placeholder="e.g., 700000"
-            class="coord-input"
           />
         </div>
       </div>
@@ -70,55 +64,47 @@
     <Modal v-model:open="showAddModal" title="Add Battle Line" close-text="Cancel">
       <template #content>
         <div class="input-group">
-          <label>Name</label>
-          <input
-            type="text"
+          <FormLabel label="Name" required />
+          <FormInput
             v-model="newLineName"
             placeholder="e.g., Line_1"
-            class="name-input"
-            @keyup.enter="addLine"
-            autofocus
           />
         </div>
         <div class="input-group">
-          <label>Start X</label>
-          <input
-            type="number"
+          <FormLabel label="Start X" />
+          <FormInput
             v-model="newLineStartX"
+            type="number"
             placeholder="e.g., 100000"
-            class="coord-input"
           />
         </div>
         <div class="input-group">
-          <label>Start Y</label>
-          <input
-            type="number"
+          <FormLabel label="Start Y" />
+          <FormInput
             v-model="newLineStartY"
+            type="number"
             placeholder="e.g., 600000"
-            class="coord-input"
           />
         </div>
         <div class="input-group">
-          <label>End X</label>
-          <input
-            type="number"
+          <FormLabel label="End X" />
+          <FormInput
             v-model="newLineEndX"
+            type="number"
             placeholder="e.g., 200000"
-            class="coord-input"
           />
         </div>
         <div class="input-group">
-          <label>End Y</label>
-          <input
-            type="number"
+          <FormLabel label="End Y" />
+          <FormInput
             v-model="newLineEndY"
+            type="number"
             placeholder="e.g., 700000"
-            class="coord-input"
           />
         </div>
       </template>
       <template #actions>
-        <button class="btn-add-modal" @click="addLine">Add Line</button>
+        <Button @click="addLine" variant="primary">Add Line</Button>
       </template>
     </Modal>
   </div>
@@ -127,7 +113,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
-import { Modal } from '../ui'
+import { Modal, Button, FormInput } from '../ui'
 
 const store = useRefpointsStore()
 
@@ -172,18 +158,5 @@ watch(() => store.lines, (newVal) => {
 
 <style scoped>
 /* Uses shared .refpoint-editor class from components.css */
-.coordinate-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-xs);
-}
-
-.coord-input {
-  width: 100%;
-  background: var(--color-bg-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-4);
-  padding: var(--spacing-xs);
-  border-radius: var(--spacing-xxs);
-}
+/* All input styles use shared .form-input from components.css */
 </style>

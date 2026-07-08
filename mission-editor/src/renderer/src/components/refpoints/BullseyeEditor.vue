@@ -2,71 +2,62 @@
   <div class="refpoint-editor bullseye-editor">
     <div class="editor-header">
       <h3>Bullseye Reference</h3>
-      <button class="btn-add" @click="showAddModal = true">
+      <Button @click="showAddModal = true" variant="primary">
         <span>+</span> Add Bullseye
-      </button>
+      </Button>
     </div>
 
-    <div v-if="bullseyes.length === 0" class="empty-state">
+    <EmptyState v-if="bullseyes.length === 0">
       <p>No bullseye configured. Click "Add Bullseye" to create one.</p>
       <p class="note">Bullseye coordinates are determined dynamically at runtime from DCS coalition data.</p>
-    </div>
+    </EmptyState>
 
     <div v-for="(bullseye, index) in bullseyes" :key="index" class="item-row">
       <div class="item-header">
-        <input
-          type="text"
+        <FormInput
           v-model="bullseye.name"
           placeholder="Bullseye Name"
-          class="name-input"
-          :list="bullseyeSuggestions"
         />
-        <button class="btn-remove" @click="removeBullseye(index)">
+        <Button variant="danger" size="sm" @click="removeBullseye(index)">
           <span class="btn-remove-icon">✕</span>
-        </button>
+        </Button>
       </div>
-      <datalist :id="bullseyeSuggestions">
-        <option value="Red" />
-        <option value="Blue" />
-        <option value="Neutral" />
-      </datalist>
     </div>
 
     <Modal v-model:open="showAddModal" title="Add Bullseye Reference" close-text="Cancel">
       <template #content>
         <div class="input-group">
-          <label>Name</label>
-          <select
+          <FormLabel label="Name" required />
+          <FormSelect
             v-model="newBullseyeName"
-            class="name-input"
-            @keyup.enter="addBullseye"
-            autofocus
-          >
-            <option value="">Select a coalition...</option>
-            <option value="Red">Red</option>
-            <option value="Blue">Blue</option>
-            <option value="Neutral">Neutral</option>
-          </select>
+            :options="coalitionOptions"
+            placeholder="Select a coalition..."
+          />
         </div>
       </template>
       <template #actions>
-        <button class="btn-add-modal" @click="addBullseye">Add Bullseye</button>
+        <Button @click="addBullseye" variant="primary">Add Bullseye</Button>
       </template>
     </Modal>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
-import { Modal } from '../ui'
+import { Modal, Button, FormInput, FormSelect, EmptyState } from '../ui'
 
 const store = useRefpointsStore()
 
 const bullseyes = ref(store.bullseyes)
 const showAddModal = ref(false)
 const newBullseyeName = ref('')
-const bullseyeSuggestions = 'bullseyeSuggestions'
+
+const coalitionOptions = computed(() => [
+  { value: 'Red', label: 'Red' },
+  { value: 'Blue', label: 'Blue' },
+  { value: 'Neutral', label: 'Neutral' }
+])
 
 const emit = defineEmits(['update'])
 
@@ -91,8 +82,4 @@ watch(() => store.bullseyes, (newVal) => {
 
 <style scoped>
 /* Uses shared .refpoint-editor class from components.css */
-/* Bullseye-specific overrides */
-.bullseye-editor .input-group {
-  margin-bottom: var(--spacing-md);
-}
 </style>

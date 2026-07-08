@@ -1,4 +1,4 @@
 /* Global Styles Import - Main Entry Point */
 @import './tokens/index.css';
 @import './global.css';
-@import './components.css';
+@import './components/index.css';

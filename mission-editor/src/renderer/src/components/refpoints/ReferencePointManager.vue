@@ -88,37 +88,8 @@ loadConfig()
 </script>
 
 <style scoped>
+/* Uses shared .tab-btn from components.css */
 .refpoint-manager {
   width: 100%;
-}
-
-.refpoint-tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-md);
-}
-
-.tab-btn {
-  background: var(--color-bg-2);
-  color: var(--color-text-0);
-  border: 1px solid var(--color-border);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs) var(--spacing-xxs) 0 0;
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  flex: 1;
-  text-align: center;
-  transition: all var(--transition-fast);
-}
-
-.tab-btn:hover {
-  background: var(--color-bg-3);
-}
-
-.tab-btn.active {
-  background: var(--color-bg-1);
-  border-bottom: 1px solid var(--color-bg-1);
-  color: var(--color-text-4);
-  font-weight: var(--font-weight-semibold);
 }
 </style>

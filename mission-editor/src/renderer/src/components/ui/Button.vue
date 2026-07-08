@@ -157,8 +157,8 @@ const getVariantStyles = computed(() => {
 
 /* Sizes */
 .btn-sm {
-  font-size: var(--font-size-xxs);
-  padding: var(--spacing-xxs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
 .btn-md {

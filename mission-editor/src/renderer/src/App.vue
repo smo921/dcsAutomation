@@ -3,9 +3,9 @@
     <header class="app-header">
       <h1>DCS Mission Editor</h1>
       <nav class="header-nav">
-        <button @click="onLoadSample">Load Sample Data</button>
-        <button @click="onExportJson">Export JSON</button>
-        <button @click="onExportLua">Export Lua</button>
+        <Button @click="onLoadSample" variant="primary">Load Sample Data</Button>
+        <Button @click="onExportJson" variant="secondary">Export JSON</Button>
+        <Button @click="onExportLua" variant="secondary">Export Lua</Button>
       </nav>
     </header>
 
@@ -85,6 +85,7 @@ import GroupManager from './components/groups/GroupManager.vue'
 import GroupEditor from './components/groups/GroupEditor.vue'
 import WaypointEditor from './components/editor/WaypointEditor.vue'
 import CollapsibleSection from './components/CollapsibleSection.vue'
+import { Button } from './components/ui'
 import { useResize } from './composables/useResize'
 
 // Stores
@@ -127,6 +128,9 @@ const { startResize: startSidebarResize } = useResize({
 // Groups state
 const groups = ref([])
 
+// Flag to prevent watcher loop during bulk updates
+const isUpdatingGroups = ref(false)
+
 // Waypoints state (for standalone editing)
 const waypoints = ref([])
 
@@ -136,6 +140,12 @@ const status = ref({ message: '', type: 'info' })
 // Menu handlers
 const onLoadSample = async () => {
   try {
+    // Close any open editor first to prevent watcher conflicts during bulk update
+    selectedGroupIndex.value = null
+    isUpdatingGroups.value = true // Prevent watcher loop in App.vue
+    groupManagerRef.value?.setSyncing(true) // Prevent watcher loop in GroupManager
+    await nextTick() // Wait for DOM to update
+
     const result = await window.api?.config?.loadSample?.()
     if (result?.success) {
       // Clear existing data and load sample
@@ -155,6 +165,9 @@ const onLoadSample = async () => {
     }
   } catch (e) {
     setStatus(`Error loading sample: ${e.message}`, 'error')
+  } finally {
+    isUpdatingGroups.value = false
+    groupManagerRef.value?.setSyncing(false)
   }
 }
 
@@ -168,6 +181,12 @@ const onExportLua = () => {
 
 // Group handlers
 const onGroupChange = (newGroups) => {
+  // Prevent setting groups if we're in a bulk update or if values are the same
+  if (isUpdatingGroups.value) return
+
+  // Avoid setting the same reference to prevent unnecessary updates
+  if (newGroups === groups.value) return
+
   groups.value = newGroups
 }
 
@@ -362,18 +381,30 @@ const onWaypointTemplateDelete = (template) => {
   color: var(--color-text-4);
 }
 
-.header-nav button {
+/* Header navigation buttons */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.header-nav :deep(.btn) {
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.header-nav :deep(.btn-primary) {
   background: var(--color-primary);
   color: white;
   border: none;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  margin-left: var(--spacing-sm);
-  font-size: var(--font-size-sm);
 }
 
-.header-nav button:hover {
+.header-nav :deep(.btn-sm) {
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.header-nav :deep(.btn:hover:not(:disabled)) {
   background: var(--color-primary-hover);
 }
 
@@ -546,27 +577,5 @@ const onWaypointTemplateDelete = (template) => {
   height: 100%;
   color: var(--color-text-1);
   font-size: var(--font-size-md);
-}
-
-/* Custom Scrollbar Styles for Sidebar */
-.sidebar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.sidebar::-webkit-scrollbar-track {
-  background: var(--color-bg-1);
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-  background: var(--color-bg-3);
-  border-radius: var(--spacing-xxs);
-}
-
-.sidebar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-2);
-}
-
-.sidebar::-webkit-scrollbar-corner {
-  background: var(--color-bg-1);
 }
 </style>

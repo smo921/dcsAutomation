@@ -1,0 +1,50 @@
+/* Typography Utilities */
+
+/* List Header Typography */
+.list-header h3 {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-4);
+  margin: 0;
+}
+
+/* Editor Panel Typography */
+.editor-panel h3 {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-4);
+  margin: 0;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  flex: 0 0 auto;
+}
+
+/* Editor Section Typography */
+.editor-section h4 {
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin: 0 0 var(--spacing-sm) 0;
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Section Title Typography */
+.section-title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-0);
+  margin: 0;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Template Info Typography */
+.template-info h4,
+.template-info h5 {
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+/* Modal Title Typography */
+.modal-title {
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-4);
+  margin: 0;
+}

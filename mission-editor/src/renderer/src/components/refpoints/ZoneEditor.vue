@@ -2,46 +2,40 @@
   <div class="refpoint-editor zone-editor">
     <div class="editor-header">
       <h3>Trigger Zones</h3>
-      <button class="btn-add" @click="showAddModal = true">
+      <Button @click="showAddModal = true" variant="primary">
         <span>+</span> Add Zone
-      </button>
+      </Button>
     </div>
 
-    <div v-if="zones.length === 0" class="empty-state">
+    <EmptyState v-if="zones.length === 0">
       <p>No trigger zones configured.</p>
       <p class="note">Zones are defined in the DCS Mission Editor. Enter the zone name here to reference it.</p>
-    </div>
+    </EmptyState>
 
     <div v-for="(zone, index) in zones" :key="index" class="item-row">
       <div class="item-header">
-        <input
-          type="text"
+        <FormInput
           v-model="zone.name"
           placeholder="Zone Name"
-          class="name-input"
         />
-        <button class="btn-remove" @click="removeZone(index)">
+        <Button variant="danger" size="sm" @click="removeZone(index)">
           <span class="btn-remove-icon">✕</span>
-        </button>
+        </Button>
       </div>
     </div>
 
     <Modal v-model:open="showAddModal" title="Add Trigger Zone" close-text="Cancel">
       <template #content>
         <div class="input-group">
-          <label>Zone Name (from DCS Mission Editor)</label>
-          <input
-            type="text"
+          <FormLabel label="Zone Name" required />
+          <FormInput
             v-model="newZoneName"
             placeholder="e.g., MY_ZONE"
-            class="name-input"
-            @keyup.enter="addZone"
-            autofocus
           />
         </div>
       </template>
       <template #actions>
-        <button class="btn-add-modal" @click="addZone">Add Zone</button>
+        <Button @click="addZone" variant="primary">Add Zone</Button>
       </template>
     </Modal>
   </div>
@@ -50,7 +44,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
-import { Modal } from '../ui'
+import { Modal, Button, FormInput } from '../ui'
 
 const store = useRefpointsStore()
 

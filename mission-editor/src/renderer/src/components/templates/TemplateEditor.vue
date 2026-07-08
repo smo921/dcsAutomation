@@ -8,8 +8,8 @@
       </div>
     </div>
 
-    <!-- Scrollable Template List -->
-    <div class="template-list-scroll" :style="{ height: listHeight + 'px' }">
+    <!-- Scrollable Template List - use scrollbar-custom from components.css -->
+    <div class="template-list-scroll scrollbar-custom" :style="{ height: listHeight + 'px' }">
       <div class="template-list">
         <div
           v-for="template in templatesList"
@@ -29,42 +29,47 @@
           </div>
         </div>
 
-        <div v-if="templatesList.length === 0" class="empty-state">
+        <EmptyState v-if="templatesList.length === 0">
           <p>No templates configured. Click "New Template" to create one.</p>
-        </div>
+        </EmptyState>
       </div>
     </div>
 
-    <!-- Resizeable Divider -->
+    <!-- Resizeable Divider - use shared .resizer from components.css -->
     <div class="content-resizer" @mousedown="startListResize">
       <span class="resizer-line"></span>
     </div>
 
     <!-- Template Editor Panel -->
     <div v-if="selectedTemplate && currentTemplate" class="template-editor-panel">
-      <div class="editor-content">
+      <div class="editor-content scrollbar-custom">
         <!-- Basic Settings -->
         <CollapsibleSection v-model:expanded="expandedSections.basic" title="Basic Settings">
         <div class="editor-section">
           <div class="form-row">
             <div class="form-group">
-              <label>Template Name</label>
-              <input type="text" v-model="currentTemplate.name" class="form-input" />
+              <FormLabel label="Template Name" required />
+              <FormInput
+                v-model="currentTemplate.name"
+                placeholder="Enter template name..."
+              />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Category</label>
-              <select v-model="currentTemplate.category" class="form-input">
-                <option value="air">Air</option>
-                <option value="ground">Ground</option>
-                <option value="naval">Naval</option>
-                <option value="support">Support</option>
-              </select>
+              <FormLabel label="Category" required />
+              <FormSelect
+                v-model="currentTemplate.category"
+                :options="categoryOptions"
+                placeholder="Select category..."
+              />
             </div>
             <div class="form-group">
-              <label>Description</label>
-              <input type="text" v-model="currentTemplate.description" class="form-input" />
+              <FormLabel label="Description" />
+              <FormInput
+                v-model="currentTemplate.description"
+                placeholder="Enter description..."
+              />
             </div>
           </div>
         </div>
@@ -78,22 +83,36 @@
               <div class="unit-content">
                 <div class="form-row">
                   <div class="form-group">
-                    <label>Unit Type</label>
-                    <input type="text" v-model="unit.type" class="form-input" />
+                    <FormLabel label="Unit Type" required />
+                    <FormInput
+                      v-model="unit.type"
+                      placeholder="Enter unit type..."
+                    />
                   </div>
                   <div class="form-group">
-                    <label>Quantity</label>
-                    <input type="number" v-model="unit.quantity" min="1" class="form-input" />
+                    <FormLabel label="Quantity" required />
+                    <FormInput
+                      v-model="unit.quantity"
+                      type="number"
+                      :min="1"
+                      placeholder="1"
+                    />
                   </div>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" v-model="unit.name" class="form-input" />
+                    <FormLabel label="Name" />
+                    <FormInput
+                      v-model="unit.name"
+                      placeholder="Enter unit name..."
+                    />
                   </div>
                   <div class="form-group">
-                    <label>Role</label>
-                    <input type="text" v-model="unit.role" class="form-input" />
+                    <FormLabel label="Role" />
+                    <FormInput
+                      v-model="unit.role"
+                      placeholder="Enter role..."
+                    />
                   </div>
                 </div>
                 <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit"><span class="btn-remove-icon">✕</span></button>
@@ -111,23 +130,30 @@
               <div class="waypoint-content">
                 <div class="form-row">
                   <div class="form-group">
-                    <label>Type</label>
-                    <select v-model="wp.type" class="form-input">
-                      <option value="orbit">Orbit</option>
-                      <option value="turn_point">Turning Point</option>
-                      <option value="heading">Heading</option>
-                      <option value="landing">Landing</option>
-                    </select>
+                    <FormLabel label="Type" required />
+                    <FormSelect
+                      v-model="wp.type"
+                      :options="waypointTypeOptions"
+                      placeholder="Select type..."
+                    />
                   </div>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
-                    <label>Altitude</label>
-                    <input type="number" v-model="wp.altitude" class="form-input" />
+                    <FormLabel label="Altitude" />
+                    <FormInput
+                      v-model="wp.altitude"
+                      type="number"
+                      placeholder="Altitude in meters"
+                    />
                   </div>
                   <div class="form-group">
-                    <label>Speed</label>
-                    <input type="number" v-model="wp.speed" class="form-input" />
+                    <FormLabel label="Speed" />
+                    <FormInput
+                      v-model="wp.speed"
+                      type="number"
+                      placeholder="Speed in m/s"
+                    />
                   </div>
                 </div>
                 <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">✕</span></button>
@@ -149,10 +175,10 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { Button } from '../ui'
+import { Button, FormLabel, FormInput, FormSelect, EmptyState } from '../ui'
 import CollapsibleSection from '../CollapsibleSection.vue'
 
-const emit = defineEmits(['template-change', 'template-delete', 'template-select'])
+const emit = defineEmits(['template-change', 'template-delete', 'template-select', 'add-template'])
 
 const props = defineProps({
   templates: {
@@ -168,12 +194,21 @@ const props = defineProps({
 const selectedTemplate = ref('')
 const currentTemplate = ref(null)
 
-// Watch for external template selection
-watch(() => props.editingTemplate, (newTemplate) => {
-  if (newTemplate) {
-    selectTemplate(newTemplate)
-  }
-}, { immediate: true })
+// Category options
+const categoryOptions = computed(() => [
+  { value: 'air', label: 'Air' },
+  { value: 'ground', label: 'Ground' },
+  { value: 'naval', label: 'Naval' },
+  { value: 'support', label: 'Support' }
+])
+
+// Waypoint type options
+const waypointTypeOptions = computed(() => [
+  { value: 'orbit', label: 'Orbit' },
+  { value: 'turn_point', label: 'Turning Point' },
+  { value: 'heading', label: 'Heading' },
+  { value: 'landing', label: 'Landing' }
+])
 
 // Get all templates from all categories
 const templatesList = computed(() => {
@@ -236,6 +271,7 @@ const onAddTemplate = () => {
   emit('template-change', newTemplate)
   selectedTemplate.value = newTemplate.name
   currentTemplate.value = newTemplate
+  emit('add-template', newTemplate)
 }
 
 const onDeleteTemplate = (template) => {
@@ -283,6 +319,13 @@ const setStatus = (message, type = 'info') => {
   window.dispatchEvent(new CustomEvent('group-status', { detail: { message, type } }))
 }
 
+// Watch for external template selection
+watch(() => props.editingTemplate, (newTemplate) => {
+  if (newTemplate) {
+    selectTemplate(newTemplate)
+  }
+}, { immediate: true })
+
 // Watch for external template changes
 watch(() => props.templates, (newVal) => {
   // Refresh if templates changed externally
@@ -295,279 +338,12 @@ defineExpose({
 </script>
 
 <style scoped>
+/* Use shared classes from components.css */
 .template-editor {
   width: 100%;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-.template-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
-}
-
-.template-list-header h3 {
-  font-size: var(--font-size-lg);
-  color: var(--color-text-4);
-  margin: 0;
-}
-
-.template-list-header button {
-  padding: var(--spacing-xs) var(--spacing-sm);
-}
-
-/* Scrollable Template List Container */
-.template-list-scroll {
-  flex: 0 0 auto;
-  overflow-y: auto;
-  min-height: 100px;
-  margin-bottom: var(--spacing-md);
-  max-height: 300px;
-}
-
-/* Custom Scrollbar Styles for Template List */
-.template-list-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.template-list-scroll::-webkit-scrollbar-track {
-  background: var(--color-bg-1);
-}
-
-.template-list-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-bg-3);
-  border-radius: var(--spacing-xxs);
-}
-
-.template-list-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-2);
-}
-
-.template-list-scroll::-webkit-scrollbar-corner {
-  background: var(--color-bg-1);
-}
-
-.template-list {
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xs);
-  border: 1px solid var(--color-border);
-}
-
-.template-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.template-item:hover {
-  background: var(--color-bg-3);
-}
-
-.template-item.active {
-  background: var(--color-primary);
-}
-
-.template-item.active .template-category,
-.template-item.active .unit-count {
-  background: rgba(255, 255, 255, 0.3);
-  color: white;
-}
-
-.template-info {
-  flex: 1;
-}
-
-.template-info h4 {
-  font-size: var(--font-size-md);
-  color: var(--color-text-4);
-  margin: 0 0 var(--spacing-xs) 0;
-}
-
-.template-meta {
-  display: flex;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xxs);
-}
-
-.template-category {
-  background: var(--color-bg-2);
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-  text-transform: capitalize;
-}
-
-.unit-count {
-  background: var(--color-bg-2);
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-}
-
-.empty-state {
-  padding: var(--spacing-lg);
-  text-align: center;
-  color: var(--color-text-1);
-  font-size: var(--font-size-md);
-}
-
-/* Resizeable Divider between list and editor */
-.content-resizer {
-  height: 8px;
-  background: var(--color-border);
-  cursor: ns-resize;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: var(--spacing-xs) 0;
-  border-radius: var(--spacing-xs);
-  transition: background var(--transition-fast);
-  pointer-events: auto;
-  z-index: 10;
-}
-
-.content-resizer:hover {
-  background: var(--color-primary);
-}
-
-.resizer-line {
-  width: 32px;
-  height: 2px;
-  background: var(--color-text-2);
-  border-radius: var(--spacing-xs);
-}
-
-.content-resizer:hover .resizer-line {
-  background: var(--color-text-4);
-}
-
-/* Template Editor Panel */
-.template-editor-panel {
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xs);
-  border: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-/* Editor content container - scrollable area */
-.editor-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--spacing-md);
-}
-
-.editor-content:last-child {
-  padding-bottom: calc(var(--spacing-md) - var(--spacing-sm));
-}
-
-/* Custom Scrollbar Styles for Editor Content */
-.editor-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.editor-content::-webkit-scrollbar-track {
-  background: var(--color-bg-1);
-}
-
-.editor-content::-webkit-scrollbar-thumb {
-  background: var(--color-bg-3);
-  border-radius: var(--spacing-xxs);
-}
-
-.editor-content::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-2);
-}
-
-.editor-content::-webkit-scrollbar-corner {
-  background: var(--color-bg-1);
-}
-
-.template-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
-}
-
-.form-group {
-  margin-bottom: var(--spacing-sm);
-}
-
-.form-group label {
-  display: block;
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-3);
-  margin-bottom: var(--spacing-xs);
-}
-
-.form-input {
-  width: 100%;
-  background: var(--color-bg-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-4);
-  padding: var(--spacing-xs);
-  border-radius: var(--spacing-xxs);
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
-}
-
-.unit-row,
-.waypoint-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  background: var(--color-bg-4);
-  border-radius: var(--spacing-xs);
-  margin-top: var(--spacing-md);
-  border: 1px solid var(--color-border);
-}
-
-.unit-row + .unit-row,
-.waypoint-row + .waypoint-row {
-  margin-top: var(--spacing-xl);
-  border-top: 2px solid var(--color-primary);
-}
-
-.unit-number-badge,
-.waypoint-number-badge {
-  flex: 0 0 32px;
-  height: 32px;
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--spacing-xxs);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
-  user-select: none;
-}
-
-.unit-content,
-.waypoint-content {
-  flex: 1;
 }
 </style>

@@ -1,0 +1,85 @@
+/* Template Management Styles */
+
+.template-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.template-item:hover {
+  background: var(--color-bg-3);
+}
+
+.template-item:last-child {
+  border-bottom: none;
+}
+
+.template-info {
+  flex: 1;
+}
+
+.template-info h4,
+.template-info h5 {
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.template-desc {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
+  line-height: 1.4;
+}
+
+.template-meta {
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-2);
+}
+
+.template-badge {
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--font-size-xxs);
+  color: var(--color-text-1);
+  display: inline-block;
+}
+
+.template-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.unit-count {
+  background: var(--color-bg-2);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--font-size-xxs);
+}
+
+/* Template library editor styles */
+.template-library {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.template-library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.template-library-header h3 {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-4);
+  margin: 0;
+}

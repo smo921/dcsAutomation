@@ -1,58 +1,58 @@
 <template>
   <div class="group-editor">
-    <!-- Save/Cancel Toolbar -->
+    <!-- Save/Cancel Toolbar - use shared .editor-toolbar from components.css -->
     <div class="editor-toolbar">
       <Button @click="onSave" variant="primary">Save</Button>
       <Button @click="onCancel" variant="secondary">Cancel</Button>
     </div>
 
-    <div class="editor-content">
+    <div class="editor-content scrollbar-custom">
       <!-- Basic Settings -->
       <CollapsibleSection v-model:expanded="expandedSections.basic" title="Basic Settings">
         <div class="editor-section">
           <div class="form-row">
             <div class="form-group">
-              <label>Group Name</label>
-              <input type="text" v-model="group.groupName" class="form-input" />
+              <FormLabel label="Group Name" required />
+              <FormInput
+                v-model="group.groupName"
+                placeholder="Enter group name..."
+                error=""
+              />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Category</label>
-              <select v-model="group.category" class="form-input">
-                <option value="AIRPLANE">Airplane</option>
-                <option value="HELICOPTER">Helicopter</option>
-                <option value="GROUND">Ground Unit</option>
-                <option value="SHIP">Ship</option>
-                <option value="STATIONARY">Stationary</option>
-              </select>
+              <FormLabel label="Category" required />
+              <FormSelect
+                v-model="group.category"
+                :options="categoryOptions"
+                placeholder="Select category..."
+              />
             </div>
             <div class="form-group">
-              <label>Country</label>
-              <input type="text" v-model="group.country" class="form-input" />
+              <FormLabel label="Country" />
+              <FormInput
+                v-model="group.country"
+                placeholder="Enter country..."
+              />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Task</label>
-              <select v-model="group.task" class="form-input">
-                <option value="">Default</option>
-                <option value="AWACS">AWACS</option>
-                <option value="Refueling">Tanker</option>
-                <option value="CAP">CAP</option>
-                <option value="CAS">CAS</option>
-                <option value="Intercept">Intercept</option>
-                <option value="Ground Attack">Ground Attack</option>
-              </select>
+              <FormLabel label="Task" />
+              <FormSelect
+                v-model="group.task"
+                :options="taskOptions"
+                placeholder="Select task..."
+              />
             </div>
             <div class="form-group">
-              <label>Trigger Type</label>
-              <select v-model="group.triggerType" class="form-input">
-                <option value="IMMEDIATE">Immediate</option>
-                <option value="RADAR">Radar Detection</option>
-                <option value="TRIGGER_ZONE">Trigger Zone</option>
-                <option value="OBJECTIVE_COMPLETE">Objective Complete</option>
-              </select>
+              <FormLabel label="Trigger Type" required />
+              <FormSelect
+                v-model="group.triggerType"
+                :options="triggerTypeOptions"
+                placeholder="Select trigger type..."
+              />
             </div>
           </div>
         </div>
@@ -66,22 +66,36 @@
             <div class="unit-content">
               <div class="form-row">
                 <div class="form-group">
-                  <label>Unit Type</label>
-                  <input type="text" v-model="unit.type" class="form-input" />
+                  <FormLabel label="Unit Type" required />
+                  <FormInput
+                    v-model="unit.type"
+                    placeholder="Enter unit type..."
+                  />
                 </div>
                 <div class="form-group">
-                  <label>Quantity</label>
-                  <input type="number" v-model="unit.quantity" min="1" class="form-input" />
+                  <FormLabel label="Quantity" required />
+                  <FormInput
+                    v-model="unit.quantity"
+                    type="number"
+                    :min="1"
+                    placeholder="1"
+                  />
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Name</label>
-                  <input type="text" v-model="unit.name" class="form-input" />
+                  <FormLabel label="Name" />
+                  <FormInput
+                    v-model="unit.name"
+                    placeholder="Enter unit name..."
+                  />
                 </div>
                 <div class="form-group">
-                  <label>Role</label>
-                  <input type="text" v-model="unit.role" class="form-input" />
+                  <FormLabel label="Role" />
+                  <FormInput
+                    v-model="unit.role"
+                    placeholder="Enter role..."
+                  />
                 </div>
               </div>
               <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit"><span class="btn-remove-icon">✕</span></button>
@@ -96,14 +110,12 @@
         <div class="editor-section">
           <div class="form-row">
             <div class="form-group">
-              <label>Placement Mode</label>
-              <select v-model="group.placement.mode" class="form-input">
-                <option value="BEARING_DISTANCE">Bearing + Distance</option>
-                <option value="COORDINATE">Direct Coordinates</option>
-                <option value="AIRBASE_RAMP">Airbase Ramp</option>
-                <option value="ZONE_CENTER">Zone Center</option>
-                <option value="WAYPOINT">Waypoint Anchor</option>
-              </select>
+              <FormLabel label="Placement Mode" required />
+              <FormSelect
+                v-model="group.placement.mode"
+                :options="placementModeOptions"
+                placeholder="Select placement mode..."
+              />
             </div>
           </div>
 
@@ -111,45 +123,41 @@
           <div v-if="group.placement.mode === 'BEARING_DISTANCE'" class="placement-config">
             <div class="form-row">
               <div class="form-group">
-                <label>Reference Type</label>
-                <select v-model="group.placement.reference" class="form-input">
-                  <option value="bullseye">Bullseye</option>
-                  <option value="airbase">Airbase</option>
-                  <option value="zone">Zone</option>
-                  <option value="battle_line">Battle Line</option>
-                </select>
+                <FormLabel label="Reference Type" required />
+                <FormSelect
+                  v-model="group.placement.reference"
+                  :options="referenceTypeOptions"
+                  placeholder="Select reference..."
+                />
               </div>
               <div class="form-group">
-                <label>Reference Name</label>
-                <select v-model="group.placement.referenceName" class="form-input">
-                  <option value="" disabled>Select a reference...</option>
-                  <!-- Bullseye options -->
-                  <template v-for="b in refpoints.bullseyes" :key="'bs-' + b.name" v-if="group.placement.reference === 'bullseye'">
-                    <option :value="b.name">{{ b.name }}</option>
-                  </template>
-                  <!-- Airbase options -->
-                  <template v-for="a in refpoints.airbases" :key="'ab-' + a.name" v-if="group.placement.reference === 'airbase'">
-                    <option :value="a.name">{{ a.name }}</option>
-                  </template>
-                  <!-- Zone options -->
-                  <template v-for="z in refpoints.zones" :key="'z-' + z.name" v-if="group.placement.reference === 'zone'">
-                    <option :value="z.name">{{ z.name }}</option>
-                  </template>
-                  <!-- Line options -->
-                  <template v-for="l in refpoints.lines" :key="'l-' + l.name" v-if="group.placement.reference === 'battle_line'">
-                    <option :value="l.name">{{ l.name }}</option>
-                  </template>
-                </select>
+                <FormLabel label="Reference Name" required />
+                <FormSelect
+                  v-model="group.placement.referenceName"
+                  :options="getReferenceOptions()"
+                  placeholder="Select a reference..."
+                />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Bearing (degrees)</label>
-                <input type="number" v-model="group.placement.bearing" min="0" max="360" class="form-input" />
+                <FormLabel label="Bearing (degrees)" />
+                <FormInput
+                  v-model="group.placement.bearing"
+                  type="number"
+                  :min="0"
+                  :max="360"
+                  placeholder="0-360"
+                />
               </div>
               <div class="form-group">
-                <label>Distance (NM)</label>
-                <input type="number" v-model="group.placement.distance" min="0" class="form-input" />
+                <FormLabel label="Distance (NM)" />
+                <FormInput
+                  v-model="group.placement.distance"
+                  type="number"
+                  :min="0"
+                  placeholder="0"
+                />
               </div>
             </div>
           </div>
@@ -158,12 +166,20 @@
           <div v-if="group.placement.mode === 'COORDINATE'" class="placement-config">
             <div class="form-row">
               <div class="form-group">
-                <label>X Coordinate</label>
-                <input type="number" v-model="group.placement.x" class="form-input" />
+                <FormLabel label="X Coordinate" />
+                <FormInput
+                  v-model="group.placement.x"
+                  type="number"
+                  placeholder="X coordinate"
+                />
               </div>
               <div class="form-group">
-                <label>Y Coordinate</label>
-                <input type="number" v-model="group.placement.y" class="form-input" />
+                <FormLabel label="Y Coordinate" />
+                <FormInput
+                  v-model="group.placement.y"
+                  type="number"
+                  placeholder="Y coordinate"
+                />
               </div>
             </div>
           </div>
@@ -172,17 +188,20 @@
           <div v-if="group.placement.mode === 'AIRBASE_RAMP'" class="placement-config">
             <div class="form-row">
               <div class="form-group">
-                <label>Airbase Name</label>
-                <select v-model="group.placement.referenceName" class="form-input">
-                  <option value="" disabled>Select airbase...</option>
-                  <option v-for="a in refpoints.airbases" :key="'ab-' + a.name" :value="a.name">
-                    {{ a.name }}
-                  </option>
-                </select>
+                <FormLabel label="Airbase Name" required />
+                <FormSelect
+                  v-model="group.placement.referenceName"
+                  :options="airbaseOptions"
+                  placeholder="Select airbase..."
+                />
               </div>
               <div class="form-group">
-                <label>Parking Slot</label>
-                <input type="number" v-model="group.placement.parking" class="form-input" />
+                <FormLabel label="Parking Slot" />
+                <FormInput
+                  v-model="group.placement.parking"
+                  type="number"
+                  placeholder="Enter parking slot..."
+                />
               </div>
             </div>
           </div>
@@ -190,13 +209,12 @@
           <!-- Zone Center -->
           <div v-if="group.placement.mode === 'ZONE_CENTER'" class="placement-config">
             <div class="form-group">
-              <label>Zone Name</label>
-              <select v-model="group.placement.referenceName" class="form-input">
-                <option value="" disabled>Select zone...</option>
-                <option v-for="z in refpoints.zones" :key="'z-' + z.name" :value="z.name">
-                  {{ z.name }}
-                </option>
-              </select>
+              <FormLabel label="Zone Name" required />
+              <FormSelect
+                v-model="group.placement.referenceName"
+                :options="zoneOptions"
+                placeholder="Select zone..."
+              />
             </div>
           </div>
 
@@ -204,17 +222,21 @@
           <div v-if="group.placement.mode === 'WAYPOINT'" class="placement-config">
             <div class="form-row">
               <div class="form-group">
-                <label>Group Name</label>
-                <select v-model="group.placement.waypointGroup" class="form-input">
-                  <option value="">Select existing group...</option>
-                  <option v-for="g in groups" :key="'wg-' + g.groupName" :value="g.groupName">
-                    {{ g.groupName }}
-                  </option>
-                </select>
+                <FormLabel label="Group Name" required />
+                <FormSelect
+                  v-model="group.placement.waypointGroup"
+                  :options="waypointGroupOptions"
+                  placeholder="Select existing group..."
+                />
               </div>
               <div class="form-group">
-                <label>Waypoint Number</label>
-                <input type="number" v-model="group.placement.waypointNumber" min="1" class="form-input" />
+                <FormLabel label="Waypoint Number" />
+                <FormInput
+                  v-model="group.placement.waypointNumber"
+                  type="number"
+                  :min="1"
+                  placeholder="1"
+                />
               </div>
             </div>
           </div>
@@ -229,23 +251,30 @@
             <div class="waypoint-content">
               <div class="form-row">
                 <div class="form-group">
-                  <label>Type</label>
-                  <select v-model="wp.type" class="form-input">
-                    <option value="orbit">Orbit</option>
-                    <option value="turn_point">Turning Point</option>
-                    <option value="heading">Heading</option>
-                    <option value="landing">Landing</option>
-                  </select>
+                  <FormLabel label="Type" required />
+                  <FormSelect
+                    v-model="wp.type"
+                    :options="waypointTypeOptions"
+                    placeholder="Select type..."
+                  />
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Altitude</label>
-                  <input type="number" v-model="wp.altitude" class="form-input" />
+                  <FormLabel label="Altitude" />
+                  <FormInput
+                    v-model="wp.altitude"
+                    type="number"
+                    placeholder="Altitude in meters"
+                  />
                 </div>
                 <div class="form-group">
-                  <label>Speed</label>
-                  <input type="number" v-model="wp.speed" class="form-input" />
+                  <FormLabel label="Speed" />
+                  <FormInput
+                    v-model="wp.speed"
+                    type="number"
+                    placeholder="Speed in m/s"
+                  />
                 </div>
               </div>
               <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">✕</span></button>
@@ -261,42 +290,120 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
-import { Button } from '../ui'
-import { Icon } from '../ui'
+import { useTemplatesStore } from '../../stores/templates'
+import { Button, FormLabel, FormInput, FormSelect } from '../ui'
 import CollapsibleSection from '../CollapsibleSection.vue'
 
-const emit = defineEmits(['group-change', 'save', 'cancel'])
+const emit = defineEmits(['group-change', 'save', 'cancel', 'update'])
 
 const props = defineProps({
   group: {
     type: Object,
     required: true
   },
-  groups: {
-    type: Array,
-    default: () => []
+  refpoints: {
+    type: Object,
+    default: () => ({
+      bullseyes: [],
+      airbases: [],
+      zones: [],
+      lines: []
+    })
+  },
+  templates: {
+    type: Object,
+    default: () => ({ air: [], ground: [], naval: [], support: [] })
   }
 })
 
 const refpointsStore = useRefpointsStore()
+const templatesStore = useTemplatesStore()
 
-// Refpoints for dropdowns
-const refpoints = ref({
-  bullseyes: refpointsStore.bullseyes,
-  airbases: refpointsStore.airbases,
-  zones: refpointsStore.zones,
-  lines: refpointsStore.lines
+// Category options
+const categoryOptions = computed(() => [
+  { value: 'AIRPLANE', label: 'Airplane' },
+  { value: 'HELICOPTER', label: 'Helicopter' },
+  { value: 'GROUND', label: 'Ground Unit' },
+  { value: 'SHIP', label: 'Ship' },
+  { value: 'STATIONARY', label: 'Stationary' }
+])
+
+// Task options
+const taskOptions = computed(() => [
+  { value: '', label: 'Default' },
+  { value: 'AWACS', label: 'AWACS' },
+  { value: 'Refueling', label: 'Tanker' },
+  { value: 'CAP', label: 'CAP' },
+  { value: 'CAS', label: 'CAS' },
+  { value: 'Intercept', label: 'Intercept' },
+  { value: 'Ground Attack', label: 'Ground Attack' }
+])
+
+// Trigger type options
+const triggerTypeOptions = computed(() => [
+  { value: 'IMMEDIATE', label: 'Immediate' },
+  { value: 'RADAR', label: 'Radar Detection' },
+  { value: 'TRIGGER_ZONE', label: 'Trigger Zone' },
+  { value: 'OBJECTIVE_COMPLETE', label: 'Objective Complete' }
+])
+
+// Placement mode options
+const placementModeOptions = computed(() => [
+  { value: 'BEARING_DISTANCE', label: 'Bearing + Distance' },
+  { value: 'COORDINATE', label: 'Direct Coordinates' },
+  { value: 'AIRBASE_RAMP', label: 'Airbase Ramp' },
+  { value: 'ZONE_CENTER', label: 'Zone Center' },
+  { value: 'WAYPOINT', label: 'Waypoint Anchor' }
+])
+
+// Reference type options
+const referenceTypeOptions = computed(() => [
+  { value: 'bullseye', label: 'Bullseye' },
+  { value: 'airbase', label: 'Airbase' },
+  { value: 'zone', label: 'Zone' },
+  { value: 'battle_line', label: 'Battle Line' }
+])
+
+// Computed airbase options
+const airbaseOptions = computed(() => {
+  return props.refpoints.airbases.map(a => ({ value: a.name, label: a.name }))
 })
 
-// Watch store changes to update refpoints
-watch(() => ({
-  bullseyes: refpointsStore.bullseyes,
-  airbases: refpointsStore.airbases,
-  zones: refpointsStore.zones,
-  lines: refpointsStore.lines
-}), (newRefpoints) => {
-  refpoints.value = newRefpoints
-}, { immediate: true, deep: true })
+// Computed zone options
+const zoneOptions = computed(() => {
+  return props.refpoints.zones.map(z => ({ value: z.name, label: z.name }))
+})
+
+// Computed waypoint group options
+const waypointGroupOptions = computed(() => {
+  // Will be populated by parent with all groups
+  return []
+})
+
+// Get reference name options based on reference type
+const getReferenceOptions = () => {
+  const refType = props.group.placement.reference
+  switch (refType) {
+    case 'bullseye':
+      return props.refpoints.bullseyes.map(b => ({ value: b.name, label: b.name }))
+    case 'airbase':
+      return props.refpoints.airbases.map(a => ({ value: a.name, label: a.name }))
+    case 'zone':
+      return props.refpoints.zones.map(z => ({ value: z.name, label: z.name }))
+    case 'battle_line':
+      return props.refpoints.lines.map(l => ({ value: l.name, label: l.name }))
+    default:
+      return []
+  }
+}
+
+// Waypoint type options
+const waypointTypeOptions = computed(() => [
+  { value: 'orbit', label: 'Orbit' },
+  { value: 'turn_point', label: 'Turning Point' },
+  { value: 'heading', label: 'Heading' },
+  { value: 'landing', label: 'Landing' }
+])
 
 // Section expansion state (all expanded by default)
 const expandedSections = ref({
@@ -308,25 +415,31 @@ const expandedSections = ref({
 
 const addUnit = () => {
   props.group.units.push({ type: '', quantity: 1, name: '', role: '' })
-  emit('group-change', props.group)
+  updateGroup()
 }
 
 const removeUnit = (index) => {
   props.group.units.splice(index, 1)
-  emit('group-change', props.group)
+  updateGroup()
 }
 
 const addWaypoint = () => {
   props.group.route.push({ type: 'orbit', altitude: 3000, speed: 500 })
-  emit('group-change', props.group)
+  updateGroup()
 }
 
 const removeWaypoint = (index) => {
   props.group.route.splice(index, 1)
-  emit('group-change', props.group)
+  updateGroup()
 }
 
-// Save changes when group changes
+// Emit group changes
+const updateGroup = () => {
+  emit('group-change', props.group)
+  emit('update', props.group)
+}
+
+// Watch for deep changes in group
 watch(() => props.group, (newVal) => {
   emit('group-change', newVal)
 }, { deep: true })
@@ -341,163 +454,12 @@ const onCancel = () => {
 </script>
 
 <style scoped>
+/* Use shared classes from components.css */
 .group-editor {
   width: 100%;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-/* Editor toolbar */
-.editor-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-2);
-}
-
-/* Editor content container - scrollable area */
-.editor-content {
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  overflow-y: auto;
-  padding: var(--spacing-md);
-}
-
-.editor-content:last-child {
-  padding-bottom: calc(var(--spacing-md) - var(--spacing-sm));
-}
-
-/* Custom Scrollbar Styles for Editor Content */
-.editor-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.editor-content::-webkit-scrollbar-track {
-  background: var(--color-bg-1);
-}
-
-.editor-content::-webkit-scrollbar-thumb {
-  background: var(--color-bg-3);
-  border-radius: var(--spacing-xxs);
-}
-
-.editor-content::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-2);
-}
-
-.editor-content::-webkit-scrollbar-corner {
-  background: var(--color-bg-1);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
-}
-
-.form-group {
-  margin-bottom: var(--spacing-sm);
-}
-
-.form-group label {
-  display: block;
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-3);
-  margin-bottom: var(--spacing-xs);
-}
-
-.form-input {
-  width: 100%;
-  background: var(--color-bg-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-4);
-  padding: var(--spacing-xs);
-  border-radius: var(--spacing-xxs);
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
-}
-
-.placement-config,
-.waypoint-row,
-.unit-row {
-  margin-top: var(--spacing-xs);
-  padding-left: var(--spacing-sm);
-  border-left: 2px solid var(--color-bg-2);
-}
-
-.unit-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  background: var(--color-bg-4);
-  border-radius: var(--spacing-xs);
-  margin-top: var(--spacing-md);
-  border: 1px solid var(--color-border);
-}
-
-.unit-row + .unit-row {
-  margin-top: var(--spacing-xl);
-  border-top: 2px solid var(--color-primary);
-}
-
-.unit-number-badge {
-  flex: 0 0 32px;
-  height: 32px;
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--spacing-xxs);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
-  user-select: none;
-}
-
-.unit-content {
-  flex: 1;
-}
-
-.waypoint-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  background: var(--color-bg-4);
-  border-radius: var(--spacing-xs);
-  margin-top: var(--spacing-md);
-  border: 1px solid var(--color-border);
-}
-
-.waypoint-row + .waypoint-row {
-  margin-top: var(--spacing-xl);
-  border-top: 2px solid var(--color-primary);
-}
-
-.waypoint-number-badge {
-  flex: 0 0 32px;
-  height: 32px;
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--spacing-xxs);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
-  user-select: none;
-}
-
-.waypoint-content {
-  flex: 1;
 }
 </style>

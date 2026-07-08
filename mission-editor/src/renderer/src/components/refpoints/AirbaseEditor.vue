@@ -2,46 +2,40 @@
   <div class="refpoint-editor airbase-editor">
     <div class="editor-header">
       <h3>Airbase References</h3>
-      <button class="btn-add" @click="showAddModal = true">
+      <Button @click="showAddModal = true" variant="primary">
         <span>+</span> Add Airbase
-      </button>
+      </Button>
     </div>
 
-    <div v-if="airbases.length === 0" class="empty-state">
+    <EmptyState v-if="airbases.length === 0">
       <p>No airbases configured.</p>
       <p class="note">Airbase coordinates are resolved via Airbase.getByName() at runtime.</p>
-    </div>
+    </EmptyState>
 
     <div v-for="(airbase, index) in airbases" :key="index" class="item-row">
       <div class="item-header">
-        <input
-          type="text"
+        <FormInput
           v-model="airbase.name"
           placeholder="Airbase Name"
-          class="name-input"
         />
-        <button class="btn-remove" @click="removeAirbase(index)">
+        <Button variant="danger" size="sm" @click="removeAirbase(index)">
           <span class="btn-remove-icon">✕</span>
-        </button>
+        </Button>
       </div>
     </div>
 
     <Modal v-model:open="showAddModal" title="Add Airbase Reference" close-text="Cancel">
       <template #content>
         <div class="input-group">
-          <label>Name</label>
-          <input
-            type="text"
+          <FormLabel label="Name" required />
+          <FormInput
             v-model="newAirbaseName"
             placeholder="e.g., Airbase_1"
-            class="name-input"
-            @keyup.enter="addAirbase"
-            autofocus
           />
         </div>
       </template>
       <template #actions>
-        <button class="btn-add-modal" @click="addAirbase">Add Airbase</button>
+        <Button @click="addAirbase" variant="primary">Add Airbase</Button>
       </template>
     </Modal>
   </div>
@@ -50,7 +44,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
-import { Modal } from '../ui'
+import { Modal, Button, FormInput } from '../ui'
 
 const store = useRefpointsStore()
 
