@@ -170,6 +170,65 @@ The app uses CSS design tokens for consistent theming. All styles are located in
 - `.toggle-icon` (rotates with `.expanded` class)
 - `.section-content` (slides down with animation)
 
+### UI Component Development Guidelines
+
+**Before creating new components or CSS:**
+
+1. **Check existing shared components** in `src/renderer/src/components/ui/`:
+   - `FormLabel`, `FormInput`, `FormSelect`, `FormRow` - Form input components
+   - `Button`, `Badge`, `Input`, `InputGroup`, `Select` - UI components
+   - `EditorPanel`, `CollapsiblePanel` - Layout components
+   - `EmptyState`, `SectionHeader`, `ListEditor` - Utility components
+   - `BaseReferenceEditor` - Base component for reference point editors
+
+2. **Check existing shared styles** in `src/renderer/src/styles/components/_components.css`:
+   - `.editor-panel`, `.editor-content`, `.editor-section` - Editor layout
+   - `.empty-state` - Empty state display
+   - `.unit-row`, `.waypoint-row` - Unit/waypoint list items
+   - `.btn-remove`, `.btn-icon-only` - Button styles
+   - `.resizer-line`, `.content-resizer` - Resizable divider styles
+
+3. **Check composables** in `src/renderer/src/composables/`:
+   - `useResize` - For resizable dividers between list and detail panes
+
+4. **Follow existing patterns** in:
+   - `GroupEditor.vue` - Standard 2-pane editor pattern
+   - `TemplateEditor.vue` - Template editor with list + form
+   - `ReferencePointManager.vue` - Reference point management with detail editor
+
+**When to create new components:**
+- Only when no existing component provides the required functionality
+- New components should extend shared patterns, not duplicate them
+- All new components must use shared form components (`FormLabel`, `FormInput`, etc.)
+
+**Component structure template:**
+```vue
+<template>
+  <EditorPanel title="My Editor" variant="primary">
+    <div class="editor-content">
+      <CollapsiblePanel title="Section">
+        <div class="editor-section">
+          <FormRow>
+            <div class="form-group">
+              <FormLabel label="Field Name" />
+              <FormInput v-model="fieldValue" />
+            </div>
+          </FormRow>
+        </div>
+      </CollapsiblePanel>
+    </div>
+  </EditorPanel>
+</template>
+
+<script setup>
+import { FormLabel, FormInput, FormRow, EditorPanel, CollapsiblePanel } from '../ui'
+</script>
+
+<style scoped>
+/* Only add styles not covered by shared components */
+</style>
+```
+
 #### Utility Classes (`styles/global.css`):
 - Text sizing: `.u-text-xs`, `.u-text-sm`, etc.
 - Spacing: `.u-spacing-xs`, `.u-spacing-sm`, etc.

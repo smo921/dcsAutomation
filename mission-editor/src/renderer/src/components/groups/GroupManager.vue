@@ -30,7 +30,10 @@
               <span class="group-country">{{ group.country || 'Unknown' }}</span>
             </div>
           </div>
-          <div class="group-actions">
+          <div class="list-item-actions">
+            <Button variant="primary" size="sm" @click.stop="onEditGroup(group)" title="Edit Group">
+              Edit
+            </Button>
             <button class="btn-remove" @click.stop="onDeleteGroup(group.groupName)" title="Delete Group"><span class="btn-remove-icon">✕</span></button>
           </div>
         </div>
@@ -310,7 +313,7 @@ import { Button } from '../ui'
 import { Icon } from '../ui'
 import CollapsibleSection from '../CollapsibleSection.vue'
 
-const emit = defineEmits(['group-change', 'group-delete', 'group-select'])
+const emit = defineEmits(['group-change', 'group-delete', 'group-select', 'group-edit'])
 
 const props = defineProps({
   groups: {
@@ -419,6 +422,10 @@ const onDeleteGroup = (groupName) => {
   emit('group-delete', filtered)
   selectedGroup.value = ''
   currentGroup.value = null
+}
+
+const onEditGroup = (group) => {
+  emit('group-edit', group)
 }
 
 const addUnit = () => {
@@ -585,12 +592,6 @@ defineExpose({
   background: var(--color-bg-2);
   padding: var(--spacing-xxs) var(--spacing-sm);
   border-radius: var(--spacing-xxs);
-}
-
-.group-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
 }
 
 .empty-state {

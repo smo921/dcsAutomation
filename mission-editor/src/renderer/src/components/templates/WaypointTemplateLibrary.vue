@@ -17,6 +17,9 @@
           </Badge>
         </div>
         <div class="list-item-actions">
+          <Button variant="primary" size="sm" @click.stop="editTemplate(template)" title="Edit Template">
+            Edit
+          </Button>
           <Button variant="danger" size="sm" @click.stop="deleteTemplate(template)" title="Delete Template">
             Remove
           </Button>
@@ -50,10 +53,14 @@ const filteredTemplates = computed(() => {
   )
 })
 
-const emit = defineEmits(['waypoint-template-apply', 'waypoint-template-delete'])
+const emit = defineEmits(['waypoint-template-apply', 'waypoint-template-edit', 'waypoint-template-delete'])
 
 const applyTemplate = (template) => {
   emit('waypoint-template-apply', template)
+}
+
+const editTemplate = (template) => {
+  emit('waypoint-template-edit', template)
 }
 
 const deleteTemplate = (template) => {
@@ -62,12 +69,46 @@ const deleteTemplate = (template) => {
 </script>
 
 <style scoped>
-/* Uses shared classes from components.css */
-.waypoint-template-library {
-  width: 100%;
-  flex: 1;
-  min-height: 0;
+/* Uses shared classes from _components.css: waypoint-template-library */
+/* Uses shared classes from _components.css: library-header */
+/* Uses shared classes from _components.css: waypoint-template-list, list-item */
+/* Uses shared classes from _components.css: list-item-content, list-item-actions */
+
+/* Waypoint Template List */
+.waypoint-template-list {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.list-item {
+  background: var(--color-bg-1);
+  padding: var(--spacing-sm);
+  border-radius: var(--spacing-xxs);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  transition: all var(--transition-fast);
+}
+
+.list-item:hover {
+  border-color: var(--color-border-focus);
+}
+
+.list-item-content {
+  flex: 1;
+}
+
+.list-item-content h5 {
+  font-size: var(--font-size-md);
+  color: var(--color-text-4);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.list-item-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 </style>

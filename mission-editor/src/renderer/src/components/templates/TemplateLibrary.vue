@@ -31,6 +31,9 @@
         </p>
       </div>
       <div class="template-actions">
+        <Button variant="primary" size="sm" @click.stop="editTemplate(template, activeCategory)" title="Edit Template">
+          Edit
+        </Button>
         <Button variant="danger" size="sm" @click.stop="deleteTemplate(template, activeCategory)" title="Delete Template">
           <span class="btn-remove-icon">✕</span>
         </Button>

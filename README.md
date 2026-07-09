@@ -1,6 +1,9 @@
-# DCS Dynamic Theater Orchestration Framework
-
+# DCS Dynamic Theater Orchestration Framework & Mission Editor App
 A data-driven Lua framework for Digital Combat Simulator (DCS) designed to automate theater generation, unit routing, radar detection logic, and conditional mission staging.
+
+**Project Components:**  
+• **Lua Automation** — Data-driven scripts with multi-trigger support in `scripts/` & `tests/` folders  
+• **Mission Editor GUI App** — Electron desktop tool enabling visual configuration (see [`mission-editor/README.md`](./mission-editor/))
 
 ## Script Loading Order
 
@@ -73,6 +76,13 @@ The framework converts distances from Nautical Miles (NM) to meters automaticall
 
 ## Trigger Types & Spawning Rules
 
+| Trigger | Description | Important Parameters |
+|---------|-------------|----------------------|
+| **IMMEDIATE** | Deploys units immediately during mission start. No background jobs scheduled. | `enabled`, `triggerType=\"IMMEDIATE\"`, placement details (heading, offsetX/Y ...) |
+| **RADAR** | Radar-triggered deployment; automatically forces EWR to alarm state and may spawn a point‑defense ring. | radar `placement`, optional `pointDefense{units,minRadius,maxRadius}`, `checkInterval`, `maxDetectRangeNM` |
+| **TRIGGER_ZONE** | Deploys when a coalition airframe enters the specified Mission Editor zone. Supports `ZONE_RANDOM` strategy with safe fallback to zone center if water/or obstruction detected. | `zoneName`, `strategy=\"ZONE_RANDOM\"`, `offsetX/Y`, `spawnRadius` |
+| **OBJECTIVE_COMPLETE** | Chain reaction triggered after an entire group is destroyed. | `parentGroupName`, `triggeredUnits`, etc. |
+
 ### 1. `IMMEDIATE`
 
 Spawns configured units immediately during the initial theater initialization sweep without registering background evaluation jobs.
@@ -101,9 +111,13 @@ Enables staged, progressive mission profiles and chain reactions:
 
 
 
-## Example Configuration(s)
-
-### Zone placement with drone overwatch
+## Sample Configurations
+- `samples/simple_immediate.lua`
+- `samples/zone_entry_waypoints.lua`
+- `samples/objective_complete_chain.lua`
+- `samples/radar_point_defense.lua`
+- `samples/point_defense_template.json`
+- `samples/wave_patrol.lua`
 
 ```lua
 -- ==============================================================================

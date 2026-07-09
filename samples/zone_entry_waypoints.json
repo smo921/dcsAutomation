@@ -1,0 +1,15 @@
+{
+    "groupName": "Patrol_Squad",
+    "category": "GROUND",
+    "triggerType": "TRIGGER_ZONE",
+    "country": "Russia",
+    "units": [
+        {"name": "T-72B", "type": "tank", "quantity": 1},
+        {"name": "BMP-2",   "type": "mech", "quantity": 1}
+    ],
+    "placement": {
+        "mode": "ZONE_RANDOM",
+        "zoneName": "NORTH_STAGING",
+        "spawnRadius": 1
+    }
+}

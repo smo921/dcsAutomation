@@ -173,6 +173,26 @@ function registerIpcHandlers () {
     }
   })
 
+  // Check if config files exist
+  ipcMain.handle('config:check', async () => {
+    const refpointsPath = path.join(__dirname, '../../config/refpoints.json')
+    const templatesDir = path.join(__dirname, '../../config/templates')
+    const samplePath = path.join(__dirname, '../../sample-data.json')
+
+    const hasRefpoints = fs.existsSync(refpointsPath)
+    const hasTemplates = fs.existsSync(templatesDir) && fs.readdirSync(templatesDir).length > 0
+    const hasSample = fs.existsSync(samplePath)
+
+    return {
+      hasConfig: hasRefpoints || hasTemplates,
+      hasSample,
+      paths: {
+        refpoints: refpointsPath,
+        templates: templatesDir
+      }
+    }
+  })
+
   // Load sample configuration
   ipcMain.handle('config:load-sample', async () => {
     const samplePath = path.join(__dirname, '../../sample-data.json')

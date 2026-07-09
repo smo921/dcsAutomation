@@ -3,6 +3,7 @@
     <header class="app-header">
       <h1>DCS Mission Editor</h1>
       <nav class="header-nav">
+        <button @click="onNewMission">New Mission</button>
         <button @click="onLoadSample">Load Sample Data</button>
         <button @click="onExportJson">Export JSON</button>
         <button @click="onExportLua">Export Lua</button>
@@ -11,40 +12,75 @@
 
     <div class="app-content">
       <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }" @mousedown="startSidebarResize">
-        <CollapsibleSection v-model:expanded="sections.groups" title="Groups">
+        <CollapsibleSection :expanded="sections.groups" @update:expanded="sections.groups = $event" title="Groups">
           <GroupManager
             ref="groupManagerRef"
             :groups="groups"
             listOnly
             @group-change="onGroupChange"
-            @group-select="onGroupSelected"
+            @group-edit="onGroupEdit"
           />
         </CollapsibleSection>
 
-        <CollapsibleSection v-model:expanded="sections.referencePoints" title="Reference Points">
-          <ReferencePointManager ref="refpointManagerRef" />
+        <CollapsibleSection :expanded="sections.referencePoints" @update:expanded="sections.referencePoints = $event" title="Reference Points">
+          <div class="section-load-hint" v-if="refpointsStore.bullseyes.length === 0 && refpointsStore.airbases.length === 0 && refpointsStore.zones.length === 0 && refpointsStore.lines.length === 0">
+            <p>No reference points loaded.</p>
+            <button @click="onLoadReferencePoints" class="btn-load">Load Config</button>
+          </div>
+          <ReferencePointManager ref="refpointManagerRef" :list-only="true" @select="onReferencePointSelected" @refpoint-edit="onReferencePointEdit" @refpoint-delete="onReferencePointDelete" />
         </CollapsibleSection>
 
-        <CollapsibleSection v-model:expanded="sections.templates" title="Templates">
+        <CollapsibleSection :expanded="sections.templates" @update:expanded="sections.templates = $event" title="Templates">
+          <div class="section-load-hint" v-if="!hasTemplatesLoaded">
+            <p>No templates loaded.</p>
+            <button @click="onLoadTemplates" class="btn-load">Load Config</button>
+          </div>
           <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" @template-edit="onTemplateEdit" @template-delete="onTemplateDelete" />
         </CollapsibleSection>
 
-        <CollapsibleSection v-model:expanded="sections.waypointTemplates" title="Waypoint Templates">
-          <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" @waypoint-template-delete="onWaypointTemplateDelete" />
+        <CollapsibleSection :expanded="sections.waypointTemplates" @update:expanded="sections.waypointTemplates = $event" title="Waypoint Templates">
+          <div class="section-load-hint" v-if="templatesStore.waypointTemplates.length === 0">
+            <p>No waypoint templates loaded.</p>
+            <button @click="onLoadWaypointTemplates" class="btn-load">Load Config</button>
+          </div>
+          <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" @waypoint-template-edit="onWaypointTemplateEdit" @waypoint-template-delete="onWaypointTemplateDelete" />
         </CollapsibleSection>
       </aside>
 
       <main class="main-content">
         <div class="main-editor">
+          <!-- Reference Point Editor - shown when editing a reference point -->
+          <ReferencePointDetailEditor
+            v-if="editingReferencePoint"
+            :key="editingReferencePoint.name || editingReferencePoint.type || Date.now()"
+            ref="referencePointDetailEditorRef"
+            :refpoint="editingReferencePoint"
+            @save="onReferencePointDetailSave"
+            @cancel="editingReferencePoint = null"
+          />
+          <!-- DEBUG: Log what we're passing -->
+          <!-- <div v-if="editingReferencePoint" style="position: fixed; top: 0; left: 0; background: yellow; padding: 10px; z-index: 9999;">
+            Passing to Editor: {{ JSON.stringify(editingReferencePoint) }}
+          </div> -->
+
           <!-- Template Editor - shown when editing a template -->
           <TemplateEditor
-            v-if="editingTemplate"
+            v-else-if="editingTemplate"
             ref="templateEditorRef"
-            :templates="templatesStore.categories"
             :editingTemplate="editingTemplate"
             @template-change="onTemplateChange"
-            @template-delete="onTemplateDelete"
-            @template-select="onTemplateSelected"
+            @save="onTemplateSave"
+            @cancel="onTemplateCancel"
+          />
+
+          <!-- Waypoint Template Editor - shown when editing a waypoint template -->
+          <WaypointTemplateEditor
+            v-else-if="editingWaypointTemplate"
+            ref="waypointTemplateEditorRef"
+            :waypoints="editingWaypointTemplate.waypoints || []"
+            :airbases="refpointsStore.airbases"
+            @save="onWaypointTemplateSave"
+            @cancel="editingWaypointTemplate = null"
           />
 
           <!-- Group Editor - shown when editing a group -->
@@ -54,6 +90,7 @@
             :group="groups[selectedGroupIndex]"
             :groups="groups"
             @group-change="onGroupEditorChange"
+            @cancel="selectedGroupIndex = null"
           />
 
           <!-- No selection state -->
@@ -74,16 +111,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRefpointsStore } from './stores/refpoints'
 import { useTemplatesStore } from './stores/templates'
 import ReferencePointManager from './components/refpoints/ReferencePointManager.vue'
 import TemplateLibrary from './components/templates/TemplateLibrary.vue'
 import TemplateEditor from './components/templates/TemplateEditor.vue'
 import WaypointTemplateLibrary from './components/templates/WaypointTemplateLibrary.vue'
+import WaypointTemplateEditor from './components/templates/WaypointTemplateEditor.vue'
 import GroupManager from './components/groups/GroupManager.vue'
 import GroupEditor from './components/groups/GroupEditor.vue'
 import WaypointEditor from './components/editor/WaypointEditor.vue'
+import ReferencePointDetailEditor from './components/refpoints/ReferencePointDetailEditor.vue'
 import CollapsibleSection from './components/CollapsibleSection.vue'
 import { useResize } from './composables/useResize'
 
@@ -93,15 +132,19 @@ const templatesStore = useTemplatesStore()
 
 // Refs for component access
 const refpointManagerRef = ref(null)
+const referencePointDetailEditorRef = ref(null)
 const templateLibraryRef = ref(null)
 const waypointTemplateLibraryRef = ref(null)
 const groupManagerRef = ref(null)
 const templateEditorRef = ref(null)
+const waypointTemplateEditorRef = ref(null)
 const groupEditorRef = ref(null)
 
 // Track selected group index and editing template
 const selectedGroupIndex = ref(null)
+const editingReferencePoint = ref(null)
 const editingTemplate = ref(null)
+const editingWaypointTemplate = ref(null)
 
 // Sidebar sections state - groups expanded by default
 const sections = ref({
@@ -165,6 +208,36 @@ const onLoadSample = async () => {
   }
 }
 
+const onNewMission = () => {
+  // Ask for confirmation before clearing all data
+  if (!window.confirm('Are you sure you want to create a new mission? This will delete all groups, reference points, and templates.')) {
+    return
+  }
+
+  // Close any open editors
+  selectedGroupIndex.value = null
+  editingReferencePoint.value = null
+  editingTemplate.value = null
+  editingWaypointTemplate.value = null
+
+  // Clear all store data
+  refpointsStore.clear()
+  templatesStore.clear()
+
+  // Clear groups
+  groups.value = []
+
+  // Reset sidebar sections
+  sections.value = {
+    groups: true,
+    referencePoints: false,
+    templates: false,
+    waypointTemplates: false
+  }
+
+  setStatus('New mission created', 'success')
+}
+
 const onExportJson = () => {
   window.api?.export?.json?.()
 }
@@ -190,8 +263,9 @@ const onGroupChange = (newGroups) => {
   }
 }
 
-const onGroupSelected = (index) => {
-  selectedGroupIndex.value = index
+const onGroupEdit = (group) => {
+  // Find the group index and open the editor
+  selectedGroupIndex.value = groups.value.findIndex(g => g.groupName === group.groupName)
 }
 
 const onGroupEditorChange = (updatedGroup) => {
@@ -207,7 +281,22 @@ const onGroupEditorChange = (updatedGroup) => {
   }
 }
 
-// Template handlers - templates are now managed in the sidebar
+// Reference Point handlers
+const onReferencePointSelected = (refPoint) => {
+  // payload = { refPoint }
+  editingReferencePoint.value = { ...refPoint }
+  setStatus(`Editing reference point: "${refPoint.name}"`, 'info')
+}
+
+const onReferencePointEdit = (refPoint) => {
+  // Edit button clicked - set the reference point for editing
+  const refPointCopy = { ...refPoint }
+  editingReferencePoint.value = refPointCopy
+  setStatus(`Editing reference point: "${refPoint.name}"`, 'info')
+}
+
+// Watch for editingReferencePoint changes
+
 const onTemplateApplied = (payload) => {
   // payload = { template, category }
   const { template, category } = payload
@@ -236,7 +325,8 @@ const onTemplateEdit = (payload) => {
   // payload = { template, category }
   const { template, category } = payload
   // Set the template as being edited - TemplateEditor will show it
-  editingTemplate.value = { ...template, category }
+  editingReferencePoint.value = null // Close reference point editor if open
+  editingTemplate.value = template
   setStatus(`Editing template: "${template.name}"`, 'info')
 }
 
@@ -248,21 +338,49 @@ const setStatus = (message, type = 'info') => {
   }, 3000)
 }
 
-// Initialize
+// Initialize - no automatic loading
 onMounted(() => {
-  // Load refpoints
+  // Resources are not loaded automatically
+  // User can click "Load Sample Data" or "Load Config" buttons to load data
+})
+
+// Load config handlers - explicit user action to load data
+const onLoadReferencePoints = () => {
   window.api?.refpoints?.load?.().then(config => {
     if (config) {
       refpointsStore.loadFromConfig(config)
+      setStatus('Reference points loaded from config', 'success')
+    } else {
+      setStatus('No reference point config found', 'info')
     }
   })
+}
 
-  // Load templates
+const onLoadTemplates = () => {
   window.api?.templates?.loadAll?.().then(templates => {
-    if (templates) {
+    if (templates && Object.keys(templates).length > 0) {
       templatesStore.loadTemplates(templates)
+      setStatus('Templates loaded from config', 'success')
+    } else {
+      setStatus('No templates found in config', 'info')
     }
   })
+}
+
+const onLoadWaypointTemplates = () => {
+  window.api?.templates?.loadAll?.().then(templates => {
+    if (templates && templates.waypoint_templates) {
+      templatesStore.loadWaypointTemplates(templates.waypoint_templates)
+      setStatus('Waypoint templates loaded from config', 'success')
+    } else {
+      setStatus('No waypoint templates found in config', 'info')
+    }
+  })
+}
+
+// Computed - check if any templates are loaded
+const hasTemplatesLoaded = computed(() => {
+  return Object.values(templatesStore.categories).some(arr => arr.length > 0)
 })
 
 // Template management handlers
@@ -358,6 +476,99 @@ const onWaypointTemplateDelete = (template) => {
   // Delete the template from the store
   templatesStore.deleteWaypointTemplate(template.id)
   setStatus(`Waypoint template "${template.name}" deleted`, 'info')
+}
+
+const onWaypointTemplateEdit = (template) => {
+  // Set the template as being edited - WaypointTemplateEditor will show it
+  editingReferencePoint.value = null // Close reference point editor if open
+  editingWaypointTemplate.value = { ...template }
+  setStatus(`Editing waypoint template: "${template.name}"`, 'info')
+}
+
+const onReferencePointDetailSave = (refPoint) => {
+  // Called when ReferencePointDetailEditor saves changes
+  updateRefPointInStore(refPoint)
+  editingReferencePoint.value = null
+  setStatus(`Reference point "${refPoint.name}" saved`, 'success')
+}
+
+const onReferencePointDelete = (refPoint) => {
+  // Delete reference point from store
+  const type = refPoint.type
+  const name = refPoint.name
+
+  if (type === 'bullseye') {
+    const index = refpointsStore.bullseyes.findIndex(b => b.name === name)
+    if (index !== -1) {
+      refpointsStore.bullseyes.splice(index, 1)
+      setStatus(`Bullseye "${name}" deleted`, 'info')
+    }
+  } else if (type === 'airbase') {
+    const index = refpointsStore.airbases.findIndex(a => a.name === name)
+    if (index !== -1) {
+      refpointsStore.airbases.splice(index, 1)
+      setStatus(`Airbase "${name}" deleted`, 'info')
+    }
+  } else if (type === 'zone') {
+    const index = refpointsStore.zones.findIndex(z => z.name === name)
+    if (index !== -1) {
+      refpointsStore.zones.splice(index, 1)
+      setStatus(`Zone "${name}" deleted`, 'info')
+    }
+  } else if (type === 'battle_line') {
+    const index = refpointsStore.lines.findIndex(l => l.name === name)
+    if (index !== -1) {
+      refpointsStore.lines.splice(index, 1)
+      setStatus(`Battle line "${name}" deleted`, 'info')
+    }
+  }
+}
+
+const onTemplateCancel = () => {
+  editingTemplate.value = null
+}
+
+const updateRefPointInStore = (refPoint) => {
+  const type = refPoint.type
+  const name = refPoint.name
+
+  if (type === 'bullseye') {
+    const index = refpointsStore.bullseyes.findIndex(b => b.name === name)
+    if (index !== -1) {
+      refpointsStore.bullseyes.splice(index, 1, { name })
+    }
+  } else if (type === 'airbase') {
+    const index = refpointsStore.airbases.findIndex(a => a.name === name)
+    if (index !== -1) {
+      refpointsStore.airbases.splice(index, 1, { name })
+    }
+  } else if (type === 'zone') {
+    const index = refpointsStore.zones.findIndex(z => z.name === name)
+    if (index !== -1) {
+      refpointsStore.zones.splice(index, 1, { name })
+    }
+  } else if (type === 'battle_line') {
+    const index = refpointsStore.lines.findIndex(l => l.name === name)
+    if (index !== -1) {
+      refpointsStore.lines.splice(index, 1, {
+        name,
+        startX: refPoint.startX || 0,
+        startY: refPoint.startY || 0,
+        endX: refPoint.endX || 0,
+        endY: refPoint.endY || 0
+      })
+    }
+  }
+}
+
+const onWaypointTemplateSave = (waypoints) => {
+  // Find and update the waypoint template in the store
+  const index = templatesStore.waypointTemplates.findIndex(t => t.id === editingWaypointTemplate.value.id)
+  if (index !== -1) {
+    templatesStore.waypointTemplates[index].waypoints = waypoints
+    setStatus(`Waypoint template "${editingWaypointTemplate.value.name}" saved`, 'success')
+    editingWaypointTemplate.value = null
+  }
 }
 </script>
 
@@ -591,5 +802,35 @@ const onWaypointTemplateDelete = (template) => {
 
 .sidebar::-webkit-scrollbar-corner {
   background: var(--color-bg-1);
+}
+
+/* Section Load Hint - shown when no data is loaded */
+.section-load-hint {
+  background: var(--color-bg-2);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--spacing-xxs);
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.section-load-hint p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-1);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.section-load-hint .btn-load {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--spacing-xxs);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+}
+
+.section-load-hint .btn-load:hover {
+  background: var(--color-primary-hover);
 }
 </style>

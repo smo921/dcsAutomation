@@ -1,0 +1,16 @@
+{
+    "groupName": "Infantry_Squad",
+    "category": "GROUND",
+    "triggerType": "IMMEDIATE",
+    "country": "Russia",
+    "units": [
+        {"name": "T-72B", "type": "tank", "quantity": 1},
+        {"name": "BMP-2", "type": "mech", "quantity": 1}
+    ],
+    "placement": {
+        "mode": "COORDINATE",
+        "x": 0,
+        "y": 5,
+        "heading": 0
+    }
+}

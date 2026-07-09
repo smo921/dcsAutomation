@@ -1,0 +1,17 @@
+{
+    "groupName": "Patrol_Wave_1",
+    "category": "GROUND",
+    "triggerType": "WAVE_PATROL",
+    "country": "Russia",
+    "units": [
+        {"name": "T-72B", "type": "tank", "quantity": 1}
+    ],
+    "placement": {
+        "mode": "COORDINATE",
+        "x": 0,
+        "y": 0
+    },
+    "route": [
+        {"type":"turn_point","x":5,"y":0,"altitude":0,"speed":45}
+    ]
+}

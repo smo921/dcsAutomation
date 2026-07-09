@@ -22,3 +22,6 @@ export { default as EditorPanel } from './EditorPanel.vue'
 
 /* Reference point base component */
 export { default as BaseReferenceEditor } from '../refpoints/BaseReferenceEditor.vue'
+
+/* Template editors */
+export { default as WaypointTemplateEditor } from '../templates/WaypointTemplateEditor.vue'

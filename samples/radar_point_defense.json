@@ -1,0 +1,21 @@
+{
+    "groupName": "SAM_Cluster",
+    "category": "GROUND",
+    "triggerType": "RADAR",
+    "country": "Russia",
+    "units": [
+        {"name": "S-300V", "type": "radar", "quantity": 1}
+    ],
+    "placement": {
+        "mode": "COORDINATE",
+        "x": 50,
+        "y": 0
+    },
+    "pointDefense": {
+        "units": [
+            {"name":"S-300V", "type":"radar", "quantity":4}
+        ],
+        "minRadius": 5000,
+        "maxRadius": 15000
+    }
+}

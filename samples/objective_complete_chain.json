@@ -1,0 +1,15 @@
+{
+    "groupName": "Secondary_Beta",
+    "category": "GROUND",
+    "triggerType": "OBJECTIVE_COMPLETE",
+    "parentGroupName": "Primary_Alpha",
+    "country": "Russia",
+    "units": [
+        {"name":"T-72B","type":"tank","quantity":1}
+    ],
+    "placement": {
+        "mode": "COORDINATE",
+        "x": 10,
+        "y": -5
+    }
+}

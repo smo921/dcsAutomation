@@ -11,9 +11,9 @@
 </template>
 
 <script>
-import { ref, watch, defineComponent } from 'vue'
+import { ref, watch } from 'vue'
 
-export default defineComponent({
+export default {
   name: 'CollapsibleSection',
   props: {
     title: {
@@ -39,7 +39,7 @@ export default defineComponent({
 
     return { toggle, internalExpanded }
   }
-})
+}
 </script>
 
 <style scoped>
