@@ -1,6 +1,6 @@
 <template>
   <div class="waypoint-editor">
-    <!-- Scrollable Waypoint List - use scrollbar-custom from components.css -->
+    <!-- Scrollable Waypoint List -->
     <div class="waypoint-list-scroll scrollbar-custom" :style="{ height: listHeight + 'px' }">
       <div class="waypoint-list">
         <div
@@ -14,7 +14,9 @@
           <div class="waypoint-header">
             <span class="waypoint-index">{{ index + 1 }}</span>
             <span class="waypoint-type">{{ wp.type }}</span>
-            <button class="btn-remove" @click.stop="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">✕</span></button>
+            <Button variant="danger" size="sm" @click.stop="removeWaypoint(index)" title="Remove Waypoint">
+              <span class="btn-remove-icon">✕</span>
+            </Button>
           </div>
           <div class="waypoint-coords" v-if="wp.x !== undefined && wp.y !== undefined">
             {{ Math.round(wp.x) }}, {{ Math.round(wp.y) }}
@@ -39,67 +41,77 @@
 
     <div class="waypoint-editor-form" v-if="activeWaypoint !== null">
       <div class="form-row">
-        <div class="form-group">
-          <label>Waypoint Type</label>
-          <select v-model="activeWp.type" class="form-input">
-            <option value="orbit">Orbit</option>
-            <option value="turn_point">Turning Point</option>
-            <option value="heading">Heading</option>
-            <option value="landing">Landing</option>
-          </select>
-        </div>
+        <FormGroup label="Waypoint Type">
+          <FormSelect
+            v-model="activeWp.type"
+            :options="waypointTypeOptions"
+          />
+        </FormGroup>
       </div>
 
       <div class="form-row">
-        <div class="form-group">
-          <label>Altitude (feet)</label>
-          <input type="number" v-model="activeWp.altitude" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label>Speed (knots)</label>
-          <input type="number" v-model="activeWp.speed" class="form-input" />
-        </div>
+        <FormGroup label="Altitude (ft)">
+          <FormInput
+            v-model="activeWp.altitude"
+            type="number"
+          />
+        </FormGroup>
+        <FormGroup label="Speed (kts)">
+          <FormInput
+            v-model="activeWp.speed"
+            type="number"
+          />
+        </FormGroup>
       </div>
 
       <div v-if="activeWp.type === 'orbit'" class="form-row">
-        <div class="form-group">
-          <label>Orbit Radius (NM)</label>
-          <input type="number" v-model="activeWp.radius" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label>Pattern</label>
-          <select v-model="activeWp.pattern" class="form-input">
-            <option value="clockwise">Clockwise</option>
-            <option value="counterclockwise">Counter-Clockwise</option>
-          </select>
-        </div>
+        <FormGroup label="Orbit Radius (NM)">
+          <FormInput
+            v-model="activeWp.radius"
+            type="number"
+          />
+        </FormGroup>
+        <FormGroup label="Pattern">
+          <FormSelect
+            v-model="activeWp.pattern"
+            :options="patternOptions"
+          />
+        </FormGroup>
       </div>
 
       <div v-if="activeWp.type === 'turn_point' || activeWp.type === 'heading'" class="form-row">
-        <div class="form-group">
-          <label>X Offset (NM)</label>
-          <input type="number" v-model="activeWp.x" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label>Y Offset (NM)</label>
-          <input type="number" v-model="activeWp.y" class="form-input" />
-        </div>
+        <FormGroup label="X Offset (NM)">
+          <FormInput
+            v-model="activeWp.x"
+            type="number"
+          />
+        </FormGroup>
+        <FormGroup label="Y Offset (NM)">
+          <FormInput
+            v-model="activeWp.y"
+            type="number"
+          />
+        </FormGroup>
       </div>
 
       <div v-if="activeWp.type === 'landing'" class="form-group">
-        <label>Landing Airbase</label>
-        <select v-model="activeWp.airbase" class="form-input">
-          <option v-for="a in refpoints.airbases" :key="a.name" :value="a.name">
-            {{ a.name }}
-          </option>
-        </select>
+        <FormGroup label="Landing Airbase">
+          <FormSelect
+            v-model="activeWp.airbase"
+            :options="airbaseOptions"
+          />
+        </FormGroup>
       </div>
 
       <div class="form-row">
-        <div class="form-group">
-          <label>Bearing (°)</label>
-          <input type="number" v-model="activeWp.heading" min="0" max="360" class="form-input" />
-        </div>
+        <FormGroup label="Bearing (°)">
+          <FormInput
+            v-model="activeWp.heading"
+            type="number"
+            :min="0"
+            :max="360"
+          />
+        </FormGroup>
       </div>
     </div>
   </div>
@@ -109,6 +121,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useResize } from '../../composables/useResize'
+import { FormInput, FormSelect, FormGroup, Button } from '../ui'
 
 const store = useRefpointsStore()
 
@@ -134,6 +147,22 @@ const activeWp = ref({
   radius: 10,
   pattern: 'clockwise',
   airbase: ''
+})
+
+const waypointTypeOptions = computed(() => [
+  { value: 'orbit', label: 'Orbit' },
+  { value: 'turn_point', label: 'Turning Point' },
+  { value: 'heading', label: 'Heading' },
+  { value: 'landing', label: 'Landing' }
+])
+
+const patternOptions = computed(() => [
+  { value: 'clockwise', label: 'Clockwise' },
+  { value: 'counterclockwise', label: 'Counter-Clockwise' }
+])
+
+const airbaseOptions = computed(() => {
+  return refpoints.value.airbases.map(a => ({ value: a.name, label: a.name }))
 })
 
 const setActiveWaypoint = (index) => {
@@ -177,41 +206,11 @@ watch(waypoints, (newWaypoints) => {
 </script>
 
 <style scoped>
-/* Use shared classes from components.css */
+/* Uses shared classes from components.css */
 .waypoint-editor {
   width: 100%;
   display: flex;
   flex-direction: column;
-}
-
-/* Resizeable Divider between list and editor */
-.content-resizer {
-  height: 8px;
-  background: var(--color-border);
-  cursor: ns-resize;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: var(--spacing-xs) 0;
-  border-radius: var(--spacing-xs);
-  transition: background var(--transition-fast);
-  pointer-events: auto;
-  z-index: 10;
-}
-
-.content-resizer:hover {
-  background: var(--color-primary);
-}
-
-.resizer-line {
-  width: 32px;
-  height: 2px;
-  background: var(--color-text-2);
-  border-radius: var(--spacing-xs);
-}
-
-.content-resizer:hover .resizer-line {
-  background: var(--color-text-4);
 }
 
 /* Waypoint Editor Form */

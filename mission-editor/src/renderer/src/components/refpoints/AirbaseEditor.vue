@@ -1,71 +1,48 @@
 <template>
-  <div class="refpoint-editor airbase-editor">
-    <div class="editor-header">
-      <h3>Airbase References</h3>
-      <Button @click="showAddModal = true" variant="primary">
-        <span>+</span> Add Airbase
-      </Button>
-    </div>
-
-    <EmptyState v-if="airbases.length === 0">
-      <p>No airbases configured.</p>
-      <p class="note">Airbase coordinates are resolved via Airbase.getByName() at runtime.</p>
-    </EmptyState>
-
-    <div v-for="(airbase, index) in airbases" :key="index" class="item-row">
-      <div class="item-header">
+  <BaseReferenceEditor
+    v-model:items="airbases"
+    title="Airbase References"
+    addButtonText="Add Airbase"
+    emptyStateText="No airbases configured."
+    emptyStateNote="Airbase coordinates are resolved via Airbase.getByName() at runtime."
+    addModalTitle="Add Airbase Reference"
+    namePlaceholder="e.g., Airbase_1"
+    @add="handleAdd"
+    @update="emitUpdate"
+  >
+    <template #addModalFields>
+      <div class="input-group">
+        <FormLabel label="Name" required />
         <FormInput
-          v-model="airbase.name"
-          placeholder="Airbase Name"
+          v-model="newItemName"
+          placeholder="e.g., Airbase_1"
         />
-        <Button variant="danger" size="sm" @click="removeAirbase(index)">
-          <span class="btn-remove-icon">✕</span>
-        </Button>
       </div>
-    </div>
-
-    <Modal v-model:open="showAddModal" title="Add Airbase Reference" close-text="Cancel">
-      <template #content>
-        <div class="input-group">
-          <FormLabel label="Name" required />
-          <FormInput
-            v-model="newAirbaseName"
-            placeholder="e.g., Airbase_1"
-          />
-        </div>
-      </template>
-      <template #actions>
-        <Button @click="addAirbase" variant="primary">Add Airbase</Button>
-      </template>
-    </Modal>
-  </div>
+    </template>
+  </BaseReferenceEditor>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
-import { Modal, Button, FormInput } from '../ui'
+import { FormInput, BaseReferenceEditor } from '../ui'
 
 const store = useRefpointsStore()
 
 const airbases = ref(store.airbases)
-const showAddModal = ref(false)
-const newAirbaseName = ref('')
+const newItemName = ref('')
 
 const emit = defineEmits(['update'])
 
-const addAirbase = () => {
-  if (newAirbaseName.value.trim()) {
-    store.addAirbase(newAirbaseName.value.trim())
-    newAirbaseName.value = ''
-    showAddModal.value = false
-    emit('update')
-  }
+const emitUpdate = () => {
+  emit('update')
 }
 
-const removeAirbase = (index) => {
-  store.removeAirbase(index)
-  emit('update')
+const handleAdd = (name) => {
+  if (name.trim()) {
+    store.addAirbase(name.trim())
+    emit('update')
+  }
 }
 
 watch(() => store.airbases, (newVal) => {

@@ -1,14 +1,13 @@
 <template>
-  <div class="group-editor">
-    <!-- Save/Cancel Toolbar - use shared .editor-toolbar from components.css -->
-    <div class="editor-toolbar">
+  <EditorPanel title="Group Editor" variant="primary">
+    <template #toolbar>
       <Button @click="onSave" variant="primary">Save</Button>
       <Button @click="onCancel" variant="secondary">Cancel</Button>
-    </div>
+    </template>
 
     <div class="editor-content scrollbar-custom">
       <!-- Basic Settings -->
-      <CollapsibleSection v-model:expanded="expandedSections.basic" title="Basic Settings">
+      <CollapsiblePanel v-model:expanded="expandedSections.basic" title="Basic Settings">
         <div class="editor-section">
           <div class="form-row">
             <div class="form-group">
@@ -16,7 +15,6 @@
               <FormInput
                 v-model="group.groupName"
                 placeholder="Enter group name..."
-                error=""
               />
             </div>
           </div>
@@ -56,12 +54,17 @@
             </div>
           </div>
         </div>
-      </CollapsibleSection>
+      </CollapsiblePanel>
 
       <!-- Units Section -->
-      <CollapsibleSection v-model:expanded="expandedSections.units" title="Units">
+      <CollapsiblePanel v-model:expanded="expandedSections.units" title="Units">
         <div class="editor-section">
-          <div v-for="(unit, index) in group.units" :key="index" class="unit-row" :data-unit-num="index + 1">
+          <div
+            v-for="(unit, index) in group.units"
+            :key="index"
+            class="unit-row"
+            :data-unit-num="index + 1"
+          >
             <div class="unit-number-badge">{{ index + 1 }}</div>
             <div class="unit-content">
               <div class="form-row">
@@ -98,15 +101,19 @@
                   />
                 </div>
               </div>
-              <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit"><span class="btn-remove-icon">✕</span></button>
+              <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit">
+                <span class="btn-remove-icon">✕</span>
+              </button>
             </div>
           </div>
-          <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">+ Add Unit</Button>
+          <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">
+            + Add Unit
+          </Button>
         </div>
-      </CollapsibleSection>
+      </CollapsiblePanel>
 
       <!-- Placement Section -->
-      <CollapsibleSection v-model:expanded="expandedSections.placement" title="Placement">
+      <CollapsiblePanel v-model:expanded="expandedSections.placement" title="Placement">
         <div class="editor-section">
           <div class="form-row">
             <div class="form-group">
@@ -241,12 +248,17 @@
             </div>
           </div>
         </div>
-      </CollapsibleSection>
+      </CollapsiblePanel>
 
       <!-- Route Section -->
-      <CollapsibleSection v-model:expanded="expandedSections.route" title="Route">
+      <CollapsiblePanel v-model:expanded="expandedSections.route" title="Route">
         <div class="editor-section">
-          <div v-for="(wp, index) in group.route" :key="index" class="waypoint-row" :data-waypoint-num="index + 1">
+          <div
+            v-for="(wp, index) in group.route"
+            :key="index"
+            class="waypoint-row"
+            :data-waypoint-num="index + 1"
+          >
             <div class="waypoint-number-badge">{{ index + 1 }}</div>
             <div class="waypoint-content">
               <div class="form-row">
@@ -277,22 +289,25 @@
                   />
                 </div>
               </div>
-              <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">✕</span></button>
+              <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint">
+                <span class="btn-remove-icon">✕</span>
+              </button>
             </div>
           </div>
-          <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">+ Add Waypoint</Button>
+          <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">
+            + Add Waypoint
+          </Button>
         </div>
-      </CollapsibleSection>
+      </CollapsiblePanel>
     </div>
-  </div>
+  </EditorPanel>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useTemplatesStore } from '../../stores/templates'
-import { Button, FormLabel, FormInput, FormSelect } from '../ui'
-import CollapsibleSection from '../CollapsibleSection.vue'
+import { Button, FormLabel, FormInput, FormSelect, EditorPanel, CollapsiblePanel } from '../ui'
 
 const emit = defineEmits(['group-change', 'save', 'cancel', 'update'])
 
@@ -454,12 +469,5 @@ const onCancel = () => {
 </script>
 
 <style scoped>
-/* Use shared classes from components.css */
-.group-editor {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
+/* Uses shared classes from components.css */
 </style>

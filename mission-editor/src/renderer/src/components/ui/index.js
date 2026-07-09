@@ -17,3 +17,8 @@ export { default as FormGroup } from './FormGroup.vue'
 export { default as EmptyState } from './EmptyState.vue'
 export { default as SectionHeader } from './SectionHeader.vue'
 export { default as ListEditor } from './ListEditor.vue'
+export { default as CollapsiblePanel } from './CollapsiblePanel.vue'
+export { default as EditorPanel } from './EditorPanel.vue'
+
+/* Reference point base component */
+export { default as BaseReferenceEditor } from '../refpoints/BaseReferenceEditor.vue'

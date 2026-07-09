@@ -32,4 +32,9 @@
   /* Utility */
   --color-transparent: rgba(0, 0, 0, 0);
   --color-overlay: rgba(0, 0, 0, 0.7);
+
+  /* Form (semantic) */
+  --color-form-background: var(--color-bg-2);
+  --color-form-border: var(--color-border);
+  --color-form-text: var(--color-text-0);
 }

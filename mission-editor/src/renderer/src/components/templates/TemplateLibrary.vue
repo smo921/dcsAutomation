@@ -1,11 +1,10 @@
 <template>
   <div class="template-library">
     <div class="library-header">
-      <input
-        type="text"
+      <FormInput
         v-model="searchQuery"
+        type="search"
         placeholder="Search templates..."
-        class="search-input"
       />
     </div>
 
@@ -20,23 +19,24 @@
       </button>
     </div>
 
-    <div class="category-content">
-      <div v-if="getTemplatesByCategory(activeCategory).length === 0" class="empty-state">
-        <p>No {{ activeCategory }} templates configured.</p>
+    <EmptyState v-if="getTemplatesByCategory(activeCategory).length === 0">
+      <p>No {{ activeCategory }} templates configured.</p>
+    </EmptyState>
+
+    <div v-for="template in getTemplatesByCategory(activeCategory)" :key="template.id || template.name" class="template-item">
+      <div class="template-info" @click.stop="applyTemplate(template, activeCategory)">
+        <h5>{{ template.name }}</h5>
+        <p v-if="template.description" class="template-desc">
+          {{ template.description }}
+        </p>
       </div>
-      <div v-for="template in getTemplatesByCategory(activeCategory)" :key="template.id || template.name" class="template-item">
-        <div class="template-info" @click.stop="applyTemplate(template, activeCategory)">
-          <h5>{{ template.name }}</h5>
-          <p v-if="template.description" class="template-desc">
-            {{ template.description }}
-          </p>
-        </div>
-        <div class="template-actions">
-          <button class="btn-remove" @click.stop="deleteTemplate(template, activeCategory)" title="Delete Template">✕</button>
-          <span v-if="template.units" class="unit-count">
-            {{ Array.isArray(template.units) ? template.units.length : 0 }} units
-          </span>
-        </div>
+      <div class="template-actions">
+        <Button variant="danger" size="sm" @click.stop="deleteTemplate(template, activeCategory)" title="Delete Template">
+          <span class="btn-remove-icon">✕</span>
+        </Button>
+        <span v-if="template.units" class="unit-count">
+          {{ Array.isArray(template.units) ? template.units.length : 0 }} units
+        </span>
       </div>
     </div>
   </div>
@@ -45,8 +45,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useTemplatesStore } from '../../stores/templates'
-import { Button } from '../ui'
-import { Icon } from '../ui'
+import { Button, FormInput, EmptyState } from '../ui'
 
 const emit = defineEmits(['template-apply', 'template-edit', 'template-delete'])
 
@@ -79,31 +78,13 @@ const deleteTemplate = (template, category) => {
 </script>
 
 <style scoped>
+/* Uses shared classes from components.css */
 .template-library {
   width: 100%;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.library-header {
-  margin-bottom: var(--spacing-md);
-}
-
-.search-input {
-  width: 100%;
-  background: var(--color-bg-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-4);
-  padding: var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-  font-size: var(--font-size-sm);
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
 }
 
 /* Category Tabs */
@@ -139,13 +120,6 @@ const deleteTemplate = (template, category) => {
 .category-content {
   max-height: 400px;
   overflow-y: auto;
-}
-
-.empty-state {
-  padding: var(--spacing-lg);
-  text-align: center;
-  color: var(--color-text-1);
-  font-size: var(--font-size-sm);
 }
 
 .template-item {
