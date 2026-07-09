@@ -1,5 +1,5 @@
 <template>
-  <div class="refpoint-manager">
+  <div class="refpoint-manager list-container">
     <!-- Category Tabs -->
     <div class="category-tabs">
       <button
@@ -13,23 +13,23 @@
     </div>
 
     <!-- Scrollable Reference Point List -->
-    <div class="refpoint-list-scroll" :style="{ height: listHeight + 'px' }">
-      <div class="refpoint-list">
+    <div class="list-scroll list-scroll-fixed-height">
+      <div class="list-container">
         <div
           v-for="refPoint in getRefPointsByCategory"
           :key="refPoint.name"
-          class="refpoint-item"
-          :class="{ active: selectedRefPointName === refPoint.name && selectedRefPointType === refPoint.type }"
+          class="list-item"
+          :class="{ active: selectedRefPoint && selectedRefPoint.name === refPoint.name && selectedRefPoint.type === refPoint.type }"
         >
-          <div class="refpoint-info">
-            <h4 class="refpoint-name">{{ refPoint.name }}</h4>
-            <span class="refpoint-type">{{ getCategoryLabel(refPoint.type) }}</span>
+          <div class="list-item-content">
+            <h4 class="list-item-header">{{ refPoint.name }}</h4>
+            <span class="list-item-meta">{{ getCategoryLabel(refPoint.type) }}</span>
           </div>
           <div class="list-item-actions">
             <Button variant="primary" size="sm" @click.stop="onEditRefPoint(refPoint)" title="Edit Reference Point">
               Edit
             </Button>
-            <button class="btn-remove" @click.stop="onDeleteRefPoint(refPoint)" title="Delete Reference Point"><span class="btn-remove-icon">✕</span></button>
+            <Button variant="danger" size="sm" @click.stop="onDeleteRefPoint(refPoint)" title="Delete Reference Point"><span class="btn-remove-icon">Delete</span></Button>
           </div>
         </div>
 
@@ -45,7 +45,7 @@
     </div>
 
     <!-- Reference Point Detail Editor -->
-    <div v-if="!listOnly && selectedRefPointName && currentRefPoint" class="refpoint-editor-panel">
+    <div v-if="!props.listOnly && selectedRefPoint && currentRefPoint" class="editor-panel">
       <div class="editor-content">
         <!-- Basic Settings -->
         <CollapsiblePanel v-model:expanded="expandedSections.basic" title="Basic Settings">
@@ -136,7 +136,7 @@
     </div>
 
     <!-- No selection state -->
-    <div v-if="!listOnly && !selectedRefPointName" class="no-selection">
+    <div v-if="!props.listOnly && !selectedRefPoint" class="no-selection">
       <p>Select a reference point to edit</p>
     </div>
   </div>
@@ -186,9 +186,8 @@ const getCategoryLabelForTab = (category) => {
   return labelMap[category] || category.charAt(0).toUpperCase() + category.slice(1)
 }
 
-const selectedRefPointName = ref(null)
-const selectedRefPointType = ref('')
-const currentRefPoint = ref(null)
+const selectedRefPoint = ref(null) // Holds the currently selected reference point object
+const currentRefPoint = ref(null) // Working copy for editing
 const refPointType = ref('')
 
 // Section expansion state (all expanded by default)
@@ -198,21 +197,18 @@ const expandedSections = ref({
   notes: true
 })
 
-// Use resize composable for list/editor divider
-const listHeight = ref(300)
-const { startResize: startListResize } = useResize({
-  size: listHeight,
-  minSize: 100,
-  maxSize: 500,
-  direction: 'vertical'
-})
+// Note: list height is now set via CSS class for consistency across components
 
+// ---- Selection logic ----------------------------------------------------
+/**
+ * Called when a reference point row is clicked.
+ * - Stores the original object in `selectedRefPoint`
+ * - Creates an editable copy in `currentRefPoint`
+ */
 const selectRefPoint = (refPoint) => {
-  selectedRefPointName.value = refPoint.name
-  selectedRefPointType.value = refPoint.type
-  currentRefPoint.value = JSON.parse(JSON.stringify(refPoint))
-  refPointType.value = refPoint.type
-  // Emit the selection to the parent
+  selectedRefPoint.value   = refPoint
+  currentRefPoint.value    = JSON.parse(JSON.stringify(refPoint))
+  refPointType.value       = refPoint.type
   emit('select', refPoint)
 }
 
@@ -224,279 +220,30 @@ const onDeleteRefPoint = (refPoint) => {
   emit('refpoint-delete', refPoint)
 }
 
-// Get reference points filtered by active category
+// ---- Computed list ---------------------------------------------
 const getRefPointsByCategory = computed(() => {
-  if (activeCategory.value === 'bullseye') {
-    const result = store.bullseyes.map(bp => ({ ...bp, type: 'bullseye' }))
-    console.log('getRefPointsByCategory - bullseye:', result)
-    return result
-  } else if (activeCategory.value === 'airbase') {
-    const result = store.airbases.map(ab => ({ ...ab, type: 'airbase' }))
-    console.log('getRefPointsByCategory - airbase:', result)
-    return result
-  } else if (activeCategory.value === 'zone') {
-    const result = store.zones.map(z => ({ ...z, type: 'zone' }))
-    console.log('getRefPointsByCategory - zone:', result)
-    return result
-  } else if (activeCategory.value === 'battle_line') {
-    const result = store.lines.map(l => ({ ...l, type: 'battle_line' }))
-    console.log('getRefPointsByCategory - battle_line:', result)
-    return result
+  const mapType = t => ({ ...t, type: activeCategory.value })
+  switch (activeCategory.value) {
+    case 'bullseye': return store.bullseyes.map(mapType)
+    case 'airbase':  return store.airbases.map(mapType)
+    case 'zone':     return store.zones.map(mapType)
+    case 'battle_line': return store.lines.map(mapType)
+    default: return []
   }
-  return []
 })
 
-// Save changes when currentRefPoint changes (only when not in list-only mode)
+// ---- Watch for edits ----------------------------------------------------
 watch(currentRefPoint, (newVal) => {
-  if (newVal && selectedRefPointName.value && !props.listOnly) {
+  if (!props.listOnly && newVal && selectedRefPoint.value) {
     updateRefPointInStore(newVal)
     emit('update')
   }
 }, { deep: true })
 
-const updateRefPointInStore = (refPoint) => {
-  const type = refPoint.type
-  const name = refPoint.name
-
-  if (type === 'bullseye') {
-    const index = store.bullseyes.findIndex(b => b.name === name)
-    if (index !== -1) {
-      store.bullseyes.splice(index, 1, { name })
-    }
-  } else if (type === 'airbase') {
-    const index = store.airbases.findIndex(a => a.name === name)
-    if (index !== -1) {
-      store.airbases.splice(index, 1, { name })
-    }
-  } else if (type === 'zone') {
-    const index = store.zones.findIndex(z => z.name === name)
-    if (index !== -1) {
-      store.zones.splice(index, 1, { name })
-    }
-  } else if (type === 'battle_line') {
-    const index = store.lines.findIndex(l => l.name === name)
-    if (index !== -1) {
-      store.lines.splice(index, 1, {
-        name,
-        startX: refPoint.startX || 0,
-        startY: refPoint.startY || 0,
-        endX: refPoint.endX || 0,
-        endY: refPoint.endY || 0
-      })
-    }
-  }
-}
 </script>
 
 <style scoped>
-/* Shared styles from _components.css: refpoint-manager, refpoint-list-scroll, content-resizer */
-/* Shared styles from _components.css: refpoint-editor-panel, editor-content, info-box */
-/* Shared styles from _components.css: no-selection */
-/* Shared styles from _components.css: refpoint-item, refpoint-info */
-/* Shared styles from _components.css: refpoint-name, refpoint-type */
-/* Shared styles from _list-editor.css: list-item-actions */
-
-/* Reference Point Manager - flex container for list + editor */
-.refpoint-manager {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-/* Reference Point List */
-.refpoint-list {
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xs);
-  border: 1px solid var(--color-border);
-}
-
-/* Scrollable Reference Point List Container */
-.refpoint-list-scroll {
-  flex: 0 0 auto;
-  overflow-y: auto;
-  min-height: 100px;
-  margin-bottom: var(--spacing-md);
-}
-
-/* Custom Scrollbar Styles for Reference Point List */
-.refpoint-list-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.refpoint-list-scroll::-webkit-scrollbar-track {
-  background: var(--color-bg-1);
-}
-
-.refpoint-list-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-bg-3);
-  border-radius: var(--spacing-xxs);
-}
-
-.refpoint-list-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-2);
-}
-
-.refpoint-list-scroll::-webkit-scrollbar-corner {
-  background: var(--color-bg-1);
-}
-
-/* Category Tabs */
-.category-tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-md);
-}
-
-.tab-btn {
-  background: var(--color-bg-2);
-  color: var(--color-text-0);
-  border: 1px solid var(--color-border);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs) var(--spacing-xxs) 0 0;
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  transition: all var(--transition-fast);
-}
-
-.tab-btn:hover {
-  background: var(--color-bg-3);
-}
-
-.tab-btn.active {
-  background: var(--color-bg-1);
-  border-bottom: 1px solid var(--color-bg-1);
-  color: var(--color-text-4);
-  font-weight: var(--font-weight-semibold);
-}
-
-.refpoint-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.refpoint-item:hover {
-  background: var(--color-bg-3);
-}
-
-.refpoint-item.active {
-  background: var(--color-primary);
-}
-
-.refpoint-info {
-  flex: 1;
-}
-
-.refpoint-name {
-  font-size: var(--font-size-md);
-  color: var(--color-text-4);
-  margin: 0 0 var(--spacing-xs) 0;
-}
-
-.refpoint-type {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-2);
-  font-family: var(--font-family-mono);
-}
-
-/* Resizeable Divider between list and editor */
-.content-resizer {
-  height: 8px;
-  background: var(--color-border);
-  cursor: ns-resize;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: var(--spacing-xs) 0;
-  border-radius: var(--spacing-xs);
-  transition: background var(--transition-fast);
-}
-
-.content-resizer:hover {
-  background: var(--color-primary);
-}
-
-.resizer-line {
-  width: 32px;
-  height: 2px;
-  background: var(--color-text-2);
-  border-radius: var(--spacing-xs);
-}
-
-/* Reference Point Editor Panel */
-.refpoint-editor-panel {
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xs);
-  border: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-/* Editor content container - scrollable area */
-.editor-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--spacing-md);
-}
-
-.editor-content:last-child {
-  padding-bottom: calc(var(--spacing-md) - var(--spacing-sm));
-}
-
-/* Custom Scrollbar Styles for Editor Content */
-.editor-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.editor-content::-webkit-scrollbar-track {
-  background: var(--color-bg-1);
-}
-
-.editor-content::-webkit-scrollbar-thumb {
-  background: var(--color-bg-3);
-  border-radius: var(--spacing-xxs);
-}
-
-.editor-content::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-2);
-}
-
-.editor-content::-webkit-scrollbar-corner {
-  background: var(--color-bg-1);
-}
-
-/* Info box */
-.info-box {
-  background: var(--color-bg-2);
-  padding: var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-1);
-  line-height: 1.6;
-}
-
-.info-box strong {
-  color: var(--color-text-4);
-  display: block;
-  margin-bottom: var(--spacing-xs);
-}
-
-/* No selection state */
-.no-selection {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-2);
-  font-size: var(--font-size-md);
-}
+/* Uses shared classes from _utils.css: tab-btn, content-resizer, resizer-line, no-selection */
+/* Uses shared classes from _list-editor.css: list-scroll, list-scroll-fixed-height, list-container */
+/* Uses shared classes from _components.css: editor-panel, editor-content, info-box */
 </style>

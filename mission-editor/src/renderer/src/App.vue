@@ -54,7 +54,7 @@
             v-if="editingReferencePoint"
             :key="editingReferencePoint.name || editingReferencePoint.type || Date.now()"
             ref="referencePointDetailEditorRef"
-            :refpoint="editingReferencePoint"
+            :ref-point="editingReferencePoint"
             @save="onReferencePointDetailSave"
             @cancel="editingReferencePoint = null"
           />
@@ -618,24 +618,23 @@ const onWaypointTemplateSave = (waypoints) => {
   margin-bottom: var(--spacing-md);
 }
 
-.tab-btn {
-  composes: u-btn;
+.content-tabs .tab-btn {
   background: var(--color-bg-2);
   color: var(--color-text-0);
   border: 1px solid var(--color-border);
   padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--spacing-xs);
+  border-radius: var(--spacing-xxs);
   cursor: pointer;
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
   transition: all var(--transition-normal);
 }
 
-.tab-btn:hover {
+.content-tabs .tab-btn:hover {
   background: var(--color-bg-3);
 }
 
-.tab-btn.active {
+.content-tabs .tab-btn.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: white;

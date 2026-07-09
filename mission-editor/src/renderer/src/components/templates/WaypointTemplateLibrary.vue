@@ -4,7 +4,7 @@
       <Input v-model="searchQuery" placeholder="Search waypoint templates..." />
     </div>
 
-    <div class="waypoint-template-list">
+    <div class="list-container">
       <div
         v-for="template in filteredTemplates"
         :key="template.id"
@@ -21,7 +21,7 @@
             Edit
           </Button>
           <Button variant="danger" size="sm" @click.stop="deleteTemplate(template)" title="Delete Template">
-            Remove
+            Delete
           </Button>
           <Button variant="primary" size="sm" @click.stop="applyTemplate(template)" title="Apply Template">
             Apply
@@ -69,46 +69,10 @@ const deleteTemplate = (template) => {
 </script>
 
 <style scoped>
-/* Uses shared classes from _components.css: waypoint-template-library */
-/* Uses shared classes from _components.css: library-header */
-/* Uses shared classes from _components.css: waypoint-template-list, list-item */
-/* Uses shared classes from _components.css: list-item-content, list-item-actions */
-
-/* Waypoint Template List */
-.waypoint-template-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
+/* Library header */
+.library-header {
+  margin-bottom: var(--spacing-md);
 }
 
-.list-item {
-  background: var(--color-bg-1);
-  padding: var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid var(--color-border);
-  transition: all var(--transition-fast);
-}
-
-.list-item:hover {
-  border-color: var(--color-border-focus);
-}
-
-.list-item-content {
-  flex: 1;
-}
-
-.list-item-content h5 {
-  font-size: var(--font-size-md);
-  color: var(--color-text-4);
-  margin: 0 0 var(--spacing-xs) 0;
-}
-
-.list-item-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
+/* Uses shared classes from _list-editor.css: list-container, list-item, list-item-content */
 </style>

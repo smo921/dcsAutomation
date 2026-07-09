@@ -38,34 +38,5 @@ const toggle = () => {
 </script>
 
 <style scoped>
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--transition-fast);
-}
-
-.section-header:hover {
-  background: var(--color-bg-3);
-}
-
-.section-title {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-0);
-  margin: 0;
-  font-weight: var(--font-weight-medium);
-}
-
-.toggle-icon {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-1);
-  transition: transform var(--transition-fast);
-}
-
-.toggle-icon-expanded {
-  transform: rotate(180deg);
-}
+/* Uses shared classes from _components.css: section-header, section-title, toggle-icon, toggle-icon-expanded */
 </style>

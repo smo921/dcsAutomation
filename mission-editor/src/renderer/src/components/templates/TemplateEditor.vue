@@ -224,12 +224,5 @@ const onCancel = () => {
 </script>
 
 <style scoped>
-/* Uses shared classes from components.css */
-.editor-content {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
+/* Uses shared classes from _components.css and _utils.css */
 </style>

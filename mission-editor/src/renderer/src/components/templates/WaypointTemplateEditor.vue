@@ -8,17 +8,17 @@
     <div class="editor-content">
       <div class="waypoint-template-editor-content">
         <!-- Scrollable Waypoint List -->
-        <div class="waypoint-list-scroll" :style="{ height: listHeight + 'px' }">
-          <div class="waypoint-list">
+        <div class="list-scroll" :style="{ height: listHeight + 'px' }">
+          <div class="list-container">
             <div
               v-for="(wp, index) in waypoints"
               :key="index"
-              class="waypoint-item"
+              class="list-item"
               :class="{ active: activeWaypoint === index }"
               :data-waypoint-num="index + 1"
               @click="setActiveWaypoint(index)"
             >
-              <div class="waypoint-header">
+              <div class="list-item-header">
                 <span class="waypoint-index">{{ index + 1 }}</span>
                 <span class="waypoint-type">{{ wp.type }}</span>
                 <Button variant="danger" size="sm" @click.stop="removeWaypoint(index)" title="Remove Waypoint">
@@ -278,33 +278,7 @@ const onCancel = () => {
 </script>
 
 <style scoped>
-/* Uses shared classes from _components.css:
-   - waypoint-template-editor-content, waypoint-list-scroll
-   - content-resizer, resizer-line
-   - waypoint-editor-form
-   - editor-content
-   - waypoint-item, waypoint-header, waypoint-index, waypoint-type
-   - waypoint-coords, waypoint-details, no-waypoint-selected, empty-waypoint-list
-*/
-
-.waypoint-list-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.waypoint-list-scroll::-webkit-scrollbar-track {
-  background: var(--color-bg-1);
-}
-
-.waypoint-list-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-bg-3);
-  border-radius: var(--spacing-xxs);
-}
-
-.waypoint-list-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-2);
-}
-
-.waypoint-list-scroll::-webkit-scrollbar-corner {
-  background: var(--color-bg-1);
-}
+/* Uses shared classes from _components.css: editor-content, editor-section, form-row, form-group, content-resizer, resizer-line */
+/* Uses shared classes from _list-editor.css: list-scroll, list-container, list-item, list-item-header */
+/* Custom classes for waypoint-specific styling */
 </style>

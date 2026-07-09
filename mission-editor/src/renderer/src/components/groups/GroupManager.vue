@@ -1,5 +1,5 @@
 <template>
-  <div class="group-manager">
+  <div class="list-container group-manager">
     <!-- Category Tabs -->
     <div class="category-tabs">
       <button
@@ -13,18 +13,18 @@
     </div>
 
     <!-- Scrollable Group List -->
-    <div class="group-list-scroll" :style="{ height: listHeight + 'px' }">
-      <div class="group-list">
+    <div class="list-scroll" :style="{ height: listHeight + 'px' }">
+      <div class="list-container">
         <div
           v-for="group in getGroupsByCategory(activeCategory)"
           :key="group.groupName"
-          class="group-item"
+          class="list-item"
           :class="{ active: selectedGroup === group.groupName }"
           @click="selectGroup(group.groupName)"
         >
-          <div class="group-info">
+          <div class="list-item-content">
             <h4>{{ group.groupName }}</h4>
-            <div class="group-meta">
+            <div class="list-item-meta">
               <span class="group-category">{{ getCategoryLabel(group.category) }}</span>
               <span class="group-trigger">{{ group.triggerType || 'IMMEDIATE' }}</span>
               <span class="group-country">{{ group.country || 'Unknown' }}</span>
@@ -34,7 +34,11 @@
             <Button variant="primary" size="sm" @click.stop="onEditGroup(group)" title="Edit Group">
               Edit
             </Button>
-            <button class="btn-remove" @click.stop="onDeleteGroup(group.groupName)" title="Delete Group"><span class="btn-remove-icon">✕</span></button>
+            <Button variant="danger" size="sm" @click.stop="onDeleteGroup(group.groupName)" title="Delete Group">
+              <span class="btn-remove-icon">
+                Delete
+              </span>
+            </Button>
           </div>
         </div>
 
@@ -50,7 +54,7 @@
     </div>
 
     <!-- Group Editor Panel -->
-    <div v-if="!listOnly && selectedGroup && currentGroup" class="group-editor-panel">
+    <div v-if="!listOnly && selectedGroup && currentGroup" class="editor-panel">
       <div class="editor-content">
         <!-- Basic Settings -->
         <CollapsibleSection v-model:expanded="expandedSections.basic" title="Basic Settings">
@@ -129,7 +133,7 @@
                     <input type="text" v-model="unit.role" class="form-input" />
                   </div>
                 </div>
-                <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit"><span class="btn-remove-icon">✕</span></button>
+                <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit"><span class="btn-remove-icon">Delete</span></button>
               </div>
             </div>
             <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">+ Add Unit</Button>
@@ -293,7 +297,7 @@
                     <input type="number" v-model="wp.speed" class="form-input" />
                   </div>
                 </div>
-                <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">✕</span></button>
+                <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint"><span class="btn-remove-icon">Delete</span></button>
               </div>
             </div>
             <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">+ Add Waypoint</Button>
@@ -467,36 +471,12 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Category Tabs */
-.category-tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-md);
-}
+/* Uses shared classes from _utils.css: category-tabs, tab-btn, content-resizer, resizer-line */
+/* Uses shared classes from _list-editor.css: list-scroll, list-container, editor-panel, editor-content */
+/* Uses shared classes from _forms.css: form-row, form-group, form-input */
+/* Uses shared classes from _components.css: unit-row, waypoint-row, unit-number-badge, waypoint-number-badge, unit-content, waypoint-content */
 
-.tab-btn {
-  background: var(--color-bg-2);
-  color: var(--color-text-0);
-  border: 1px solid var(--color-border);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs) var(--spacing-xxs) 0 0;
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  transition: all var(--transition-fast);
-}
-
-.tab-btn:hover {
-  background: var(--color-bg-3);
-}
-
-.tab-btn.active {
-  background: var(--color-bg-1);
-  border-bottom: 1px solid var(--color-bg-1);
-  color: var(--color-text-4);
-  font-weight: var(--font-weight-semibold);
-}
-
-/* Group Manager - flex container for list + editor */
+/* Group Manager wrapper */
 .group-manager {
   display: flex;
   flex-direction: column;
@@ -504,157 +484,27 @@ defineExpose({
   min-height: 0;
 }
 
-/* Group List */
-.group-list {
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xs);
-  border: 1px solid var(--color-border);
-}
-
-/* Scrollable Group List Container */
-.group-list-scroll {
-  flex: 0 0 auto;
-  overflow-y: auto;
-  min-height: 100px;
-  margin-bottom: var(--spacing-md);
-}
-
-/* Custom Scrollbar Styles for Group List */
-.group-list-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.group-list-scroll::-webkit-scrollbar-track {
-  background: var(--color-bg-1);
-}
-
-.group-list-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-bg-3);
-  border-radius: var(--spacing-xxs);
-}
-
-.group-list-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-2);
-}
-
-.group-list-scroll::-webkit-scrollbar-corner {
-  background: var(--color-bg-1);
-}
-
-.group-item {
+/* List item specific overrides */
+.list-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: background var(--transition-fast);
 }
 
-.group-item:hover {
-  background: var(--color-bg-3);
-}
-
-.group-item.active {
-  background: var(--color-primary);
-}
-
-.group-info {
-  flex: 1;
-}
-
-.group-info h4 {
-  font-size: var(--font-size-md);
-  color: var(--color-text-4);
-  margin: 0 0 var(--spacing-xs) 0;
-}
-
-.group-meta {
-  display: flex;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xxs);
-}
-
-.group-category {
-  background: var(--color-bg-2);
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-  text-transform: capitalize;
-}
-
-.group-trigger {
-  background: var(--color-bg-2);
-  padding: var(--spacing-xxs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-}
-
+/* Group meta styles - category/trigger/country badges */
+.group-category,
+.group-trigger,
 .group-country {
   background: var(--color-bg-2);
   padding: var(--spacing-xxs) var(--spacing-sm);
   border-radius: var(--spacing-xxs);
 }
 
-.empty-state {
-  padding: var(--spacing-lg);
-  text-align: center;
-  color: var(--color-text-1);
-  font-size: var(--font-size-sm);
+.group-category {
+  text-transform: capitalize;
 }
 
-/* Resizeable Divider between list and editor */
-.content-resizer {
-  height: 8px;
-  background: var(--color-border);
-  cursor: ns-resize;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: var(--spacing-xs) 0;
-  border-radius: var(--spacing-xs);
-  transition: background var(--transition-fast);
-  pointer-events: auto;
-  z-index: 10;
-}
-
-.content-resizer:hover {
-  background: var(--color-primary);
-}
-
-.resizer-line {
-  width: 32px;
-  height: 2px;
-  background: var(--color-text-2);
-  border-radius: var(--spacing-xs);
-}
-
-.content-resizer:hover .resizer-line {
-  background: var(--color-text-4);
-}
-
-/* Group Editor Panel */
-.group-editor-panel {
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xs);
-  border: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-/* Editor content container - scrollable area */
-.editor-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--spacing-md);
-}
-
-.editor-content:last-child {
-  padding-bottom: calc(var(--spacing-md) - var(--spacing-sm));
-}
-
-/* Custom Scrollbar Styles for Editor Content */
+/* Editor content scrollbar - shared in _components.css */
 .editor-content::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -675,111 +525,5 @@ defineExpose({
 
 .editor-content::-webkit-scrollbar-corner {
   background: var(--color-bg-1);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
-}
-
-.form-group {
-  margin-bottom: var(--spacing-sm);
-}
-
-.form-group label {
-  display: block;
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-3);
-  margin-bottom: var(--spacing-xs);
-}
-
-.form-input {
-  width: 100%;
-  background: var(--color-bg-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-4);
-  padding: var(--spacing-xs);
-  border-radius: var(--spacing-xxs);
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
-}
-
-.placement-config,
-.waypoint-row,
-.unit-row {
-  margin-top: var(--spacing-xs);
-  padding-left: var(--spacing-sm);
-  border-left: 2px solid var(--color-bg-2);
-}
-
-.unit-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  background: var(--color-bg-4);
-  border-radius: var(--spacing-xs);
-  margin-top: var(--spacing-md);
-  border: 1px solid var(--color-border);
-}
-
-.unit-row + .unit-row {
-  margin-top: var(--spacing-xl);
-  border-top: 2px solid var(--color-primary);
-}
-
-.unit-number-badge {
-  flex: 0 0 32px;
-  height: 32px;
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--spacing-xxs);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
-  user-select: none;
-}
-
-.unit-content {
-  flex: 1;
-}
-
-.waypoint-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  background: var(--color-bg-4);
-  border-radius: var(--spacing-xs);
-  margin-top: var(--spacing-md);
-  border: 1px solid var(--color-border);
-}
-
-.waypoint-row + .waypoint-row {
-  margin-top: var(--spacing-xl);
-  border-top: 2px solid var(--color-primary);
-}
-
-.waypoint-number-badge {
-  flex: 0 0 32px;
-  height: 32px;
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--spacing-xxs);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-lg);
-  user-select: none;
-}
-
-.waypoint-content {
-  flex: 1;
 }
 </style>

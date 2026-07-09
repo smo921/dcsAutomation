@@ -28,7 +28,7 @@
     opacity: 0;
   }
   to {
-    max-height: 2000px;
+    max-height: 100vh;
     opacity: 1;
   }
 }
@@ -123,20 +123,32 @@
   gap: var(--spacing-sm);
 }
 
-/* Button Remove */
-.btn-remove {
-  background: var(--color-error);
-  color: white;
-  border: none;
-  width: 24px;
-  height: 24px;
+/* Section Load Hint - shown when no data is loaded */
+.section-load-hint {
+  background: var(--color-bg-2);
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  text-align: center;
 }
 
-.btn-remove:hover {
-  background: var(--color-error-hover);
+.section-load-hint p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-1);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.section-load-hint .btn-load {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--spacing-xxs);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+}
+
+.section-load-hint .btn-load:hover {
+  background: var(--color-primary-hover);
 }

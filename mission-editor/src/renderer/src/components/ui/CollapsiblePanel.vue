@@ -45,40 +45,5 @@ const emit = defineEmits(['update:expanded'])
 </script>
 
 <style scoped>
-/* Collapsible Panel - uses SectionHeader for header styling */
-
-.collapsible-panel {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xxs);
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-}
-
-.collapsible-panel.is-expanded .section-header {
-  border-bottom: 1px solid var(--color-border);
-}
-
-/* Panel Content */
-.panel-content {
-  padding: var(--spacing-md);
-  overflow-y: auto;
-  flex: 0 0 auto;
-}
-
-/* Collapsed Content Slot */
-.panel-collapsed-content {
-  padding: var(--spacing-sm) var(--spacing-md);
-  color: var(--color-text-2);
-  font-size: var(--font-size-xxs);
-}
-
-/* Panel Icon */
-.panel-icon {
-  margin-right: var(--spacing-sm);
-  font-size: var(--font-size-lg);
-  line-height: 1;
-}
+/* Uses shared classes from _components.css */
 </style>

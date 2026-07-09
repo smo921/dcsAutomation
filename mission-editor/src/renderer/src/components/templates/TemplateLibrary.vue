@@ -23,23 +23,27 @@
       <p>No {{ activeCategory }} templates configured.</p>
     </EmptyState>
 
-    <div v-for="template in getTemplatesByCategory(activeCategory)" :key="template.id || template.name" class="template-item">
-      <div class="template-info" @click.stop="applyTemplate(template, activeCategory)">
-        <h5>{{ template.name }}</h5>
-        <p v-if="template.description" class="template-desc">
-          {{ template.description }}
-        </p>
-      </div>
-      <div class="template-actions">
-        <Button variant="primary" size="sm" @click.stop="editTemplate(template, activeCategory)" title="Edit Template">
-          Edit
-        </Button>
-        <Button variant="danger" size="sm" @click.stop="deleteTemplate(template, activeCategory)" title="Delete Template">
-          <span class="btn-remove-icon">✕</span>
-        </Button>
-        <span v-if="template.units" class="unit-count">
-          {{ Array.isArray(template.units) ? template.units.length : 0 }} units
-        </span>
+    <div class="list-scroll list-scroll-fixed-height">
+      <div class="list-container">
+        <div v-for="template in getTemplatesByCategory(activeCategory)" :key="template.id || template.name" class="list-item">
+          <div class="list-item-content">
+            <h5>{{ template.name }}</h5>
+            <p v-if="template.description" class="list-item-meta">
+              {{ template.description }}
+            </p>
+          </div>
+          <div class="list-item-actions">
+            <Button variant="primary" size="sm" @click.stop="editTemplate(template, activeCategory)" title="Edit Template">
+              Edit
+            </Button>
+            <Button variant="danger" size="sm" @click.stop="deleteTemplate(template, activeCategory)" title="Delete Template">
+              <span class="btn-remove-icon">Delete</span>
+            </Button>
+          </div>
+          <span v-if="template.units" class="unit-count">
+            {{ Array.isArray(template.units) ? template.units.length : 0 }} units
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -81,93 +85,21 @@ const deleteTemplate = (template, category) => {
 </script>
 
 <style scoped>
-/* Uses shared classes from components.css */
-.template-library {
-  width: 100%;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
+/* Uses shared classes from _utils.css: category-tabs, tab-btn */
+/* Uses shared classes from _list-editor.css: list-container, list-item, list-item-content, list-item-meta */
+/* Uses shared classes from _components.css: editor-section */
 
-/* Category Tabs */
-.category-tabs {
-  display: flex;
-  gap: var(--spacing-xs);
+/* Library header */
+.library-header {
   margin-bottom: var(--spacing-md);
 }
 
-.tab-btn {
-  background: var(--color-bg-2);
-  color: var(--color-text-0);
-  border: 1px solid var(--color-border);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--spacing-xxs) var(--spacing-xxs) 0 0;
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  transition: all var(--transition-fast);
-}
-
-.tab-btn:hover {
-  background: var(--color-bg-3);
-}
-
-.tab-btn.active {
-  background: var(--color-bg-1);
-  border-bottom: 1px solid var(--color-bg-1);
-  color: var(--color-text-4);
-  font-weight: var(--font-weight-semibold);
-}
-
-/* Category Content */
-.category-content {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.template-item {
-  background: var(--color-bg-1);
-  padding: var(--spacing-sm);
-  border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid var(--color-border);
-}
-
-.template-item:hover {
-  background: var(--color-bg-3);
-  border-color: var(--color-primary);
-}
-
-.template-info {
-  flex: 1;
-}
-
-.template-info h5 {
-  font-size: var(--font-size-md);
-  color: var(--color-text-4);
-  margin-bottom: var(--spacing-xs);
-}
-
-.template-desc {
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-1);
-  line-height: 1.4;
-}
-
-.template-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
+/* Unit count badge */
 .unit-count {
   background: var(--color-bg-2);
   padding: var(--spacing-xxs) var(--spacing-sm);
   border-radius: var(--spacing-xxs);
   font-size: var(--font-size-xxs);
+  margin-top: var(--spacing-xs);
 }
 </style>

@@ -206,20 +206,6 @@ watch(waypoints, (newWaypoints) => {
 </script>
 
 <style scoped>
-/* Uses shared classes from components.css */
-.waypoint-editor {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Waypoint Editor Form */
-.waypoint-editor-form {
-  margin-top: var(--spacing-md);
-  padding: var(--spacing-md);
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xs);
-  flex: 0 0 auto;
-  min-height: 200px;
-}
+/* Uses shared classes from _components.css: waypoint-editor, editor-content */
+/* Uses shared classes from _list-editor.css: waypoint-editor-form */
 </style>
