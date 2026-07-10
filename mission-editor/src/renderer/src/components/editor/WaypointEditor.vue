@@ -15,7 +15,7 @@
             <span class="waypoint-index">{{ index + 1 }}</span>
             <span class="waypoint-type">{{ wp.type }}</span>
             <Button variant="danger" size="sm" @click.stop="removeWaypoint(index)" title="Remove Waypoint">
-              <span class="btn-remove-icon">✕</span>
+              <span class="btn-remove">- Delete Waypoint</span>
             </Button>
           </div>
           <div class="waypoint-coords" v-if="wp.x !== undefined && wp.y !== undefined">

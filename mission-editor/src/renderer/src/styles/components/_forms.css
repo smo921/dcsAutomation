@@ -101,17 +101,3 @@
 .input-group-error .input-label {
   color: var(--color-error);
 }
-
-.input-error {
-  display: block;
-  font-size: var(--font-size-xxs);
-  color: var(--color-error);
-  margin-top: var(--spacing-xs);
-}
-
-.input-hint {
-  display: block;
-  font-size: var(--font-size-xxs);
-  color: var(--color-text-2);
-  margin-top: var(--spacing-xs);
-}

@@ -34,6 +34,11 @@
 }
 
 /* Tab Button Styles */
+.category-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
 
 .tab-btn {
   background: var(--color-bg-2);

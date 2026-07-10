@@ -23,11 +23,11 @@
           @click="selectGroup(group.groupName)"
         >
           <div class="list-item-content">
-            <h4>{{ group.groupName }}</h4>
+            <h5 class="list-item-header">{{ group.groupName }}</h5>
             <div class="list-item-meta">
-              <span class="group-category">{{ getCategoryLabel(group.category) }}</span>
-              <span class="group-trigger">{{ group.triggerType || 'IMMEDIATE' }}</span>
-              <span class="group-country">{{ group.country || 'Unknown' }}</span>
+              <Badge variant="primary" >{{ getCategoryLabel(group.category) }}</Badge>
+              <Badge variant="primary">{{ group.triggerType || 'IMMEDIATE' }}</Badge>
+              <Badge variant="primary">{{ group.country || 'Unknown' }}</Badge>
             </div>
           </div>
           <div class="list-item-actions">
@@ -313,8 +313,7 @@ import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useTemplatesStore } from '../../stores/templates'
 import { useResize } from '../../composables/useResize'
-import { Button } from '../ui'
-import { Icon } from '../ui'
+import { Button, Icon, Badge } from '../ui'
 import CollapsibleSection from '../CollapsibleSection.vue'
 
 const emit = defineEmits(['group-change', 'group-delete', 'group-select', 'group-edit'])

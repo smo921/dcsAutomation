@@ -101,12 +101,12 @@
                   />
                 </div>
               </div>
-              <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit">
-                <span class="btn-remove-icon">✕</span>
-              </button>
+              <Button variant="danger" size="sm" @click="removeUnit(index)">
+                <span class="btn-remove-icon">- Delete Unit</span>
+              </Button>
             </div>
           </div>
-          <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">
+          <Button @click="addUnit" variant="secondary" size="sm">
             + Add Unit
           </Button>
         </div>
@@ -141,7 +141,7 @@
                 <FormLabel label="Reference Name" required />
                 <FormSelect
                   v-model="group.placement.referenceName"
-                  :options="getReferenceOptions()"
+                  :options="getReferenceOptions"
                   placeholder="Select a reference..."
                 />
               </div>
@@ -289,12 +289,12 @@
                   />
                 </div>
               </div>
-              <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint">
-                <span class="btn-remove-icon">✕</span>
-              </button>
+              <Button variant="danger" @click="removeWaypoint(index)" size="sm">
+                <span class="btn-remove-icon">- Delete Waypoint</span>
+              </Button>
             </div>
           </div>
-          <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">
+          <Button @click="addWaypoint" variant="secondary" size="sm">
             + Add Waypoint
           </Button>
         </div>
@@ -381,12 +381,12 @@ const referenceTypeOptions = computed(() => [
 
 // Computed airbase options
 const airbaseOptions = computed(() => {
-  return props.refpoints.airbases.map(a => ({ value: a.name, label: a.name }))
+  return (props.refpoints.airbases || []).map(a => ({ value: a.name, label: a.name }))
 })
 
 // Computed zone options
 const zoneOptions = computed(() => {
-  return props.refpoints.zones.map(z => ({ value: z.name, label: z.name }))
+  return (props.refpoints.zones || []).map(z => ({ value: z.name, label: z.name }))
 })
 
 // Computed waypoint group options
@@ -396,21 +396,21 @@ const waypointGroupOptions = computed(() => {
 })
 
 // Get reference name options based on reference type
-const getReferenceOptions = () => {
+const getReferenceOptions = computed(() => {
   const refType = props.group.placement.reference
   switch (refType) {
     case 'bullseye':
-      return props.refpoints.bullseyes.map(b => ({ value: b.name, label: b.name }))
+      return (props.refpoints.bullseyes || []).map(b => ({ value: b.name, label: b.name }))
     case 'airbase':
-      return props.refpoints.airbases.map(a => ({ value: a.name, label: a.name }))
+      return (props.refpoints.airbases || []).map(a => ({ value: a.name, label: a.name }))
     case 'zone':
-      return props.refpoints.zones.map(z => ({ value: z.name, label: z.name }))
+      return (props.refpoints.zones || []).map(z => ({ value: z.name, label: z.name }))
     case 'battle_line':
-      return props.refpoints.lines.map(l => ({ value: l.name, label: l.name }))
+      return (props.refpoints.lines || []).map(l => ({ value: l.name, label: l.name }))
     default:
       return []
   }
-}
+})
 
 // Waypoint type options
 const waypointTypeOptions = computed(() => [

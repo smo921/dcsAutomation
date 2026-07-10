@@ -89,6 +89,7 @@
             ref="groupEditorRef"
             :group="groups[selectedGroupIndex]"
             :groups="groups"
+            :refpoints="{ bullseyes: refpointsStore.bullseyes, airbases: refpointsStore.airbases, zones: refpointsStore.zones, lines: refpointsStore.lines }"
             @group-change="onGroupEditorChange"
             @cancel="selectedGroupIndex = null"
           />

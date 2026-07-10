@@ -31,7 +31,8 @@
       "callsignNumber": 1,
       "placement": {
         "mode": "BEARING_DISTANCE",
-        "reference": "BULLSEYE_BLUE",
+        "reference": "bullseye",
+        "referenceName": "Blue",
         "bearing": 45,
         "distance": 50
       },
@@ -55,7 +56,8 @@
       "tacanChannel": "12X",
       "placement": {
         "mode": "BEARING_DISTANCE",
-        "reference": "BULLSEYE_BLUE",
+        "reference": "bullseye",
+        "referenceName": "Blue",
         "bearing": 135,
         "distance": 50
       },
@@ -117,7 +119,8 @@
       ],
       "placement": {
         "mode": "AIRBASE_RAMP",
-        "reference": "Hanko",
+        "reference": "airbase",
+        "referenceName": "Hanko",
         "parking": 1
       },
       "route": [
@@ -137,7 +140,7 @@
       ],
       "placement": {
         "mode": "ZONE_CENTER",
-        "reference": "Zone Alpha"
+        "referenceName": "Zone Alpha"
       },
       "route": [
         {"type": "turn_point", "x": 430000, "y": 560000, "altitude": 0, "speed": 40}
@@ -154,7 +157,8 @@
       ],
       "placement": {
         "mode": "BEARING_DISTANCE",
-        "reference": "Hanko",
+        "reference": "airbase",
+        "referenceName": "Hanko",
         "bearing": 180,
         "distance": 20
       },

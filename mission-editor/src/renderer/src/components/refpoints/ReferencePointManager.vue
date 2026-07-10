@@ -22,8 +22,10 @@
           :class="{ active: selectedRefPoint && selectedRefPoint.name === refPoint.name && selectedRefPoint.type === refPoint.type }"
         >
           <div class="list-item-content">
-            <h4 class="list-item-header">{{ refPoint.name }}</h4>
-            <span class="list-item-meta">{{ getCategoryLabel(refPoint.type) }}</span>
+            <h5 class="list-item-header">{{ refPoint.name }}</h5>
+            <div class="list-item=meta">
+              <Badge variant="primary">{{ getCategoryLabel(refPoint.type) }}</Badge>
+            </div>
           </div>
           <div class="list-item-actions">
             <Button variant="primary" size="sm" @click.stop="onEditRefPoint(refPoint)" title="Edit Reference Point">
@@ -146,7 +148,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useResize } from '../../composables/useResize'
-import { EmptyState, FormLabel, FormInput, FormRow, CollapsiblePanel, Button } from '../ui'
+import { EmptyState, FormLabel, FormInput, FormRow, CollapsiblePanel, Button, Badge } from '../ui'
 
 const emit = defineEmits(['update', 'select', 'refpoint-edit', 'refpoint-delete'])
 
