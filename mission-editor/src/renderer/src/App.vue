@@ -573,6 +573,29 @@ const onWaypointTemplateSave = (waypoints) => {
 }
 </script>
 
+<!-- Global styles (applied to entire app) -->
+<style>
+/* CSS Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--color-bg-0);
+  color: var(--color-text-0);
+  overflow: hidden;
+}
+
+/* Focus styles for accessibility */
+:focus {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+</style>
+
 <style>
 /* Import design tokens */
 @import './styles/index.css';
