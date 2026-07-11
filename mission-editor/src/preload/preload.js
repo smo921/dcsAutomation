@@ -6,12 +6,18 @@ contextBridge.exposeInMainWorld('api', {
   // Reference points
   refpoints: {
     load: () => ipcRenderer.invoke('refpoints:load'),
-    save: (data) => ipcRenderer.invoke('refpoints:save', data)
+    save: (data) => ipcRenderer.invoke('refpoints:save', data),
+    loadFromFile: () => ipcRenderer.invoke('refpoints:load-from-file'),
+    clear: () => ipcRenderer.invoke('refpoints:clear')
   },
 
   // Templates
   templates: {
-    loadAll: () => ipcRenderer.invoke('template:load-all')
+    loadAll: () => ipcRenderer.invoke('template:load-all'),
+    loadFromFiles: () => ipcRenderer.invoke('templates:load-from-files'),
+    clear: () => ipcRenderer.invoke('templates:clear'),
+    // Waypoint templates loading (separate namespace for clarity)
+    waypointTemplatesLoadFromFiles: () => ipcRenderer.invoke('waypoint-templates:load-from-files')
   },
 
   // Configuration loading

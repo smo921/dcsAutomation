@@ -13,44 +13,89 @@ export const useTemplatesStore = defineStore('templates', {
   }),
 
   actions: {
+    // Merge templates with duplicate handling
+    mergeTemplates(existing, newItems) {
+      if (!Array.isArray(existing)) existing = []
+      if (!Array.isArray(newItems)) newItems = []
+
+      // Build set of existing IDs
+      const existingIds = new Set()
+      for (const item of existing) {
+        if (item && item.id) {
+          existingIds.add(item.id)
+        }
+      }
+
+      // Build set of new IDs to track duplicates within newItems
+      const newIds = new Set()
+      for (const item of newItems) {
+        if (item && item.id) {
+          newIds.add(item.id)
+        }
+      }
+
+      const result = [...existing]
+      for (const item of newItems) {
+        if (!item || !item.id) continue
+
+        let currentId = item.id
+        let counter = 1
+
+        // Keep renaming until we find a unique ID
+        while (existingIds.has(currentId) || newIds.has(currentId)) {
+          currentId = `${item.id}_${counter}`
+          counter++
+        }
+
+        if (currentId !== item.id) {
+          item.id = currentId
+        }
+
+        newIds.add(currentId)
+        existingIds.add(currentId)
+        result.push(item)
+      }
+
+      return result
+    },
+
     loadTemplates(templates) {
-      // templates is object with keys like 'air_templates', 'ground_templates'
-      // We need to map these to our categories structure
+      // Merge templates with existing ones instead of replacing
       for (const [templateKey, items] of Object.entries(templates)) {
-        if (items) {
-          // Convert 'air_templates' to 'air', 'ground_templates' to 'ground', etc.
+        if (items && Array.isArray(items)) {
           const category = templateKey.replace('_templates', '')
           if (this.categories[category]) {
-            this.categories[category] = Array.isArray(items) ? items : [items]
+            this.categories[category] = this.mergeTemplates(this.categories[category], items)
           }
         }
       }
     },
 
     loadWaypointTemplates(waypointTemplates) {
-      // waypointTemplates is object with keys like 'awacs_orbit', 'cas_sweep'
+      // Merge waypoint templates with existing ones instead of replacing
       if (waypointTemplates) {
-        this.waypointTemplates = Object.entries(waypointTemplates).map(([key, value]) => ({
-          id: key,
-          ...value
-        }))
+        const existingMap = new Map(this.waypointTemplates.map(t => [t.id, t]))
+        Object.entries(waypointTemplates).forEach(([key, value]) => {
+          if (!existingMap.has(key)) {
+            this.waypointTemplates.push({ id: key, ...value })
+          }
+        })
       }
     },
 
     loadFromFullConfig(fullConfig) {
-      // Load templates from a full config object
+      // Merge templates from a full config object
       const templates = fullConfig.templates || {}
       for (const [key, items] of Object.entries(templates)) {
         if (items && Array.isArray(items)) {
-          // Convert 'air_templates' to 'air', 'ground_templates' to 'ground', etc.
           const category = key.replace('_templates', '')
           if (this.categories[category]) {
-            this.categories[category] = items
+            this.categories[category] = this.mergeTemplates(this.categories[category], items)
           }
         }
       }
 
-      // Load waypoint templates
+      // Merge waypoint templates
       const waypointTemplates = fullConfig.waypoint_templates || {}
       this.loadWaypointTemplates(waypointTemplates)
     },

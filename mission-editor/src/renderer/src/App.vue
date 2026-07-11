@@ -26,7 +26,10 @@
         <CollapsibleSection :expanded="sections.referencePoints" @update:expanded="sections.referencePoints = $event" title="Reference Points">
           <div class="section-load-hint" v-if="refpointsStore.bullseyes.length === 0 && refpointsStore.airbases.length === 0 && refpointsStore.zones.length === 0 && refpointsStore.lines.length === 0">
             <p>No reference points loaded.</p>
-            <button @click="onLoadReferencePoints" class="btn-load">Load Config</button>
+            <Button @click="onAddReferencePoints" variant="primary" size="sm">Add Reference Point(s)...</Button>
+          </div>
+          <div v-else class="section-controls">
+            <Button @click="onClearReferencePoints" variant="danger" size="sm">Clear All</Button>
           </div>
           <ReferencePointManager ref="refpointManagerRef" :list-only="true" @select="onReferencePointSelected" @refpoint-edit="onReferencePointEdit" @refpoint-delete="onReferencePointDelete" />
         </CollapsibleSection>
@@ -34,7 +37,10 @@
         <CollapsibleSection :expanded="sections.templates" @update:expanded="sections.templates = $event" title="Templates">
           <div class="section-load-hint" v-if="!hasTemplatesLoaded">
             <p>No templates loaded.</p>
-            <button @click="onLoadTemplates" class="btn-load">Load Config</button>
+            <Button @click="onAddTemplates" variant="primary" size="sm">Add Template(s)...</Button>
+          </div>
+          <div v-else class="section-controls">
+            <Button @click="onClearTemplates" variant="danger" size="sm">Clear All</Button>
           </div>
           <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" @template-edit="onTemplateEdit" @template-delete="onTemplateDelete" />
         </CollapsibleSection>
@@ -42,7 +48,10 @@
         <CollapsibleSection :expanded="sections.waypointTemplates" @update:expanded="sections.waypointTemplates = $event" title="Waypoint Templates">
           <div class="section-load-hint" v-if="templatesStore.waypointTemplates.length === 0">
             <p>No waypoint templates loaded.</p>
-            <button @click="onLoadWaypointTemplates" class="btn-load">Load Config</button>
+            <Button @click="onAddWaypointTemplates" variant="primary" size="sm">Add Waypoint Template(s)...</Button>
+          </div>
+          <div v-else class="section-controls">
+            <Button @click="onClearWaypointTemplates" variant="danger" size="sm">Clear All</Button>
           </div>
           <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" @waypoint-template-edit="onWaypointTemplateEdit" @waypoint-template-delete="onWaypointTemplateDelete" />
         </CollapsibleSection>
@@ -211,10 +220,92 @@ const loadConfig = async (loadFn, successMessage) => {
   }
 }
 
-// Menu handlers
+// Menu handlers - Add Template(s) and Load Sample handlers
 const onLoadJson = () => loadConfig(window.api?.config?.loadJson, 'Configuration loaded successfully')
 
 const onLoadSample = () => loadConfig(window.api?.config?.loadSample, 'Sample data loaded successfully')
+
+const onAddTemplates = async () => {
+  try {
+    selectedGroupIndex.value = null
+    groupManagerRef.value?.setSyncing(true)
+    await nextTick()
+
+    const result = await window.api?.templates?.loadFromFiles?.()
+    if (result?.success) {
+      if (result.templates) {
+        templatesStore.loadTemplates(result.templates)
+      }
+      setStatus('Templates loaded successfully', 'success')
+    } else {
+      setStatus(`Failed to load templates: ${result?.error || 'Unknown error'}`, 'error')
+    }
+  } catch (e) {
+    setStatus(`Error loading templates: ${e.message}`, 'error')
+  } finally {
+    groupManagerRef.value?.setSyncing(false)
+  }
+}
+
+const onAddReferencePoints = async () => {
+  try {
+    selectedGroupIndex.value = null
+    groupManagerRef.value?.setSyncing(true)
+    await nextTick()
+
+    const result = await window.api?.refpoints?.loadFromFile?.()
+    if (result?.success) {
+      refpointsStore.loadFromFullConfig({ refpoints: result.refpoints })
+      setStatus('Reference points loaded successfully', 'success')
+    } else {
+      setStatus(`Failed to load reference points: ${result?.error || 'Unknown error'}`, 'error')
+    }
+  } catch (e) {
+    setStatus(`Error loading reference points: ${e.message}`, 'error')
+  } finally {
+    groupManagerRef.value?.setSyncing(false)
+  }
+}
+
+const onAddWaypointTemplates = async () => {
+  try {
+    selectedGroupIndex.value = null
+    await nextTick()
+
+    const result = await window.api?.templates?.waypointTemplatesLoadFromFiles?.()
+    if (result?.success) {
+      if (result.waypointTemplates) {
+        templatesStore.loadWaypointTemplates(result.waypointTemplates)
+      }
+      setStatus('Waypoint templates loaded successfully', 'success')
+    } else {
+      setStatus(`Failed to load waypoint templates: ${result?.error || 'Unknown error'}`, 'error')
+    }
+  } catch (e) {
+    setStatus(`Error loading waypoint templates: ${e.message}`, 'error')
+  }
+}
+
+const onClearReferencePoints = () => {
+  refpointsStore.clear()
+  setStatus('All reference points cleared', 'success')
+}
+
+const onClearTemplates = () => {
+  templatesStore.clear()
+  setStatus('All templates cleared', 'success')
+}
+
+const onClearWaypointTemplates = () => {
+  templatesStore.clear()
+  setStatus('All waypoint templates cleared', 'success')
+}
+
+// Computed - check if any templates are loaded
+const hasTemplatesLoaded = computed(() => {
+  return Object.values(templatesStore.categories).some(arr => arr.length > 0) ||
+         templatesStore.waypointTemplates.length > 0
+})
 
 const onNewMission = () => {
   // Ask for confirmation before clearing all data
@@ -350,45 +441,6 @@ const setStatus = (message, type = 'info') => {
 onMounted(() => {
   // Resources are not loaded automatically
   // User can click "Load Sample Data" or "Load Config" buttons to load data
-})
-
-// Load config handlers - explicit user action to load data
-const onLoadReferencePoints = () => {
-  window.api?.refpoints?.load?.().then(config => {
-    if (config) {
-      refpointsStore.loadFromConfig(config)
-      setStatus('Reference points loaded from config', 'success')
-    } else {
-      setStatus('No reference point config found', 'info')
-    }
-  })
-}
-
-const onLoadTemplates = () => {
-  window.api?.templates?.loadAll?.().then(templates => {
-    if (templates && Object.keys(templates).length > 0) {
-      templatesStore.loadTemplates(templates)
-      setStatus('Templates loaded from config', 'success')
-    } else {
-      setStatus('No templates found in config', 'info')
-    }
-  })
-}
-
-const onLoadWaypointTemplates = () => {
-  window.api?.templates?.loadAll?.().then(templates => {
-    if (templates && templates.waypoint_templates) {
-      templatesStore.loadWaypointTemplates(templates.waypoint_templates)
-      setStatus('Waypoint templates loaded from config', 'success')
-    } else {
-      setStatus('No waypoint templates found in config', 'info')
-    }
-  })
-}
-
-// Computed - check if any templates are loaded
-const hasTemplatesLoaded = computed(() => {
-  return Object.values(templatesStore.categories).some(arr => arr.length > 0)
 })
 
 // Template management handlers
@@ -850,17 +902,13 @@ body {
   margin: 0 0 var(--spacing-sm) 0;
 }
 
-.section-load-hint .btn-load {
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  font-size: var(--font-size-xs);
+/* Section controls (Clear All button) */
+.section-controls {
+  margin-bottom: var(--spacing-md);
+  text-align: center;
 }
 
-.section-load-hint .btn-load:hover {
-  background: var(--color-primary-hover);
+.section-controls .btn {
+  display: inline-block;
 }
 </style>

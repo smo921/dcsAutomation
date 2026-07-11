@@ -143,17 +143,3 @@
   color: var(--color-text-1);
   margin: 0 0 var(--spacing-sm) 0;
 }
-
-.section-load-hint .btn-load {
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--spacing-xxs);
-  cursor: pointer;
-  font-size: var(--font-size-xs);
-}
-
-.section-load-hint .btn-load:hover {
-  background: var(--color-primary-hover);
-}

@@ -219,6 +219,165 @@ function registerIpcHandlers () {
       return { success: false, error: e.message }
     }
   })
+
+  // Load templates from selected file(s) - returns parsed template objects
+  ipcMain.handle('templates:load-from-files', async (event) => {
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Select Template File(s)',
+      defaultPath: path.join(__dirname, '../../config/templates'),
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile', 'multiSelections']
+    })
+
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, error: 'No file selected' }
+    }
+
+    const templates = {}
+    const errors = []
+
+    for (const filePath of result.filePaths) {
+      try {
+        const content = fs.readFileSync(filePath, 'utf8')
+        const data = JSON.parse(content)
+
+        // Handle two formats:
+        // 1. Array of templates: [{}, {}]
+        // 2. Object with category keys: { air_templates: [], ground_templates: [] }
+
+        if (Array.isArray(data)) {
+          // Simple array format - infer category from filename
+          const category = path.basename(filePath, '.json').replace('_templates', '').replace('_templates', '')
+          templates[category] = data
+        } else if (typeof data === 'object') {
+          // Object format with category keys
+          Object.keys(data).forEach(key => {
+            if (Array.isArray(data[key])) {
+              templates[key] = data[key]
+            }
+          })
+        }
+      } catch (e) {
+        errors.push({ file: filePath, error: e.message })
+      }
+    }
+
+    if (Object.keys(templates).length === 0 && errors.length > 0) {
+      return { success: false, error: errors[0].error }
+    }
+
+    return { success: true, templates, errors }
+  })
+
+  // Load reference points from selected file
+  ipcMain.handle('refpoints:load-from-file', async (event) => {
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Select Reference Points File',
+      defaultPath: path.join(__dirname, '../../config'),
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    })
+
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, error: 'No file selected' }
+    }
+
+    const filePath = result.filePaths[0]
+    try {
+      const content = fs.readFileSync(filePath, 'utf8')
+      const data = JSON.parse(content)
+
+      // Extract refpoints from various possible formats
+      let refpoints = null
+      if (data.refpoints) {
+        refpoints = data.refpoints
+      } else if (Array.isArray(data)) {
+        // If data is an array, assume it's bullseyes
+        refpoints = { bullseyes: data, airbases: [], zones: [], lines: [] }
+      } else {
+        // Try to build from keys
+        refpoints = {
+          bullseyes: data.bullseyes || [],
+          airbases: data.airbases || [],
+          zones: data.zones || [],
+          lines: data.lines || []
+        }
+      }
+
+      return { success: true, refpoints }
+    } catch (e) {
+      return { success: false, error: e.message }
+    }
+  })
+
+  // Load waypoint templates from selected file(s)
+  ipcMain.handle('waypoint-templates:load-from-files', async (event) => {
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Select Waypoint Template File(s)',
+      defaultPath: path.join(__dirname, '../../config'),
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile', 'multiSelections']
+    })
+
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, error: 'No file selected' }
+    }
+
+    const waypointTemplates = {}
+    const errors = []
+
+    for (const filePath of result.filePaths) {
+      try {
+        const content = fs.readFileSync(filePath, 'utf8')
+        const data = JSON.parse(content)
+
+        // Handle formats:
+        // 1. Object with template keys: { "awacs_orbit": {...}, ... }
+        // 2. Array of templates: [{ id: "...", name: "...", waypoints: [...] }, ...]
+
+        if (Array.isArray(data)) {
+          // Array format - convert to object
+          data.forEach(t => {
+            if (t.id) waypointTemplates[t.id] = t
+          })
+        } else if (typeof data === 'object') {
+          // Object format
+          Object.keys(data).forEach(key => {
+            if (data[key] && data[key].waypoints) {
+              waypointTemplates[key] = data[key]
+            }
+          })
+        }
+      } catch (e) {
+        errors.push({ file: filePath, error: e.message })
+      }
+    }
+
+    if (Object.keys(waypointTemplates).length === 0 && errors.length > 0) {
+      return { success: false, error: errors[0].error }
+    }
+
+    return { success: true, waypointTemplates, errors }
+  })
+
+  // Clear all reference points
+  ipcMain.handle('refpoints:clear', async () => {
+    return { success: true }
+  })
+
+  // Clear all templates
+  ipcMain.handle('templates:clear', async () => {
+    return { success: true }
+  })
 }
 
 app.whenReady().then(() => {

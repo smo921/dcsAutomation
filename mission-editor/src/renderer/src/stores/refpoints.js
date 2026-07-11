@@ -51,23 +51,117 @@ export const useRefpointsStore = defineStore('refpoints', {
     },
 
     loadFromConfig(config) {
-      this.bullseyes = (config.bullseyes || []).map(b => ({
-        name: b.name
-      }))
-      this.airbases = (config.airbases || []).map(ab => ({
-        name: ab.name
-      }))
-      this.zones = config.zones || []
-      this.lines = config.lines || []
+      // Merge with existing data instead of replacing
+      const existingNames = new Set()
+      this.bullseyes.forEach(b => existingNames.add(b.name))
+      this.airbases.forEach(ab => existingNames.add(ab.name))
+      this.zones.forEach(z => existingNames.add(z.name))
+      this.lines.forEach(l => existingNames.add(l.name))
+
+      // Add bullseyes
+      (config.bullseyes || []).forEach(b => {
+        let name = b.name
+        let counter = 1
+        while (existingNames.has(name)) {
+          name = `${b.name}_${counter}`
+          counter++
+        }
+        existingNames.add(name)
+        this.bullseyes.push({ name })
+      })
+
+      // Add airbases
+      (config.airbases || []).forEach(ab => {
+        let name = ab.name
+        let counter = 1
+        while (existingNames.has(name)) {
+          name = `${ab.name}_${counter}`
+          counter++
+        }
+        existingNames.add(name)
+        this.airbases.push({ name })
+      })
+
+      // Add zones
+      (config.zones || []).forEach(z => {
+        let name = z.name
+        let counter = 1
+        while (existingNames.has(name)) {
+          name = `${z.name}_${counter}`
+          counter++
+        }
+        existingNames.add(name)
+        this.zones.push({ name })
+      })
+
+      // Add lines
+      (config.lines || []).forEach(l => {
+        let name = l.name
+        let counter = 1
+        while (existingNames.has(name)) {
+          name = `${l.name}_${counter}`
+          counter++
+        }
+        existingNames.add(name)
+        this.lines.push({ name, startX: l.startX || 0, startY: l.startY || 0, endX: l.endX || 0, endY: l.endY || 0 })
+      })
     },
 
     loadFromFullConfig(fullConfig) {
-      // Load reference points from a full config object
-      const refpoints = fullConfig.refpoints || {}
-      this.bullseyes = (refpoints.bullseyes || []).map(b => ({ name: b.name }))
-      this.airbases = (refpoints.airbases || []).map(ab => ({ name: ab.name }))
-      this.zones = refpoints.zones || []
-      this.lines = refpoints.lines || []
+      // Merge with existing data instead of replacing
+      const existingNames = new Set()
+      this.bullseyes.forEach(b => existingNames.add(b.name))
+      this.airbases.forEach(ab => existingNames.add(ab.name))
+      this.zones.forEach(z => existingNames.add(z.name))
+      this.lines.forEach(l => existingNames.add(l.name))
+
+      // Add bullseyes
+      (fullConfig.refpoints?.bullseyes || []).forEach(b => {
+        let name = b.name
+        let counter = 1
+        while (existingNames.has(name)) {
+          name = `${b.name}_${counter}`
+          counter++
+        }
+        existingNames.add(name)
+        this.bullseyes.push({ name })
+      })
+
+      // Add airbases
+      (fullConfig.refpoints?.airbases || []).forEach(ab => {
+        let name = ab.name
+        let counter = 1
+        while (existingNames.has(name)) {
+          name = `${ab.name}_${counter}`
+          counter++
+        }
+        existingNames.add(name)
+        this.airbases.push({ name })
+      })
+
+      // Add zones
+      (fullConfig.refpoints?.zones || []).forEach(z => {
+        let name = z.name
+        let counter = 1
+        while (existingNames.has(name)) {
+          name = `${z.name}_${counter}`
+          counter++
+        }
+        existingNames.add(name)
+        this.zones.push({ name })
+      })
+
+      // Add lines
+      (fullConfig.refpoints?.lines || []).forEach(l => {
+        let name = l.name
+        let counter = 1
+        while (existingNames.has(name)) {
+          name = `${l.name}_${counter}`
+          counter++
+        }
+        existingNames.add(name)
+        this.lines.push({ name, startX: l.startX || 0, startY: l.startY || 0, endX: l.endX || 0, endY: l.endY || 0 })
+      })
     },
 
     clear() {
