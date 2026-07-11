@@ -159,11 +159,23 @@ function registerIpcHandlers () {
     return { success: true, path: filePath }
   })
 
-  // Load JSON configuration
-  ipcMain.handle('config:load-json', async (event, filePath) => {
-    if (!fs.existsSync(filePath)) {
-      return { success: false, error: 'File not found' }
+  // Load JSON configuration from a selected file
+  ipcMain.handle('config:load-json', async (event) => {
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Load Configuration',
+      defaultPath: path.join(__dirname, '../../config'),
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    })
+
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, error: 'No file selected' }
     }
+
+    const filePath = result.filePaths[0]
     try {
       const content = fs.readFileSync(filePath, 'utf8')
       const config = JSON.parse(content)

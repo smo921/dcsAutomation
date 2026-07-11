@@ -3,10 +3,11 @@
     <header class="app-header">
       <h1>DCS Mission Editor</h1>
       <nav class="header-nav">
-        <button @click="onNewMission">New Mission</button>
-        <button @click="onLoadSample">Load Sample Data</button>
-        <button @click="onExportJson">Export JSON</button>
-        <button @click="onExportLua">Export Lua</button>
+        <Button @click="onNewMission" variant="primary">New Mission</Button>
+        <Button @click="onLoadSample" variant="primary">Load Sample Data</Button>
+        <Button @click="onLoadJson" variant="primary">Load JSON</Button>
+        <Button @click="onExportJson" variant="primary">Export JSON</Button>
+        <Button @click="onExportLua" variant="primary">Export Lua</Button>
       </nav>
     </header>
 
@@ -126,6 +127,7 @@ import WaypointEditor from './components/editor/WaypointEditor.vue'
 import ReferencePointDetailEditor from './components/refpoints/ReferencePointDetailEditor.vue'
 import CollapsibleSection from './components/CollapsibleSection.vue'
 import { useResize } from './composables/useResize'
+import { Button } from './components/ui'
 
 // Stores
 const refpointsStore = useRefpointsStore()
@@ -177,17 +179,17 @@ const waypoints = ref([])
 // Status tracking
 const status = ref({ message: '', type: 'info' })
 
-// Menu handlers
-const onLoadSample = async () => {
+// Shared config loading helper
+const loadConfig = async (loadFn, successMessage) => {
   try {
     // Close the group editor if it's open to prevent watcher conflicts
     selectedGroupIndex.value = null
     groupManagerRef.value?.setSyncing(true)
     await nextTick()
 
-    const result = await window.api?.config?.loadSample?.()
+    const result = await loadFn()
     if (result?.success) {
-      // Clear existing data and load sample
+      // Clear existing data and load config
       refpointsStore.clear()
       templatesStore.clear()
       refpointsStore.loadFromFullConfig(result.config)
@@ -198,16 +200,21 @@ const onLoadSample = async () => {
         groups.value = result.config.groups
       }
 
-      setStatus('Sample data loaded successfully', 'success')
+      setStatus(successMessage, 'success')
     } else {
-      setStatus(`Failed to load sample: ${result?.error || 'Unknown error'}`, 'error')
+      setStatus(`Failed to load: ${result?.error || 'Unknown error'}`, 'error')
     }
   } catch (e) {
-    setStatus(`Error loading sample: ${e.message}`, 'error')
+    setStatus(`Error loading: ${e.message}`, 'error')
   } finally {
     groupManagerRef.value?.setSyncing(false)
   }
 }
+
+// Menu handlers
+const onLoadJson = () => loadConfig(window.api?.config?.loadJson, 'Configuration loaded successfully')
+
+const onLoadSample = () => loadConfig(window.api?.config?.loadSample, 'Sample data loaded successfully')
 
 const onNewMission = () => {
   // Ask for confirmation before clearing all data

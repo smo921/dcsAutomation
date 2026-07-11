@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Configuration loading
   config: {
-    loadJson: (filePath) => ipcRenderer.invoke('config:load-json', filePath),
+    loadJson: () => ipcRenderer.invoke('config:load-json'),
     loadSample: () => ipcRenderer.invoke('config:load-sample')
   },
 
