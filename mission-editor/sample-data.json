@@ -18,9 +18,9 @@
       {"name": "RED Front", "startX": 400000, "startY": 600000, "endX": 550000, "endY": 600000}
     ]
   },
-  "groups": [
+  "units": [
     {
-      "groupName": "Blue AWACS",
+      "unitName": "Blue AWACS",
       "category": "AIRPLANE",
       "triggerType": "IMMEDIATE",
       "country": "USA",
@@ -44,7 +44,7 @@
       ]
     },
     {
-      "groupName": "Blue Tanker",
+      "unitName": "Blue Tanker",
       "category": "AIRPLANE",
       "triggerType": "IMMEDIATE",
       "country": "USA",
@@ -69,7 +69,7 @@
       ]
     },
     {
-      "groupName": "Red Air Defense",
+      "unitName": "Red Air Defense",
       "category": "GROUND",
       "triggerType": "RADAR",
       "country": "Russia",
@@ -92,7 +92,7 @@
         ]
       },
       "triggeredUnits": {
-        "groupName": "Red Interceptors",
+        "unitName": "Red Interceptors",
         "category": "AIRPLANE",
         "units": [
           {"name": "Interceptor 1", "type": "MiG-29", "quantity": 4}
@@ -108,10 +108,10 @@
       }
     },
     {
-      "groupName": "BLUE Strike Group",
+      "unitName": "BLUE Strike Group",
       "category": "AIRPLANE",
       "triggerType": "OBJECTIVE_COMPLETE",
-      "parentGroupName": "Blue AWACS",
+      "parentUnitName": "Blue AWACS",
       "country": "USA",
       "units": [
         {"name": "Strike Lead", "type": "F/A-18C", "quantity": 4},
@@ -129,7 +129,7 @@
       ]
     },
     {
-      "groupName": "Red Ground Unit",
+      "unitName": "Red Ground Unit",
       "category": "GROUND",
       "triggerType": "TRIGGER_ZONE",
       "zoneName": "Zone Alpha",
@@ -147,7 +147,7 @@
       ]
     },
     {
-      "groupName": "NATO Patrol",
+      "unitName": "NATO Patrol",
       "category": "GROUND",
       "triggerType": "RADAR",
       "country": "NATO",
@@ -167,7 +167,7 @@
       ]
     },
     {
-      "groupName": "Reserve Force",
+      "unitName": "Reserve Force",
       "category": "GROUND",
       "triggerType": "IMMEDIATE",
       "country": "USA",

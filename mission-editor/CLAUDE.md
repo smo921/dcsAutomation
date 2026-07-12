@@ -8,9 +8,9 @@ This is an Electron-based desktop application for creating and configuring dynam
 
 **Key Features:**
 - Reference point system (bullseye, airbases, trigger zones, battle lines)
-- Template library for prebuilt mission configurations
-- Group configuration with visual forms
-- Waypoint editor for route building
+- Unit template library for prebuilt mission configurations
+- Unit configuration with visual forms
+- Route template editor for waypoint building
 - JSON/Lua export for integration with the existing mission framework
 
 ## Architecture
@@ -27,10 +27,11 @@ renderer/          # Vue.js renderer (UI layer)
     ├── main.js    # Vue app entry point
     ├── App.vue    # Root component
     ├── components/# Vue components organized by feature:
-    │   ├── refpoints/   # Reference point editors (Bullseye, Airbase, Zone, BattleLine)
-    │   ├── templates/   # Template library components
-    │   ├── editor/      # Group/waypoint editors
-    │   └── groups/      # Group management
+    │   ├── refpoints/       # Reference point editors (Bullseye, Airbase, Zone, BattleLine)
+    │   ├── unitTemplates/   # Unit template library components
+    │   ├── routeTemplates/  # Route template library components
+    │   ├── units/           # Unit management
+    │   └── editor/          # Waypoint editor
     ├── stores/      # Pinia state management
     └── utils/       # Helper utilities
 ```
@@ -43,10 +44,14 @@ renderer/          # Vue.js renderer (UI layer)
 - **Trigger Zones** - Mission-defined zones for relative placement
 - **Battle Lines** - Custom line segments for offset-based spawning
 
-**Templates:** Prebuilt configurations stored in `config/templates/`:
-- `air_templates.json` - Air units (AWACS, patrols, bombers)
-- `ground_templates.json` - Ground units (convoy, SAM, armor)
-- `support_templates.json` - Support assets (tankers, command posts)
+**Unit Templates:** Prebuilt configurations stored in `config/unit_templates/`:
+- `air.json` - Air units (AWACS, patrols, bombers)
+- `ground.json` - Ground units (convoy, SAM, armor)
+- `naval.json` - Naval units
+- `support.json` - Support assets (tankers, command posts)
+
+**Route Templates:** Prebuilt waypoint sequences stored in `config/route_templates/`:
+- Reusable route definitions for units
 
 ### Tech Stack
 
@@ -192,8 +197,9 @@ The app uses CSS design tokens for consistent theming. All styles are located in
    - `useResize` - For resizable dividers between list and detail panes
 
 4. **Follow existing patterns** in:
-   - `GroupEditor.vue` - Standard 2-pane editor pattern
-   - `TemplateEditor.vue` - Template editor with list + form
+   - `UnitEditor.vue` - Standard 2-pane editor pattern
+   - `UnitTemplateEditor.vue` - Unit template editor with list + form
+   - `RouteTemplateEditor.vue` - Route template editor with list + form
    - `ReferencePointManager.vue` - Reference point management with detail editor
 
 **When to create new components:**
@@ -250,19 +256,22 @@ Defines all reference points used for coordinate positioning:
 }
 ```
 
-### Templates (`config/templates/`)
-JSON files defining reusable mission configurations. Templates can be applied directly in the UI or modified as JSON.
+### Unit Templates (`config/unit_templates/`)
+JSON files defining reusable mission unit configurations. Templates can be applied directly in the UI or modified as JSON.
+
+### Route Templates (`config/route_templates/`)
+JSON files defining reusable waypoint sequences for unit routes.
 
 ## Export Formats
 
 ### JSON Export
-Configuration exported as JSON with all reference points and groups. Useful for version control and external integration.
+Configuration exported as JSON with all reference points and units. Useful for version control and external integration.
 
 ### Lua Export
 Generates Lua code compatible with `mission_test.lua` and the MIST framework. Output follows the existing pattern:
 ```lua
 createSector({
-    name = "Group_Name",
+    name = "Unit_Name",
     triggerType = "IMMEDIATE",
     groups = {
         createGroup("Unit_Name", "air", "Unit_Type", 3,
@@ -278,7 +287,16 @@ createSector({
 |---------|---------|
 | `refpoints:load` | Load reference points from config |
 | `refpoints:save` | Save reference points to config |
-| `template:load-all` | Load all templates from `config/templates/` |
+| `refpoints:loadFromFile` | Load reference points from selected file |
+| `unit-template:load-all` | Load all unit templates from `config/unit_templates/` |
+| `unit-template:save` | Save a unit template to `config/unit_templates/` |
+| `unit-templates:load-from-files` | Load unit templates from selected files |
+| `unit-templates:clear` | Clear all unit templates |
+| `route-templates:load-from-files` | Load route templates from selected files |
+| `route-templates:clear` | Clear all route templates |
+| `config:load-json` | Load full configuration from JSON file |
+| `config:load-sample` | Load sample configuration |
+| `config:check` | Check which config files exist |
 | `file:save-json` | Export configuration as JSON |
 | `file:save-lua` | Export configuration as Lua code |
 
@@ -305,3 +323,4 @@ The generated Lua code uses helper functions from `unit_management.lua`:
 - **Source Location:** `src/main/` and `src/renderer/src/` (not `main/` and `renderer/` at root)
 - **Output Location:** `out/` directory with `out/main/index.js` and `out/renderer/`
 - **Build Config:** `electron.vite.config.js` - custom Vite configuration for Electron
+- **Config Location:** `config/` directory with subdirectories for `unit_templates/`, `route_templates/`, and `refpoints.json`

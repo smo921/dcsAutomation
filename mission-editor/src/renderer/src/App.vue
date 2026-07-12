@@ -13,13 +13,14 @@
 
     <div class="app-content">
       <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }" @mousedown="startSidebarResize">
-        <CollapsibleSection :expanded="sections.groups" @update:expanded="sections.groups = $event" title="Groups">
-          <GroupManager
-            ref="groupManagerRef"
-            :groups="groups"
+        <CollapsibleSection :expanded="sections.units" @update:expanded="sections.units = $event" title="Units">
+          <UnitManager
+            ref="unitManagerRef"
+            :units="units"
             listOnly
-            @group-change="onGroupChange"
-            @group-edit="onGroupEdit"
+            @unit-change="onUnitChange"
+            @unit-edit="onUnitEdit"
+            @unit-add-from-template="onUnitAddFromTemplate"
           />
         </CollapsibleSection>
 
@@ -34,26 +35,26 @@
           <ReferencePointManager ref="refpointManagerRef" :list-only="true" @select="onReferencePointSelected" @refpoint-edit="onReferencePointEdit" @refpoint-delete="onReferencePointDelete" />
         </CollapsibleSection>
 
-        <CollapsibleSection :expanded="sections.templates" @update:expanded="sections.templates = $event" title="Templates">
-          <div class="section-load-hint" v-if="!hasTemplatesLoaded">
-            <p>No templates loaded.</p>
-            <Button @click="onAddTemplates" variant="primary" size="sm">Add Template(s)...</Button>
+        <CollapsibleSection :expanded="sections.unitTemplates" @update:expanded="sections.unitTemplates = $event" title="Unit Templates">
+          <div class="section-load-hint" v-if="!hasUnitTemplatesLoaded">
+            <p>No unit templates loaded.</p>
+            <Button @click="onAddUnitTemplates" variant="primary" size="sm">Add Unit Template(s)...</Button>
           </div>
           <div v-else class="section-controls">
-            <Button @click="onClearTemplates" variant="danger" size="sm">Clear All</Button>
+            <Button @click="onClearUnitTemplates" variant="danger" size="sm">Clear All</Button>
           </div>
-          <TemplateLibrary ref="templateLibraryRef" @template-apply="onTemplateApplied" @template-edit="onTemplateEdit" @template-delete="onTemplateDelete" />
+          <UnitTemplateLibrary ref="unitTemplateLibraryRef" @unit-template-apply="onUnitTemplateApplied" @unit-template-edit="onUnitTemplateEdit" @unit-template-delete="onUnitTemplateDelete" />
         </CollapsibleSection>
 
-        <CollapsibleSection :expanded="sections.waypointTemplates" @update:expanded="sections.waypointTemplates = $event" title="Waypoint Templates">
-          <div class="section-load-hint" v-if="templatesStore.waypointTemplates.length === 0">
-            <p>No waypoint templates loaded.</p>
-            <Button @click="onAddWaypointTemplates" variant="primary" size="sm">Add Waypoint Template(s)...</Button>
+        <CollapsibleSection :expanded="sections.routeTemplates" @update:expanded="sections.routeTemplates = $event" title="Route Templates">
+          <div class="section-load-hint" v-if="routeTemplatesStore.templates.length === 0">
+            <p>No route templates loaded.</p>
+            <Button @click="onAddRouteTemplates" variant="primary" size="sm">Add Route Template(s)...</Button>
           </div>
           <div v-else class="section-controls">
-            <Button @click="onClearWaypointTemplates" variant="danger" size="sm">Clear All</Button>
+            <Button @click="onClearRouteTemplates" variant="danger" size="sm">Clear All</Button>
           </div>
-          <WaypointTemplateLibrary @waypoint-template-apply="onWaypointTemplateApplied" @waypoint-template-edit="onWaypointTemplateEdit" @waypoint-template-delete="onWaypointTemplateDelete" />
+          <RouteTemplateLibrary @route-template-apply="onRouteTemplateApplied" @route-template-edit="onRouteTemplateEdit" @route-template-delete="onRouteTemplateDelete" />
         </CollapsibleSection>
       </aside>
 
@@ -73,35 +74,38 @@
             Passing to Editor: {{ JSON.stringify(editingReferencePoint) }}
           </div> -->
 
-          <!-- Template Editor - shown when editing a template -->
-          <TemplateEditor
-            v-else-if="editingTemplate"
-            ref="templateEditorRef"
-            :editingTemplate="editingTemplate"
-            @template-change="onTemplateChange"
-            @save="onTemplateSave"
-            @cancel="onTemplateCancel"
+          <!-- Unit Template Editor - shown when editing a unit template -->
+          <UnitTemplateEditor
+            v-else-if="editingUnitTemplate"
+            ref="unitTemplateEditorRef"
+            :editingTemplate="editingUnitTemplate"
+            @unit-template-change="onUnitTemplateChange"
+            @save="onUnitTemplateSave"
+            @cancel="onUnitTemplateCancel"
           />
 
-          <!-- Waypoint Template Editor - shown when editing a waypoint template -->
-          <WaypointTemplateEditor
-            v-else-if="editingWaypointTemplate"
-            ref="waypointTemplateEditorRef"
-            :waypoints="editingWaypointTemplate.waypoints || []"
+          <!-- Route Template Editor - shown when editing a route template -->
+          <RouteTemplateEditor
+            v-else-if="editingRouteTemplate"
+            :key="editingRouteTemplate.id || editingRouteTemplate.name"
+            ref="routeTemplateEditorRef"
+            :waypoints="editingRouteTemplate.waypoints || []"
             :airbases="refpointsStore.airbases"
-            @save="onWaypointTemplateSave"
-            @cancel="editingWaypointTemplate = null"
+            :template-name="editingRouteTemplate.name || editingRouteTemplate.id"
+            @update:template-name="editingRouteTemplate.name = $event"
+            @save="onRouteTemplateSave"
+            @cancel="editingRouteTemplate = null"
           />
 
-          <!-- Group Editor - shown when editing a group -->
-          <GroupEditor
-            v-else-if="selectedGroupIndex !== null"
-            ref="groupEditorRef"
-            :group="groups[selectedGroupIndex]"
-            :groups="groups"
+          <!-- Unit Editor - shown when editing a unit -->
+          <UnitEditor
+            v-else-if="selectedUnitIndex !== null"
+            ref="unitEditorRef"
+            :unit="units[selectedUnitIndex]"
+            :units="units"
             :refpoints="{ bullseyes: refpointsStore.bullseyes, airbases: refpointsStore.airbases, zones: refpointsStore.zones, lines: refpointsStore.lines }"
-            @group-change="onGroupEditorChange"
-            @cancel="selectedGroupIndex = null"
+            @unit-change="onUnitEditorChange"
+            @cancel="selectedUnitIndex = null"
           />
 
           <!-- No selection state -->
@@ -124,14 +128,15 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRefpointsStore } from './stores/refpoints'
-import { useTemplatesStore } from './stores/templates'
+import { useUnitTemplatesStore } from './stores/unitTemplates'
+import { useRouteTemplatesStore } from './stores/routeTemplates'
 import ReferencePointManager from './components/refpoints/ReferencePointManager.vue'
-import TemplateLibrary from './components/templates/TemplateLibrary.vue'
-import TemplateEditor from './components/templates/TemplateEditor.vue'
-import WaypointTemplateLibrary from './components/templates/WaypointTemplateLibrary.vue'
-import WaypointTemplateEditor from './components/templates/WaypointTemplateEditor.vue'
-import GroupManager from './components/groups/GroupManager.vue'
-import GroupEditor from './components/groups/GroupEditor.vue'
+import UnitTemplateLibrary from './components/unitTemplates/UnitTemplateLibrary.vue'
+import UnitTemplateEditor from './components/unitTemplates/UnitTemplateEditor.vue'
+import RouteTemplateLibrary from './components/routeTemplates/RouteTemplateLibrary.vue'
+import RouteTemplateEditor from './components/routeTemplates/RouteTemplateEditor.vue'
+import UnitManager from './components/units/UnitManager.vue'
+import UnitEditor from './components/units/UnitEditor.vue'
 import WaypointEditor from './components/editor/WaypointEditor.vue'
 import ReferencePointDetailEditor from './components/refpoints/ReferencePointDetailEditor.vue'
 import CollapsibleSection from './components/CollapsibleSection.vue'
@@ -140,30 +145,31 @@ import { Button } from './components/ui'
 
 // Stores
 const refpointsStore = useRefpointsStore()
-const templatesStore = useTemplatesStore()
+const unitTemplatesStore = useUnitTemplatesStore()
+const routeTemplatesStore = useRouteTemplatesStore()
 
 // Refs for component access
 const refpointManagerRef = ref(null)
 const referencePointDetailEditorRef = ref(null)
-const templateLibraryRef = ref(null)
-const waypointTemplateLibraryRef = ref(null)
-const groupManagerRef = ref(null)
-const templateEditorRef = ref(null)
-const waypointTemplateEditorRef = ref(null)
-const groupEditorRef = ref(null)
+const unitTemplateLibraryRef = ref(null)
+const routeTemplateLibraryRef = ref(null)
+const unitManagerRef = ref(null)
+const unitTemplateEditorRef = ref(null)
+const routeTemplateEditorRef = ref(null)
+const unitEditorRef = ref(null)
 
-// Track selected group index and editing template
-const selectedGroupIndex = ref(null)
+// Track selected unit index and editing template
+const selectedUnitIndex = ref(null)
 const editingReferencePoint = ref(null)
-const editingTemplate = ref(null)
-const editingWaypointTemplate = ref(null)
+const editingUnitTemplate = ref(null)
+const editingRouteTemplate = ref(null)
 
-// Sidebar sections state - groups expanded by default
+// Sidebar sections state - units expanded by default
 const sections = ref({
-  groups: true,
+  units: true,
   referencePoints: false,
-  templates: false,
-  waypointTemplates: false
+  unitTemplates: false,
+  routeTemplates: false
 })
 
 // Sidebar resize state
@@ -177,10 +183,8 @@ const { startResize: startSidebarResize } = useResize({
   direction: 'horizontal'
 })
 
-// Main content ref (for potential future use)
-
-// Groups state
-const groups = ref([])
+// Units state
+const units = ref([])
 
 // Waypoints state (for standalone editing)
 const waypoints = ref([])
@@ -191,22 +195,27 @@ const status = ref({ message: '', type: 'info' })
 // Shared config loading helper
 const loadConfig = async (loadFn, successMessage) => {
   try {
-    // Close the group editor if it's open to prevent watcher conflicts
-    selectedGroupIndex.value = null
-    groupManagerRef.value?.setSyncing(true)
+    // Close the unit editor if it's open to prevent watcher conflicts
+    selectedUnitIndex.value = null
+    unitManagerRef.value?.setSyncing(true)
     await nextTick()
 
     const result = await loadFn()
+
     if (result?.success) {
       // Clear existing data and load config
       refpointsStore.clear()
-      templatesStore.clear()
+      unitTemplatesStore.clear()
+      routeTemplatesStore.clear()
       refpointsStore.loadFromFullConfig(result.config)
-      templatesStore.loadFromFullConfig(result.config)
+      unitTemplatesStore.loadFromFullConfig(result.config)
+      routeTemplatesStore.loadFromFullConfig(result.config)
 
-      // Load groups if available
-      if (result.config.groups) {
-        groups.value = result.config.groups
+      // Load units if available (sample data uses 'groups', newer configs might use 'units')
+      if (result.config.units) {
+        units.value = result.config.units
+      } else if (result.config.groups) {
+        units.value = result.config.groups
       }
 
       setStatus(successMessage, 'success')
@@ -216,41 +225,41 @@ const loadConfig = async (loadFn, successMessage) => {
   } catch (e) {
     setStatus(`Error loading: ${e.message}`, 'error')
   } finally {
-    groupManagerRef.value?.setSyncing(false)
+    unitManagerRef.value?.setSyncing(false)
   }
 }
 
-// Menu handlers - Add Template(s) and Load Sample handlers
+// Menu handlers - Add Unit Template(s) and Load Sample handlers
 const onLoadJson = () => loadConfig(window.api?.config?.loadJson, 'Configuration loaded successfully')
 
 const onLoadSample = () => loadConfig(window.api?.config?.loadSample, 'Sample data loaded successfully')
 
-const onAddTemplates = async () => {
+const onAddUnitTemplates = async () => {
   try {
-    selectedGroupIndex.value = null
-    groupManagerRef.value?.setSyncing(true)
+    selectedUnitIndex.value = null
+    unitManagerRef.value?.setSyncing(true)
     await nextTick()
 
-    const result = await window.api?.templates?.loadFromFiles?.()
+    const result = await window.api?.unitTemplates?.loadFromFiles?.()
     if (result?.success) {
-      if (result.templates) {
-        templatesStore.loadTemplates(result.templates)
+      if (result.unitTemplates) {
+        unitTemplatesStore.loadTemplates(result.unitTemplates)
       }
-      setStatus('Templates loaded successfully', 'success')
+      setStatus('Unit templates loaded successfully', 'success')
     } else {
-      setStatus(`Failed to load templates: ${result?.error || 'Unknown error'}`, 'error')
+      setStatus(`Failed to load unit templates: ${result?.error || 'Unknown error'}`, 'error')
     }
   } catch (e) {
-    setStatus(`Error loading templates: ${e.message}`, 'error')
+    setStatus(`Error loading unit templates: ${e.message}`, 'error')
   } finally {
-    groupManagerRef.value?.setSyncing(false)
+    unitManagerRef.value?.setSyncing(false)
   }
 }
 
 const onAddReferencePoints = async () => {
   try {
-    selectedGroupIndex.value = null
-    groupManagerRef.value?.setSyncing(true)
+    selectedUnitIndex.value = null
+    unitManagerRef.value?.setSyncing(true)
     await nextTick()
 
     const result = await window.api?.refpoints?.loadFromFile?.()
@@ -263,26 +272,26 @@ const onAddReferencePoints = async () => {
   } catch (e) {
     setStatus(`Error loading reference points: ${e.message}`, 'error')
   } finally {
-    groupManagerRef.value?.setSyncing(false)
+    unitManagerRef.value?.setSyncing(false)
   }
 }
 
-const onAddWaypointTemplates = async () => {
+const onAddRouteTemplates = async () => {
   try {
-    selectedGroupIndex.value = null
+    selectedUnitIndex.value = null
     await nextTick()
 
-    const result = await window.api?.templates?.waypointTemplatesLoadFromFiles?.()
+    const result = await window.api?.routeTemplates?.loadFromFiles?.()
     if (result?.success) {
-      if (result.waypointTemplates) {
-        templatesStore.loadWaypointTemplates(result.waypointTemplates)
+      if (result.routeTemplates) {
+        routeTemplatesStore.loadRouteTemplates(result.routeTemplates)
       }
-      setStatus('Waypoint templates loaded successfully', 'success')
+      setStatus('Route templates loaded successfully', 'success')
     } else {
-      setStatus(`Failed to load waypoint templates: ${result?.error || 'Unknown error'}`, 'error')
+      setStatus(`Failed to load route templates: ${result?.error || 'Unknown error'}`, 'error')
     }
   } catch (e) {
-    setStatus(`Error loading waypoint templates: ${e.message}`, 'error')
+    setStatus(`Error loading route templates: ${e.message}`, 'error')
   }
 }
 
@@ -291,47 +300,47 @@ const onClearReferencePoints = () => {
   setStatus('All reference points cleared', 'success')
 }
 
-const onClearTemplates = () => {
-  templatesStore.clear()
-  setStatus('All templates cleared', 'success')
+const onClearUnitTemplates = () => {
+  unitTemplatesStore.clear()
+  setStatus('All unit templates cleared', 'success')
 }
 
-const onClearWaypointTemplates = () => {
-  templatesStore.clear()
-  setStatus('All waypoint templates cleared', 'success')
+const onClearRouteTemplates = () => {
+  routeTemplatesStore.clear()
+  setStatus('All route templates cleared', 'success')
 }
 
-// Computed - check if any templates are loaded
-const hasTemplatesLoaded = computed(() => {
-  return Object.values(templatesStore.categories).some(arr => arr.length > 0) ||
-         templatesStore.waypointTemplates.length > 0
+// Computed - check if any unit templates are loaded
+const hasUnitTemplatesLoaded = computed(() => {
+  return Object.values(unitTemplatesStore.categories).some(arr => arr.length > 0)
 })
 
 const onNewMission = () => {
   // Ask for confirmation before clearing all data
-  if (!window.confirm('Are you sure you want to create a new mission? This will delete all groups, reference points, and templates.')) {
+  if (!window.confirm('Are you sure you want to create a new mission? This will delete all units, reference points, and templates.')) {
     return
   }
 
   // Close any open editors
-  selectedGroupIndex.value = null
+  selectedUnitIndex.value = null
   editingReferencePoint.value = null
-  editingTemplate.value = null
-  editingWaypointTemplate.value = null
+  editingUnitTemplate.value = null
+  editingRouteTemplate.value = null
 
   // Clear all store data
   refpointsStore.clear()
-  templatesStore.clear()
+  unitTemplatesStore.clear()
+  routeTemplatesStore.clear()
 
-  // Clear groups
-  groups.value = []
+  // Clear units
+  units.value = []
 
   // Reset sidebar sections
   sections.value = {
-    groups: true,
+    units: true,
     referencePoints: false,
-    templates: false,
-    waypointTemplates: false
+    unitTemplates: false,
+    routeTemplates: false
   }
 
   setStatus('New mission created', 'success')
@@ -342,40 +351,94 @@ const onExportJson = () => {
 }
 
 const onExportLua = () => {
-  window.api?.export?.lua?.()
+  // Generate Lua code from units
+  const luaCode = generateLuaFromUnits(units.value, refpointsStore)
+  window.api?.file?.saveLua?.(luaCode, 'mission-config.lua')
 }
 
-// Group handlers
-const onGroupChange = (newGroups) => {
-  // Prevent infinite loop - only update if groups actually changed
-  const oldLength = groups.value.length
-  const newLength = newGroups.length
+// Generate Lua code from units
+const generateLuaFromUnits = (units, refpointsStore) => {
+  const lines = []
+  lines.push('-- DCS Mission Lua Configuration')
+  lines.push('-- Generated by DCS Mission Editor')
+  lines.push('')
+  lines.push('package.path = package.path .. ";../scripts/?.lua"')
+  lines.push('')
+
+  // Generate createUnit function
+  lines.push([[
+    'function createUnit(name, category, typeName, quantity, point, heading, task)',
+    '    return {',
+    '        name = name,',
+    '        category = category,',
+    '        typeName = typeName,',
+    '        quantity = quantity,',
+    '        point = point,',
+    '        heading = heading,',
+    '        task = task',
+    '    }',
+    'end'
+  ].join('\n')])
+  lines.push('')
+
+  // Generate unit instances
+  lines.push('-- Units')
+  units.value.forEach(unit => {
+    const unitName = unit.unitName || 'Unnamed'
+    const category = unit.category || 'AIRPLANE'
+    const country = unit.country || 'USA'
+    const task = unit.task || ''
+
+    // Generate units from template units
+    if (unit.units && Array.isArray(unit.units)) {
+      unit.units.forEach((u, idx) => {
+        const unitTypeName = u.type || 'Unknown'
+        const unitQuantity = u.quantity || 1
+        const unitNameFull = u.name || `${unitName}_unit_${idx + 1}`
+        lines.push(`-- ${unitNameFull}`)
+        lines.push(`createUnit("${unitNameFull}", "${category}", "${unitTypeName}", ${unitQuantity}, getPointFromReference("BULLSEYE_BLUE", 0, 100), 0, "${task}")`)
+      })
+    }
+    lines.push('')
+  })
+
+  lines.push('-- End of configuration')
+  return lines.join('\n')
+}
+
+// Unit handlers
+const onUnitChange = (newUnits) => {
+  // Prevent infinite loop - only update if units actually changed
+  const oldLength = units.value.length
+  const newLength = newUnits.length
   if (oldLength !== newLength) {
-    groups.value = newGroups
+    units.value = newUnits
   } else {
-    // Check if arrays are different by comparing group names
-    const oldNames = groups.value.map(g => g.groupName).sort().join('|')
-    const newNames = newGroups.map(g => g.groupName).sort().join('|')
+    // Check if arrays are different by comparing unit names
+    const oldNames = units.value.map(u => u.unitName).sort().join('|')
+    const newNames = newUnits.map(u => u.unitName).sort().join('|')
     if (oldNames !== newNames) {
-      groups.value = newGroups
+      units.value = newUnits
     }
   }
 }
 
-const onGroupEdit = (group) => {
-  // Find the group index and open the editor
-  selectedGroupIndex.value = groups.value.findIndex(g => g.groupName === group.groupName)
+const onUnitEdit = (unit) => {
+  // Find the unit index and open the editor
+  const index = units.value.findIndex(u => u.unitName === unit.unitName)
+  console.log('onUnitEdit called with:', unit.unitName, 'found at index:', index)
+  selectedUnitIndex.value = index
 }
 
-const onGroupEditorChange = (updatedGroup) => {
-  // GroupEditor emits a single updated group
-  if (selectedGroupIndex.value !== null) {
-    const currentGroup = groups.value[selectedGroupIndex.value]
-    // Only update if the group actually changed (not just a reference change)
-    if (currentGroup && currentGroup.groupName !== updatedGroup.groupName) {
-      const newGroups = [...groups.value]
-      newGroups[selectedGroupIndex.value] = updatedGroup
-      groups.value = newGroups
+const onUnitEditorChange = (updatedUnit) => {
+  // UnitEditor emits a single updated unit
+  if (selectedUnitIndex.value !== null) {
+    const currentUnit = units.value[selectedUnitIndex.value]
+    // Only update if the unit actually changed (not just a reference change)
+    if (currentUnit && currentUnit.unitName !== updatedUnit.unitName) {
+      const newUnits = [...units.value]
+      newUnits[selectedUnitIndex.value] = updatedUnit
+      units.value = newUnits
     }
   }
 }
@@ -394,14 +457,19 @@ const onReferencePointEdit = (refPoint) => {
   setStatus(`Editing reference point: "${refPoint.name}"`, 'info')
 }
 
-// Watch for editingReferencePoint changes
+// Unit Template handlers
+const onUnitAddFromTemplate = (category) => {
+  // Open the Unit Template library to select a template
+  // This will be used when we implement a modal or dialog to select templates
+  setStatus(`Select a unit template to add`, 'info')
+}
 
-const onTemplateApplied = (payload) => {
+const onUnitTemplateApplied = (payload) => {
   // payload = { template, category }
   const { template, category } = payload
-  // Create a new group from template - same as before
-  const newGroup = {
-    groupName: `${template.name.replace(/\s+/g, '_')}_${groups.value.length + 1}`,
+  // Create a new unit from template
+  const newUnit = {
+    unitName: `${template.name.replace(/\s+/g, '_')}_${units.value.length + 1}`,
     category: template.category === 'air' ? 'AIRPLANE' : 'GROUND',
     triggerType: 'IMMEDIATE',
     country: template.category === 'air' ? 'USA' : 'Russia',
@@ -416,37 +484,45 @@ const onTemplateApplied = (payload) => {
     },
     route: template.defaultRoute ? [{ ...template.defaultRoute }] : [{ type: 'orbit', altitude: 3000, speed: 500 }]
   }
-  groups.value = [...groups.value, newGroup]
-  setStatus(`Template "${template.name}" applied to new group`, 'success')
+  units.value = [...units.value, newUnit]
+  setStatus(`Unit template "${template.name}" applied to new unit`, 'success')
 }
 
-const onTemplateEdit = (payload) => {
+const onUnitTemplateEdit = (payload) => {
   // payload = { template, category }
   const { template, category } = payload
-  // Set the template as being edited - TemplateEditor will show it
-  editingReferencePoint.value = null // Close reference point editor if open
-  editingTemplate.value = template
-  setStatus(`Editing template: "${template.name}"`, 'info')
+  // Set the template as being edited - UnitTemplateEditor will show it
+  editingReferencePoint.value = null
+  editingUnitTemplate.value = template
+  setStatus(`Editing unit template: "${template.name}"`, 'info')
 }
 
-// Status helper
-const setStatus = (message, type = 'info') => {
-  status.value = { message, type }
-  setTimeout(() => {
-    status.value = { message: '', type: 'info' }
-  }, 3000)
+const onUnitTemplateDelete = (payload) => {
+  // payload = { template, category }
+  const { template, category } = payload
+  const categoryTemplates = unitTemplatesStore.categories[category] || []
+  const templateIndex = categoryTemplates.findIndex(t =>
+    (t.id && t.id === template.id) || (!t.id && t.name === template.name)
+  )
+
+  if (templateIndex !== -1) {
+    unitTemplatesStore.deleteTemplate(category, templateIndex)
+    setStatus(`Unit template "${template.name}" deleted`, 'info')
+    // Reset editing template if the deleted template was being edited
+    if (editingUnitTemplate.value && editingUnitTemplate.value.name === template.name) {
+      editingUnitTemplate.value = null
+    }
+  }
 }
 
-// Initialize - no automatic loading
-onMounted(() => {
-  // Resources are not loaded automatically
-  // User can click "Load Sample Data" or "Load Config" buttons to load data
-})
+const onUnitTemplateChange = (template) => {
+  // Called when a unit template is saved in the editor
+  onUnitTemplateSave(template)
+}
 
-// Template management handlers
-const onTemplateSave = (template) => {
+const onUnitTemplateSave = (template) => {
   const category = template.category || 'air'
-  const existingCategory = templatesStore.categories[category] || []
+  const existingCategory = unitTemplatesStore.categories[category] || []
 
   // Check for duplicate ID or name
   const existingIndex = existingCategory.findIndex(t =>
@@ -455,59 +531,36 @@ const onTemplateSave = (template) => {
 
   if (existingIndex !== -1) {
     // Update existing template using store method
-    templatesStore.updateTemplate(category, existingIndex, template)
-    setStatus(`Template "${template.name}" updated`, 'success')
+    unitTemplatesStore.updateTemplate(category, existingIndex, template)
+    setStatus(`Unit template "${template.name}" updated`, 'success')
   } else {
     // Add new template using store method
-    templatesStore.addTemplate(category, template)
-    setStatus(`Template "${template.name}" created`, 'success')
+    unitTemplatesStore.addTemplate(category, template)
+    setStatus(`Unit template "${template.name}" created`, 'success')
   }
 }
 
-const onTemplateDelete = (payload) => {
-  // payload = { template, category }
-  const { template, category } = payload
-  const categoryTemplates = templatesStore.categories[category] || []
-  const templateIndex = categoryTemplates.findIndex(t =>
-    (t.id && t.id === template.id) || (!t.id && t.name === template.name)
-  )
-
-  if (templateIndex !== -1) {
-    templatesStore.deleteTemplate(category, templateIndex)
-    setStatus(`Template "${template.name}" deleted`, 'info')
-    // Reset editing template if the deleted template was being edited
-    if (editingTemplate.value && editingTemplate.value.name === template.name) {
-      editingTemplate.value = null
-    }
-  }
+const onUnitTemplateCancel = () => {
+  editingUnitTemplate.value = null
 }
 
-const onTemplateChange = (template) => {
-  // Called when a template is saved in the editor
-  onTemplateSave(template)
-}
-
-const onTemplateSelected = (template) => {
-  // Template selected in editor - could be used for keyboard shortcuts later
-}
-
-// Waypoint template handlers
-const onWaypointTemplateApplied = (template) => {
-  // Check if there's a selected group to apply the template to
-  if (selectedGroupIndex.value !== null && selectedGroupIndex.value !== undefined) {
-    const group = groups.value[selectedGroupIndex.value]
-    if (group) {
-      // Apply waypoint template to group route
-      group.route = template.waypoints || []
-      groups.value = [...groups.value] // Trigger reactivity
-      setStatus(`Waypoint template "${template.name}" applied to "${group.groupName}"`, 'success')
+// Route Template handlers
+const onRouteTemplateApplied = (template) => {
+  // Check if there's a selected unit to apply the template to
+  if (selectedUnitIndex.value !== null && selectedUnitIndex.value !== undefined) {
+    const unit = units.value[selectedUnitIndex.value]
+    if (unit) {
+      // Apply route template to unit route
+      unit.route = template.waypoints || []
+      units.value = [...units.value] // Trigger reactivity
+      setStatus(`Route template "${template.name}" applied to "${unit.unitName}"`, 'success')
       return
     }
   }
 
-  // If no group selected, create a new group from the waypoint template
-  const newGroup = {
-    groupName: `${template.name.replace(/\s+/g, '_')}_${groups.value.length + 1}`,
+  // If no unit selected, create a new unit from the route template
+  const newUnit = {
+    unitName: `${template.name.replace(/\s+/g, '_')}_${units.value.length + 1}`,
     category: 'AIRPLANE',
     triggerType: 'IMMEDIATE',
     country: 'USA',
@@ -528,21 +581,23 @@ const onWaypointTemplateApplied = (template) => {
     },
     route: template.waypoints || []
   }
-  groups.value = [...groups.value, newGroup]
-  setStatus(`Waypoint template "${template.name}" applied to new group`, 'success')
+  units.value = [...units.value, newUnit]
+  setStatus(`Route template "${template.name}" applied to new unit`, 'success')
 }
 
-const onWaypointTemplateDelete = (template) => {
+const onRouteTemplateDelete = (template) => {
   // Delete the template from the store
-  templatesStore.deleteWaypointTemplate(template.id)
-  setStatus(`Waypoint template "${template.name}" deleted`, 'info')
+  routeTemplatesStore.deleteTemplateById(template.id)
+  setStatus(`Route template "${template.name}" deleted`, 'info')
 }
 
-const onWaypointTemplateEdit = (template) => {
-  // Set the template as being edited - WaypointTemplateEditor will show it
-  editingReferencePoint.value = null // Close reference point editor if open
-  editingWaypointTemplate.value = { ...template }
-  setStatus(`Editing waypoint template: "${template.name}"`, 'info')
+const onRouteTemplateEdit = (template) => {
+  // Set the template as being edited - RouteTemplateEditor will show it
+  editingReferencePoint.value = null
+  editingUnitTemplate.value = null
+  selectedUnitIndex.value = null
+  editingRouteTemplate.value = { ...template }
+  setStatus(`Editing route template: "${template.name}"`, 'info')
 }
 
 const onReferencePointDetailSave = (refPoint) => {
@@ -584,10 +639,6 @@ const onReferencePointDelete = (refPoint) => {
   }
 }
 
-const onTemplateCancel = () => {
-  editingTemplate.value = null
-}
-
 const updateRefPointInStore = (refPoint) => {
   const type = refPoint.type
   const name = refPoint.name
@@ -621,15 +672,33 @@ const updateRefPointInStore = (refPoint) => {
   }
 }
 
-const onWaypointTemplateSave = (waypoints) => {
-  // Find and update the waypoint template in the store
-  const index = templatesStore.waypointTemplates.findIndex(t => t.id === editingWaypointTemplate.value.id)
+const onRouteTemplateSave = (waypoints) => {
+  // Find and update the route template in the store
+  const index = routeTemplatesStore.templates.findIndex(t => t.id === editingRouteTemplate.value.id)
   if (index !== -1) {
-    templatesStore.waypointTemplates[index].waypoints = waypoints
-    setStatus(`Waypoint template "${editingWaypointTemplate.value.name}" saved`, 'success')
-    editingWaypointTemplate.value = null
+    // Update both waypoints and template name
+    routeTemplatesStore.templates[index].waypoints = waypoints
+    if (editingRouteTemplate.value.name) {
+      routeTemplatesStore.templates[index].name = editingRouteTemplate.value.name
+    }
+    setStatus(`Route template "${editingRouteTemplate.value.name}" saved`, 'success')
+    editingRouteTemplate.value = null
   }
 }
+
+// Status helper
+const setStatus = (message, type = 'info') => {
+  status.value = { message, type }
+  setTimeout(() => {
+    status.value = { message: '', type: 'info' }
+  }, 3000)
+}
+
+// Initialize - no automatic loading
+onMounted(() => {
+  // Resources are not loaded automatically
+  // User can click "Load Sample Data" or "Load Config" buttons to load data
+})
 </script>
 
 <!-- Global styles (applied to entire app) -->
@@ -694,7 +763,7 @@ body {
   background: var(--color-primary-hover);
 }
 
-/* Tab buttons for Groups/Waypoints */
+/* Tab buttons for Units/Waypoints */
 .content-tabs {
   display: flex;
   gap: var(--spacing-md);
@@ -790,8 +859,8 @@ body {
   display: none;
 }
 
-/* Content layout wrappers for groups and waypoints */
-.group-content-layout,
+/* Content layout wrappers for units and waypoints */
+.unit-content-layout,
 .waypoint-content-layout {
   width: 100%;
   flex: 1;

@@ -6,13 +6,8 @@
 
 <script setup>
 // FormRow - Grid-based form row for two-column layouts
-// Usage:
-// <FormRow>
-//   <FormLabel label="Field 1" />
-//   <FormInput v-model="field1" />
-//   <FormLabel label="Field 2" />
-//   <FormInput v-model="field2" />
-// </FormRow>
+// Use with form-group children containing label+input pairs
+// Each form-group takes one column, pairs wrap to additional rows
 </script>
 
 <style scoped>
@@ -21,5 +16,12 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
+}
+
+/* Ensure form-group children are direct grid items (both raw div and FormGroup component) */
+.form-row > .form-group,
+.form-row > .form-group.vue {
+  display: flex;
+  flex-direction: column;
 }
 </style>

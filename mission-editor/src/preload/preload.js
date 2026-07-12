@@ -11,13 +11,17 @@ contextBridge.exposeInMainWorld('api', {
     clear: () => ipcRenderer.invoke('refpoints:clear')
   },
 
-  // Templates
-  templates: {
-    loadAll: () => ipcRenderer.invoke('template:load-all'),
-    loadFromFiles: () => ipcRenderer.invoke('templates:load-from-files'),
-    clear: () => ipcRenderer.invoke('templates:clear'),
-    // Waypoint templates loading (separate namespace for clarity)
-    waypointTemplatesLoadFromFiles: () => ipcRenderer.invoke('waypoint-templates:load-from-files')
+  // Unit templates
+  unitTemplates: {
+    loadAll: () => ipcRenderer.invoke('unit-template:load-all'),
+    loadFromFiles: () => ipcRenderer.invoke('unit-templates:load-from-files'),
+    clear: () => ipcRenderer.invoke('unit-templates:clear')
+  },
+
+  // Route templates
+  routeTemplates: {
+    loadFromFiles: () => ipcRenderer.invoke('route-templates:load-from-files'),
+    clear: () => ipcRenderer.invoke('route-templates:clear')
   },
 
   // Configuration loading

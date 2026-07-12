@@ -1,5 +1,5 @@
 <template>
-  <EditorPanel title="Group Editor" variant="primary">
+  <EditorPanel title="Unit Editor" variant="primary">
     <template #toolbar>
       <Button @click="onSave" variant="primary">Save</Button>
       <Button @click="onCancel" variant="secondary">Cancel</Button>
@@ -9,50 +9,38 @@
       <!-- Basic Settings -->
       <CollapsiblePanel v-model:expanded="expandedSections.basic" title="Basic Settings">
         <div class="editor-section">
-          <div class="form-row">
-            <div class="form-group">
-              <FormLabel label="Group Name" required />
-              <FormInput
-                v-model="group.groupName"
-                placeholder="Enter group name..."
-              />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
+          <FormRow>
+            <FormGroup>
+              <FormLabel label="Unit Name" required />
+              <FormInput v-model="unit.unitName" placeholder="Enter unit name..." />
+            </FormGroup>
+          </FormRow>
+          <FormRow>
+            <FormGroup>
               <FormLabel label="Category" required />
-              <FormSelect
-                v-model="group.category"
-                :options="categoryOptions"
-                placeholder="Select category..."
-              />
-            </div>
-            <div class="form-group">
+              <FormSelect v-model="unit.category" :options="categoryOptions" placeholder="Select category..." />
+            </FormGroup>
+            <FormGroup>
               <FormLabel label="Country" />
-              <FormInput
-                v-model="group.country"
-                placeholder="Enter country..."
-              />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
+              <FormInput v-model="unit.country" placeholder="Enter country..." />
+            </FormGroup>
+          </FormRow>
+          <FormRow>
+            <FormGroup>
               <FormLabel label="Task" />
-              <FormSelect
-                v-model="group.task"
-                :options="taskOptions"
-                placeholder="Select task..."
-              />
-            </div>
-            <div class="form-group">
+              <FormSelect v-model="unit.task" :options="taskOptions" placeholder="Select task..." />
+            </FormGroup>
+            <FormGroup>
               <FormLabel label="Trigger Type" required />
-              <FormSelect
-                v-model="group.triggerType"
-                :options="triggerTypeOptions"
-                placeholder="Select trigger type..."
-              />
-            </div>
-          </div>
+              <FormSelect v-model="unit.triggerType" :options="triggerTypeOptions" placeholder="Select trigger type..." />
+            </FormGroup>
+          </FormRow>
+          <FormRow>
+            <FormGroup>
+              <FormLabel label="Unit Type" />
+              <FormSelect v-model="unit.unitType" :options="unitTypeOptions" placeholder="Select unit type from template..." />
+            </FormGroup>
+          </FormRow>
         </div>
       </CollapsiblePanel>
 
@@ -60,47 +48,33 @@
       <CollapsiblePanel v-model:expanded="expandedSections.units" title="Units">
         <div class="editor-section">
           <div
-            v-for="(unit, index) in group.units"
+            v-for="(unit, index) in unit.units"
             :key="index"
             class="unit-row"
             :data-unit-num="index + 1"
           >
             <div class="unit-number-badge">{{ index + 1 }}</div>
             <div class="unit-content">
-              <div class="form-row">
-                <div class="form-group">
+              <FormRow>
+                <FormGroup>
                   <FormLabel label="Unit Type" required />
-                  <FormInput
-                    v-model="unit.type"
-                    placeholder="Enter unit type..."
-                  />
-                </div>
-                <div class="form-group">
+                  <FormInput v-model="unit.type" placeholder="Enter unit type..." />
+                </FormGroup>
+                <FormGroup>
                   <FormLabel label="Quantity" required />
-                  <FormInput
-                    v-model="unit.quantity"
-                    type="number"
-                    :min="1"
-                    placeholder="1"
-                  />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
+                  <FormInput v-model="unit.quantity" type="number" :min="1" placeholder="1" />
+                </FormGroup>
+              </FormRow>
+              <FormRow>
+                <FormGroup>
                   <FormLabel label="Name" />
-                  <FormInput
-                    v-model="unit.name"
-                    placeholder="Enter unit name..."
-                  />
-                </div>
-                <div class="form-group">
+                  <FormInput v-model="unit.name" placeholder="Enter unit name..." />
+                </FormGroup>
+                <FormGroup>
                   <FormLabel label="Role" />
-                  <FormInput
-                    v-model="unit.role"
-                    placeholder="Enter role..."
-                  />
-                </div>
-              </div>
+                  <FormInput v-model="unit.role" placeholder="Enter role..." />
+                </FormGroup>
+              </FormRow>
               <Button variant="danger" size="sm" @click="removeUnit(index)">
                 <span class="btn-remove-icon">- Delete Unit</span>
               </Button>
@@ -115,137 +89,129 @@
       <!-- Placement Section -->
       <CollapsiblePanel v-model:expanded="expandedSections.placement" title="Placement">
         <div class="editor-section">
-          <div class="form-row">
-            <div class="form-group">
+          <FormRow>
+            <FormGroup>
               <FormLabel label="Placement Mode" required />
               <FormSelect
-                v-model="group.placement.mode"
+                v-model="unit.placement.mode"
                 :options="placementModeOptions"
                 placeholder="Select placement mode..."
               />
-            </div>
-          </div>
+            </FormGroup>
+          </FormRow>
 
           <!-- Bearing + Distance -->
-          <div v-if="group.placement.mode === 'BEARING_DISTANCE'" class="placement-config">
-            <div class="form-row">
-              <div class="form-group">
+          <div v-if="unit.placement.mode === 'BEARING_DISTANCE'" class="placement-config">
+            <FormRow>
+              <FormGroup>
                 <FormLabel label="Reference Type" required />
                 <FormSelect
-                  v-model="group.placement.reference"
+                  v-model="unit.placement.reference"
                   :options="referenceTypeOptions"
                   placeholder="Select reference..."
                 />
-              </div>
-              <div class="form-group">
+              </FormGroup>
+              <FormGroup>
                 <FormLabel label="Reference Name" required />
                 <FormSelect
-                  v-model="group.placement.referenceName"
+                  v-model="unit.placement.referenceName"
                   :options="getReferenceOptions"
                   placeholder="Select a reference..."
                 />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
+              </FormGroup>
+            </FormRow>
+            <FormRow>
+              <FormGroup>
                 <FormLabel label="Bearing (degrees)" />
                 <FormInput
-                  v-model="group.placement.bearing"
+                  v-model="unit.placement.bearing"
                   type="number"
                   :min="0"
                   :max="360"
                   placeholder="0-360"
                 />
-              </div>
-              <div class="form-group">
+              </FormGroup>
+              <FormGroup>
                 <FormLabel label="Distance (NM)" />
                 <FormInput
-                  v-model="group.placement.distance"
+                  v-model="unit.placement.distance"
                   type="number"
                   :min="0"
                   placeholder="0"
                 />
-              </div>
-            </div>
+              </FormGroup>
+            </FormRow>
           </div>
 
           <!-- Direct Coordinates -->
-          <div v-if="group.placement.mode === 'COORDINATE'" class="placement-config">
-            <div class="form-row">
-              <div class="form-group">
+          <div v-if="unit.placement.mode === 'COORDINATE'" class="placement-config">
+            <FormRow>
+              <FormGroup>
                 <FormLabel label="X Coordinate" />
-                <FormInput
-                  v-model="group.placement.x"
-                  type="number"
-                  placeholder="X coordinate"
-                />
-              </div>
-              <div class="form-group">
+                <FormInput v-model="unit.placement.x" type="number" placeholder="X coordinate" />
+              </FormGroup>
+              <FormGroup>
                 <FormLabel label="Y Coordinate" />
-                <FormInput
-                  v-model="group.placement.y"
-                  type="number"
-                  placeholder="Y coordinate"
-                />
-              </div>
-            </div>
+                <FormInput v-model="unit.placement.y" type="number" placeholder="Y coordinate" />
+              </FormGroup>
+            </FormRow>
           </div>
 
           <!-- Airbase Ramp -->
-          <div v-if="group.placement.mode === 'AIRBASE_RAMP'" class="placement-config">
-            <div class="form-row">
-              <div class="form-group">
+          <div v-if="unit.placement.mode === 'AIRBASE_RAMP'" class="placement-config">
+            <FormRow>
+              <FormGroup>
                 <FormLabel label="Airbase Name" required />
                 <FormSelect
-                  v-model="group.placement.referenceName"
+                  v-model="unit.placement.referenceName"
                   :options="airbaseOptions"
                   placeholder="Select airbase..."
                 />
-              </div>
-              <div class="form-group">
+              </FormGroup>
+              <FormGroup>
                 <FormLabel label="Parking Slot" />
                 <FormInput
-                  v-model="group.placement.parking"
+                  v-model="unit.placement.parking"
                   type="number"
                   placeholder="Enter parking slot..."
                 />
-              </div>
-            </div>
+              </FormGroup>
+            </FormRow>
           </div>
 
           <!-- Zone Center -->
-          <div v-if="group.placement.mode === 'ZONE_CENTER'" class="placement-config">
-            <div class="form-group">
+          <div v-if="unit.placement.mode === 'ZONE_CENTER'" class="placement-config">
+            <FormGroup>
               <FormLabel label="Zone Name" required />
               <FormSelect
-                v-model="group.placement.referenceName"
+                v-model="unit.placement.referenceName"
                 :options="zoneOptions"
                 placeholder="Select zone..."
               />
-            </div>
+            </FormGroup>
           </div>
 
           <!-- Waypoint -->
-          <div v-if="group.placement.mode === 'WAYPOINT'" class="placement-config">
-            <div class="form-row">
-              <div class="form-group">
-                <FormLabel label="Group Name" required />
+          <div v-if="unit.placement.mode === 'WAYPOINT'" class="placement-config">
+            <FormRow>
+              <FormGroup>
+                <FormLabel label="Unit Name" required />
                 <FormSelect
-                  v-model="group.placement.waypointGroup"
-                  :options="waypointGroupOptions"
-                  placeholder="Select existing group..."
+                  v-model="unit.placement.waypointUnit"
+                  :options="waypointUnitOptions"
+                  placeholder="Select existing unit..."
                 />
-              </div>
-              <div class="form-group">
+              </FormGroup>
+              <FormGroup>
                 <FormLabel label="Waypoint Number" />
                 <FormInput
-                  v-model="group.placement.waypointNumber"
+                  v-model="unit.placement.waypointNumber"
                   type="number"
                   :min="1"
                   placeholder="1"
                 />
-              </div>
-            </div>
+              </FormGroup>
+            </FormRow>
           </div>
         </div>
       </CollapsiblePanel>
@@ -254,41 +220,29 @@
       <CollapsiblePanel v-model:expanded="expandedSections.route" title="Route">
         <div class="editor-section">
           <div
-            v-for="(wp, index) in group.route"
+            v-for="(wp, index) in unit.route"
             :key="index"
             class="waypoint-row"
             :data-waypoint-num="index + 1"
           >
             <div class="waypoint-number-badge">{{ index + 1 }}</div>
             <div class="waypoint-content">
-              <div class="form-row">
-                <div class="form-group">
+              <FormRow>
+                <FormGroup>
                   <FormLabel label="Type" required />
-                  <FormSelect
-                    v-model="wp.type"
-                    :options="waypointTypeOptions"
-                    placeholder="Select type..."
-                  />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
+                  <FormSelect v-model="wp.type" :options="waypointTypeOptions" placeholder="Select type..." />
+                </FormGroup>
+              </FormRow>
+              <FormRow>
+                <FormGroup>
                   <FormLabel label="Altitude" />
-                  <FormInput
-                    v-model="wp.altitude"
-                    type="number"
-                    placeholder="Altitude in meters"
-                  />
-                </div>
-                <div class="form-group">
+                  <FormInput v-model="wp.altitude" type="number" placeholder="Altitude in meters" />
+                </FormGroup>
+                <FormGroup>
                   <FormLabel label="Speed" />
-                  <FormInput
-                    v-model="wp.speed"
-                    type="number"
-                    placeholder="Speed in m/s"
-                  />
-                </div>
-              </div>
+                  <FormInput v-model="wp.speed" type="number" placeholder="Speed in m/s" />
+                </FormGroup>
+              </FormRow>
               <Button variant="danger" @click="removeWaypoint(index)" size="sm">
                 <span class="btn-remove-icon">- Delete Waypoint</span>
               </Button>
@@ -306,13 +260,13 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
-import { useTemplatesStore } from '../../stores/templates'
-import { Button, FormLabel, FormInput, FormSelect, EditorPanel, CollapsiblePanel } from '../ui'
+import { useUnitTemplatesStore } from '../../stores/unitTemplates'
+import { Button, FormLabel, FormInput, FormSelect, FormRow, FormGroup, EditorPanel, CollapsiblePanel } from '../ui'
 
-const emit = defineEmits(['group-change', 'save', 'cancel', 'update'])
+const emit = defineEmits(['unit-change', 'save', 'cancel', 'update'])
 
 const props = defineProps({
-  group: {
+  unit: {
     type: Object,
     required: true
   },
@@ -332,7 +286,7 @@ const props = defineProps({
 })
 
 const refpointsStore = useRefpointsStore()
-const templatesStore = useTemplatesStore()
+const unitTemplatesStore = useUnitTemplatesStore()
 
 // Category options
 const categoryOptions = computed(() => [
@@ -362,6 +316,21 @@ const triggerTypeOptions = computed(() => [
   { value: 'OBJECTIVE_COMPLETE', label: 'Objective Complete' }
 ])
 
+// Unit type options (from unit templates)
+const unitTypeOptions = computed(() => {
+  const types = []
+  Object.values(unitTemplatesStore.categories).forEach(category => {
+    category.forEach(template => {
+      template.units?.forEach(unit => {
+        if (unit.type && !types.find(t => t.value === unit.type)) {
+          types.push({ value: unit.type, label: `${unit.type} (${template.name})` })
+        }
+      })
+    })
+  })
+  return types
+})
+
 // Placement mode options
 const placementModeOptions = computed(() => [
   { value: 'BEARING_DISTANCE', label: 'Bearing + Distance' },
@@ -389,15 +358,15 @@ const zoneOptions = computed(() => {
   return (props.refpoints.zones || []).map(z => ({ value: z.name, label: z.name }))
 })
 
-// Computed waypoint group options
-const waypointGroupOptions = computed(() => {
-  // Will be populated by parent with all groups
+// Computed waypoint unit options
+const waypointUnitOptions = computed(() => {
+  // Will be populated by parent with all units
   return []
 })
 
 // Get reference name options based on reference type
 const getReferenceOptions = computed(() => {
-  const refType = props.group.placement.reference
+  const refType = props.unit.placement.reference
   switch (refType) {
     case 'bullseye':
       return (props.refpoints.bullseyes || []).map(b => ({ value: b.name, label: b.name }))
@@ -429,38 +398,38 @@ const expandedSections = ref({
 })
 
 const addUnit = () => {
-  props.group.units.push({ type: '', quantity: 1, name: '', role: '' })
-  updateGroup()
+  props.unit.units.push({ type: '', quantity: 1, name: '', role: '' })
+  updateUnit()
 }
 
 const removeUnit = (index) => {
-  props.group.units.splice(index, 1)
-  updateGroup()
+  props.unit.units.splice(index, 1)
+  updateUnit()
 }
 
 const addWaypoint = () => {
-  props.group.route.push({ type: 'orbit', altitude: 3000, speed: 500 })
-  updateGroup()
+  props.unit.route.push({ type: 'orbit', altitude: 3000, speed: 500 })
+  updateUnit()
 }
 
 const removeWaypoint = (index) => {
-  props.group.route.splice(index, 1)
-  updateGroup()
+  props.unit.route.splice(index, 1)
+  updateUnit()
 }
 
-// Emit group changes
-const updateGroup = () => {
-  emit('group-change', props.group)
-  emit('update', props.group)
+// Emit unit changes
+const updateUnit = () => {
+  emit('unit-change', props.unit)
+  emit('update', props.unit)
 }
 
-// Watch for deep changes in group
-watch(() => props.group, (newVal) => {
-  emit('group-change', newVal)
+// Watch for deep changes in unit
+watch(() => props.unit, (newVal) => {
+  emit('unit-change', newVal)
 }, { deep: true })
 
 const onSave = () => {
-  emit('save', props.group)
+  emit('save', props.unit)
 }
 
 const onCancel = () => {

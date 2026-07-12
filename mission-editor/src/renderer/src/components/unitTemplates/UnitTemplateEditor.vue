@@ -1,5 +1,5 @@
 <template>
-  <EditorPanel title="Template Editor" variant="primary">
+  <EditorPanel title="Unit Template Editor" variant="primary">
     <template #toolbar>
       <Button @click="onSave" variant="primary">Save</Button>
       <Button @click="onCancel" variant="secondary">Cancel</Button>
@@ -9,16 +9,13 @@
       <!-- Basic Settings -->
       <CollapsiblePanel v-model:expanded="expandedSections.basic" title="Basic Settings">
         <div class="editor-section">
-          <div class="form-row">
+          <FormRow>
             <div class="form-group">
-              <FormLabel label="Template Name" required />
-              <FormInput
-                v-model="editingTemplate.name"
-                placeholder="Enter template name..."
-              />
+              <FormLabel label="Unit Template Name" required />
+              <FormInput v-model="editingTemplate.name" placeholder="Enter unit template name..." />
             </div>
-          </div>
-          <div class="form-row">
+          </FormRow>
+          <FormRow>
             <div class="form-group">
               <FormLabel label="Category" required />
               <FormSelect
@@ -29,12 +26,9 @@
             </div>
             <div class="form-group">
               <FormLabel label="Description" />
-              <FormInput
-                v-model="editingTemplate.description"
-                placeholder="Enter description..."
-              />
+              <FormInput v-model="editingTemplate.description" placeholder="Enter description..." />
             </div>
-          </div>
+          </FormRow>
         </div>
       </CollapsiblePanel>
 
@@ -83,9 +77,9 @@
                   />
                 </div>
               </div>
-              <button class="btn-remove" @click="removeUnit(index)" title="Remove Unit">
+              <Button variant="danger" size="sm" @click="removeUnit(index)" title="Remove Unit">
                 <span class="btn-remove-icon">✕</span>
-              </button>
+              </Button>
             </div>
           </div>
           <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">
@@ -133,9 +127,9 @@
                   />
                 </div>
               </div>
-              <button class="btn-remove" @click="removeWaypoint(index)" title="Remove Waypoint">
+              <Button variant="danger" size="sm" @click="removeWaypoint(index)" title="Remove Waypoint">
                 <span class="btn-remove-icon">✕</span>
-              </button>
+              </Button>
             </div>
           </div>
           <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">
@@ -149,9 +143,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { Button, FormLabel, FormInput, FormSelect, EditorPanel, CollapsiblePanel } from '../ui'
+import { Button, FormLabel, FormInput, FormSelect, FormRow, EditorPanel, CollapsiblePanel } from '../ui'
 
-const emit = defineEmits(['template-change', 'save', 'cancel'])
+const emit = defineEmits(['unit-template-change', 'save', 'cancel'])
 
 const props = defineProps({
   editingTemplate: {
@@ -185,33 +179,33 @@ const waypointTypeOptions = computed(() => [
 // Add/remove functions
 const addUnit = () => {
   props.editingTemplate.units.push({ name: '', type: '', quantity: 1, role: '' })
-  emit('template-change', props.editingTemplate)
+  emit('unit-template-change', props.editingTemplate)
 }
 
 const removeUnit = (index) => {
   props.editingTemplate.units.splice(index, 1)
-  emit('template-change', props.editingTemplate)
+  emit('unit-template-change', props.editingTemplate)
 }
 
 const addWaypoint = () => {
   props.editingTemplate.defaultRoute.push({ type: 'orbit', altitude: 3000, speed: 500 })
-  emit('template-change', props.editingTemplate)
+  emit('unit-template-change', props.editingTemplate)
 }
 
 const removeWaypoint = (index) => {
   props.editingTemplate.defaultRoute.splice(index, 1)
-  emit('template-change', props.editingTemplate)
+  emit('unit-template-change', props.editingTemplate)
 }
 
 // Emit changes on deep modifications
 watch(() => props.editingTemplate, (newVal) => {
-  emit('template-change', newVal)
+  emit('unit-template-change', newVal)
 }, { deep: true })
 
 const onSave = () => {
   if (!props.editingTemplate.name) {
     window.dispatchEvent(new CustomEvent('group-status', {
-      detail: { message: 'Template name is required', type: 'error' }
+      detail: { message: 'Unit template name is required', type: 'error' }
     }))
     return
   }

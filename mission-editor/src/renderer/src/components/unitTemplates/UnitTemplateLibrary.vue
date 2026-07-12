@@ -1,26 +1,27 @@
 <template>
-  <div class="template-library">
+  <div class="unit-template-library">
     <div class="library-header">
       <FormInput
         v-model="searchQuery"
         type="search"
-        placeholder="Search templates..."
+        placeholder="Search unit templates..."
       />
     </div>
 
     <div class="category-tabs">
-      <button
+      <Button
         v-for="category in categories"
         :key="category"
-        :class="['tab-btn', { active: activeCategory === category }]"
+        variant="ghost"
+        :class="{ active: activeCategory === category }"
         @click="activeCategory = category"
       >
         {{ category.charAt(0).toUpperCase() + category.slice(1) }}
-      </button>
+      </Button>
     </div>
 
     <EmptyState v-if="getTemplatesByCategory(activeCategory).length === 0">
-      <p>No {{ activeCategory }} templates configured.</p>
+      <p>No {{ activeCategory }} unit templates configured.</p>
     </EmptyState>
 
     <div class="list-scroll list-scroll-fixed-height">
@@ -33,10 +34,10 @@
             </p>
           </div>
           <div class="list-item-actions">
-            <Button variant="primary" size="sm" @click.stop="editTemplate(template, activeCategory)" title="Edit Template">
+            <Button variant="primary" size="sm" @click.stop="editTemplate(template, activeCategory)" title="Edit Unit Template">
               Edit
             </Button>
-            <Button variant="danger" size="sm" @click.stop="deleteTemplate(template, activeCategory)" title="Delete Template">
+            <Button variant="danger" size="sm" @click.stop="deleteTemplate(template, activeCategory)" title="Delete Unit Template">
               <span class="btn-remove-icon">Delete</span>
             </Button>
           </div>
@@ -51,12 +52,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useTemplatesStore } from '../../stores/templates'
+import { useUnitTemplatesStore } from '../../stores/unitTemplates'
 import { Button, FormInput, EmptyState } from '../ui'
 
-const emit = defineEmits(['template-apply', 'template-edit', 'template-delete'])
+const emit = defineEmits(['unit-template-apply', 'unit-template-edit', 'unit-template-delete'])
 
-const store = useTemplatesStore()
+const store = useUnitTemplatesStore()
 
 const searchQuery = ref('')
 const categories = ['air', 'ground', 'naval', 'support']
@@ -72,15 +73,15 @@ const getTemplatesByCategory = (category) => {
 }
 
 const applyTemplate = (template, category) => {
-  emit('template-apply', { template, category })
+  emit('unit-template-apply', { template, category })
 }
 
 const editTemplate = (template, category) => {
-  emit('template-edit', { template, category })
+  emit('unit-template-edit', { template, category })
 }
 
 const deleteTemplate = (template, category) => {
-  emit('template-delete', { template, category })
+  emit('unit-template-delete', { template, category })
 }
 </script>
 

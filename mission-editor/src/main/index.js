@@ -84,25 +84,25 @@ function createWindow () {
 }
 
 function registerIpcHandlers () {
-  // Template loading
-  ipcMain.handle('template:load-all', async (event) => {
-    const templatesDir = path.join(__dirname, '../../config/templates')
-    if (!fs.existsSync(templatesDir)) return []
+  // Unit template loading
+  ipcMain.handle('unit-template:load-all', async (event) => {
+    const unitTemplatesDir = path.join(__dirname, '../../config/unit_templates')
+    if (!fs.existsSync(unitTemplatesDir)) return []
 
-    const files = fs.readdirSync(templatesDir)
-    const templates = {}
+    const files = fs.readdirSync(unitTemplatesDir)
+    const unitTemplates = {}
 
     for (const file of files) {
       if (file.endsWith('.json')) {
-        const content = fs.readFileSync(path.join(templatesDir, file), 'utf8')
+        const content = fs.readFileSync(path.join(unitTemplatesDir, file), 'utf8')
         try {
-          templates[file.replace('.json', '')] = JSON.parse(content)
+          unitTemplates[file.replace('.json', '')] = JSON.parse(content)
         } catch (e) {
-          console.error(`Error parsing template file ${file}:`, e)
+          console.error(`Error parsing unit template file ${file}:`, e)
         }
       }
     }
-    return templates
+    return unitTemplates
   })
 
   // Reference points
@@ -147,16 +147,21 @@ function registerIpcHandlers () {
     return { success: false }
   })
 
-  // Template save
-  ipcMain.handle('template:save', async (event, template, name) => {
-    const templatesDir = path.join(__dirname, '../../config/templates')
-    if (!fs.existsSync(templatesDir)) {
-      fs.mkdirSync(templatesDir, { recursive: true })
+  // Template save (legacy alias for unit-template:save)
+  ipcMain.handle('unit-template:save', async (event, template, name) => {
+    const unitTemplatesDir = path.join(__dirname, '../../config/unit_templates')
+    if (!fs.existsSync(unitTemplatesDir)) {
+      fs.mkdirSync(unitTemplatesDir, { recursive: true })
     }
 
-    const filePath = path.join(templatesDir, `${name}.json`)
+    const filePath = path.join(unitTemplatesDir, `${name}.json`)
     fs.writeFileSync(filePath, JSON.stringify(template, null, 2))
     return { success: true, path: filePath }
+  })
+
+  // Legacy template save alias
+  ipcMain.handle('template:save', async (event, template, name) => {
+    return ipcMain.handlers['unit-template:save'](event, template, name)
   })
 
   // Load JSON configuration from a selected file
@@ -188,19 +193,19 @@ function registerIpcHandlers () {
   // Check if config files exist
   ipcMain.handle('config:check', async () => {
     const refpointsPath = path.join(__dirname, '../../config/refpoints.json')
-    const templatesDir = path.join(__dirname, '../../config/templates')
+    const unitTemplatesDir = path.join(__dirname, '../../config/unit_templates')
     const samplePath = path.join(__dirname, '../../sample-data.json')
 
     const hasRefpoints = fs.existsSync(refpointsPath)
-    const hasTemplates = fs.existsSync(templatesDir) && fs.readdirSync(templatesDir).length > 0
+    const hasUnitTemplates = fs.existsSync(unitTemplatesDir) && fs.readdirSync(unitTemplatesDir).length > 0
     const hasSample = fs.existsSync(samplePath)
 
     return {
-      hasConfig: hasRefpoints || hasTemplates,
+      hasConfig: hasRefpoints || hasUnitTemplates,
       hasSample,
       paths: {
         refpoints: refpointsPath,
-        templates: templatesDir
+        unitTemplates: unitTemplatesDir
       }
     }
   })
@@ -220,11 +225,11 @@ function registerIpcHandlers () {
     }
   })
 
-  // Load templates from selected file(s) - returns parsed template objects
-  ipcMain.handle('templates:load-from-files', async (event) => {
+  // Load unit templates from selected file(s) - returns parsed template objects
+  ipcMain.handle('unit-templates:load-from-files', async (event) => {
     const result = await dialog.showOpenDialog(win, {
-      title: 'Select Template File(s)',
-      defaultPath: path.join(__dirname, '../../config/templates'),
+      title: 'Select Unit Template File(s)',
+      defaultPath: path.join(__dirname, '../../config/unit_templates'),
       filters: [
         { name: 'JSON Files', extensions: ['json'] },
         { name: 'All Files', extensions: ['*'] }
@@ -236,7 +241,7 @@ function registerIpcHandlers () {
       return { success: false, error: 'No file selected' }
     }
 
-    const templates = {}
+    const unitTemplates = {}
     const errors = []
 
     for (const filePath of result.filePaths) {
@@ -251,12 +256,12 @@ function registerIpcHandlers () {
         if (Array.isArray(data)) {
           // Simple array format - infer category from filename
           const category = path.basename(filePath, '.json').replace('_templates', '').replace('_templates', '')
-          templates[category] = data
+          unitTemplates[category] = data
         } else if (typeof data === 'object') {
           // Object format with category keys
           Object.keys(data).forEach(key => {
             if (Array.isArray(data[key])) {
-              templates[key] = data[key]
+              unitTemplates[key] = data[key]
             }
           })
         }
@@ -265,11 +270,16 @@ function registerIpcHandlers () {
       }
     }
 
-    if (Object.keys(templates).length === 0 && errors.length > 0) {
+    if (Object.keys(unitTemplates).length === 0 && errors.length > 0) {
       return { success: false, error: errors[0].error }
     }
 
-    return { success: true, templates, errors }
+    return { success: true, unitTemplates, errors }
+  })
+
+  // Legacy alias for templates:load-from-files
+  ipcMain.handle('templates:load-from-files', async (event) => {
+    return ipcMain.handlers['unit-templates:load-from-files'](event)
   })
 
   // Load reference points from selected file
@@ -316,10 +326,10 @@ function registerIpcHandlers () {
     }
   })
 
-  // Load waypoint templates from selected file(s)
-  ipcMain.handle('waypoint-templates:load-from-files', async (event) => {
+  // Load route templates from selected file(s)
+  ipcMain.handle('route-templates:load-from-files', async (event) => {
     const result = await dialog.showOpenDialog(win, {
-      title: 'Select Waypoint Template File(s)',
+      title: 'Select Route Template File(s)',
       defaultPath: path.join(__dirname, '../../config'),
       filters: [
         { name: 'JSON Files', extensions: ['json'] },
@@ -332,7 +342,7 @@ function registerIpcHandlers () {
       return { success: false, error: 'No file selected' }
     }
 
-    const waypointTemplates = {}
+    const routeTemplates = {}
     const errors = []
 
     for (const filePath of result.filePaths) {
@@ -347,13 +357,13 @@ function registerIpcHandlers () {
         if (Array.isArray(data)) {
           // Array format - convert to object
           data.forEach(t => {
-            if (t.id) waypointTemplates[t.id] = t
+            if (t.id) routeTemplates[t.id] = t
           })
         } else if (typeof data === 'object') {
           // Object format
           Object.keys(data).forEach(key => {
             if (data[key] && data[key].waypoints) {
-              waypointTemplates[key] = data[key]
+              routeTemplates[key] = data[key]
             }
           })
         }
@@ -362,11 +372,11 @@ function registerIpcHandlers () {
       }
     }
 
-    if (Object.keys(waypointTemplates).length === 0 && errors.length > 0) {
+    if (Object.keys(routeTemplates).length === 0 && errors.length > 0) {
       return { success: false, error: errors[0].error }
     }
 
-    return { success: true, waypointTemplates, errors }
+    return { success: true, routeTemplates, errors }
   })
 
   // Clear all reference points
@@ -375,7 +385,13 @@ function registerIpcHandlers () {
   })
 
   // Clear all templates
-  ipcMain.handle('templates:clear', async () => {
+  // Clear all unit templates
+  ipcMain.handle('unit-templates:clear', async () => {
+    return { success: true }
+  })
+
+  // Clear all route templates
+  ipcMain.handle('route-templates:clear', async () => {
     return { success: true }
   })
 }

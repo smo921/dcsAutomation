@@ -116,7 +116,8 @@ export const useRefpointsStore = defineStore('refpoints', {
       this.lines.forEach(l => existingNames.add(l.name))
 
       // Add bullseyes
-      (fullConfig.refpoints?.bullseyes || []).forEach(b => {
+      const bullseyes = fullConfig.refpoints?.bullseyes || []
+      bullseyes.forEach(b => {
         let name = b.name
         let counter = 1
         while (existingNames.has(name)) {
@@ -128,7 +129,8 @@ export const useRefpointsStore = defineStore('refpoints', {
       })
 
       // Add airbases
-      (fullConfig.refpoints?.airbases || []).forEach(ab => {
+      const airbases = fullConfig.refpoints?.airbases || []
+      airbases.forEach(ab => {
         let name = ab.name
         let counter = 1
         while (existingNames.has(name)) {
@@ -140,7 +142,8 @@ export const useRefpointsStore = defineStore('refpoints', {
       })
 
       // Add zones
-      (fullConfig.refpoints?.zones || []).forEach(z => {
+      const zones = fullConfig.refpoints?.zones || []
+      zones.forEach(z => {
         let name = z.name
         let counter = 1
         while (existingNames.has(name)) {
@@ -152,7 +155,8 @@ export const useRefpointsStore = defineStore('refpoints', {
       })
 
       // Add lines
-      (fullConfig.refpoints?.lines || []).forEach(l => {
+      const lines = fullConfig.refpoints?.lines || []
+      lines.forEach(l => {
         let name = l.name
         let counter = 1
         while (existingNames.has(name)) {
