@@ -10,9 +10,9 @@ dofile("scripts/unit_management.lua")
 dofile("tests/test_framework.lua")
 
 -- Tests for ConfigStandards
-describe("ConfigStandards.createSector", function()
-    it("should create a sector with default values", function()
-        local config = ConfigStandards.createSector({
+describe("ConfigStandards.createUnit", function()
+    it("should create a unit with default values", function()
+        local config = ConfigStandards.createUnit({
             groupName = "Test_Group"
         })
 
@@ -23,7 +23,7 @@ describe("ConfigStandards.createSector", function()
     end)
 
     it("should override default values", function()
-        local config = ConfigStandards.createSector({
+        local config = ConfigStandards.createUnit({
             groupName = "Test_Group",
             category = "AIRPLANE",
             country = "USA"
@@ -67,9 +67,9 @@ describe("ConfigStandards.createDrone", function()
     end)
 end)
 
-describe("ConfigStandards.createRadarSector", function()
-    it("should create a radar sector with merged properties", function()
-        local radar = ConfigStandards.createRadarSector({
+describe("ConfigStandards.createRadarUnit", function()
+    it("should create a radar unit with merged properties", function()
+        local radar = ConfigStandards.createRadarUnit({
             groupName = "Test_Radar",
             maxDetectRange = 150000.0
         })
@@ -139,11 +139,11 @@ end)
 
 describe("ConfigStandards.validateConfig", function()
     it("should validate correct configuration", function()
-        local config = ConfigStandards.createSector({
+        local config = ConfigStandards.createUnit({
             groupName = "Test_Group"
         })
 
-        local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.SECTOR_TEMPLATE)
+        local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.UNIT_TEMPLATE)
 
         assert_true(valid)
         assert_nil(error)
@@ -170,7 +170,7 @@ describe("ConfigStandards.validateConfig", function()
             triggerType = "RADAR"
         }
 
-        local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.SECTOR_TEMPLATE)
+        local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.UNIT_TEMPLATE)
 
         assert_false(valid)
         assert_true(string.find(error or "", "Missing required field") ~= nil)

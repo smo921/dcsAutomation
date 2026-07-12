@@ -62,10 +62,10 @@ function TestUtils.createMockUnit(config)
     }
 end
 
--- Common sector configurations for testing
-TestUtils.SectorConfigs = {
+-- Common unit configurations for testing
+TestUtils.UnitConfigs = {
     basicGround = {
-        groupName = "Test_Ground_Sector",
+        groupName = "Test_Ground_Unit",
         category = "GROUND",
         units = {"T-72B", "BMP-2"},
         placement = {
@@ -77,7 +77,7 @@ TestUtils.SectorConfigs = {
     },
 
     basicAir = {
-        groupName = "Test_Air_Sector",
+        groupName = "Test_Air_Unit",
         category = "AIRPLANE",
         units = {"F-16C_50"},
         placement = {
@@ -86,8 +86,8 @@ TestUtils.SectorConfigs = {
         }
     },
 
-    radarSector = {
-        groupName = "Test_Radar_Sector",
+    radarUnit = {
+        groupName = "Test_Radar_Unit",
         category = "GROUND",
         triggerType = "RADAR",
         unitType = "1L13 EWR",

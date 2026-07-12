@@ -1,17 +1,17 @@
 # Configuration Files
 
-This directory contains configuration files for the DCS Mission Editor. These files define reference points, templates, and waypoint patterns that can be used when building missions.
+This directory contains configuration files for the DCS Mission Editor. These files define reference points, unit templates, and route templates that can be used when building missions.
 
 ## File Structure
 
 ```
 config/
 ├── refpoints.json              # Reference points (bullseye, airbases, zones, lines)
-├── templates/                  # Reusable mission group templates
-│   ├── air_templates.json      # Air unit templates (AWACS, patrols, bombers)
-│   ├── ground_templates.json   # Ground unit templates (convoy, SAM, armor)
-│   └── support_templates.json  # Support asset templates (tankers, command posts)
-└── waypoint_templates.json     # Predefined flight path patterns (optional)
+├── unit_templates/             # Reusable unit configurations
+│   ├── air.json                # Air unit templates (AWACS, patrols, bombers)
+│   ├── ground.json             # Ground unit templates (convoy, SAM, armor)
+│   └── support.json            # Support asset templates (tankers, command posts)
+└── route_templates.json        # Predefined route patterns (optional)
 ```
 
 ## File Descriptions
@@ -69,18 +69,19 @@ Support asset templates:
 - **AWACS Support** - Combined AWACS and tanker packages
 - **Air Defense HQ** - Command and control elements
 
-### waypoint_templates.json (Optional)
+### route_templates.json (Optional)
 
-Predefined flight path patterns that can be applied to groups. This file is optional - if missing, the editor uses in-app defaults.
+Predefined route patterns that can be applied to units. This file is optional - if missing, the editor uses in-app defaults.
 
 **Structure:**
-- Each template has an `id` key and a `waypoints` array
-- Waypoints define the flight path with types:
+- Each template has an `id` key and a `route` array
+- Route points define the flight path with types:
   - `orbit` - Circular loiter pattern
-  - `turn_point` - Waypoint with heading
+  - `turn_point` - Route point with coordinates
   - `heading` - Direct course
+  - `landing` - Landing at an airbase
 
-**Usage:** Templates like "awacs_orbit" or "cas_sweep" can be applied to groups to define their route without manually creating each waypoint.
+**Usage:** Templates like "awacs_orbit" or "cas_sweep" can be applied to units to define their route without manually creating each route point.
 
 ## Template Format Reference
 
@@ -130,7 +131,7 @@ Predefined flight path patterns that can be applied to groups. This file is opti
 |------|-------------|-----------------|
 | `orbit` | Circular loiter | `radius`, `altitude`, `speed`, `pattern` (`clockwise`/`counter-clockwise`) |
 | `heading` | Straight course | `altitude`, `speed` |
-| `waypoint` | Simple waypoints | `altitude`, `speed` |
+| `turn_point` | Turn point with coordinates | `x`, `y`, `altitude`, `speed` |
 
 ## Editing Templates
 

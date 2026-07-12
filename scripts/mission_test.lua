@@ -1,5 +1,5 @@
 -- ==============================================================================
--- CENTRALIZED SECTOR MANIFEST
+-- CENTRALIZED UNIT MANIFEST
 -- Edit your mission profiles here using NATO units:
 --   - Altitude: feet
 --   - Distance: nautical miles (NM)
@@ -10,7 +10,7 @@
 -- BLUE COALITION - FRIENDLY FORCES
 -- ==============================================================================
 
-local BlueSectorManifest = {
+local BlueUnitManifest = {
     -- ============================================================================
     -- AIR UNIT: Enroute CAP Falcon (Airbase ramp anchoring)
     -- ============================================================================
@@ -185,9 +185,9 @@ local BlueSectorManifest = {
 -- RED COALITION - OPFOR
 -- ==============================================================================
 
-local RedSectorManifest = {
+local RedUnitManifest = {
     -- ============================================================================
-    -- SECTOR 1: Border Patrol (IMMEDIATE - disabled by default)
+    -- UNIT 1: Border Patrol (IMMEDIATE - disabled by default)
     -- ============================================================================
     {
         enabled = false,
@@ -402,16 +402,16 @@ local RedSectorManifest = {
 -- ==============================================================================
 
 function startDynamicTheatre()
-    -- Initialize red coalition sectors
-    if RedSectorManifest then
-        local redSectors = MissionDirector.new(RedSectorManifest)
-        redSectors:startEngineLoop()
+    -- Initialize red coalition units
+    if RedUnitManifest then
+        local redUnits = MissionDirector.new(RedUnitManifest)
+        redUnits:startEngineLoop()
     end
 
-    -- Initialize blue coalition sectors
-    if BlueSectorManifest then
-        local blueSectors = MissionDirector.new(BlueSectorManifest)
-        blueSectors:startEngineLoop()
+    -- Initialize blue coalition units
+    if BlueUnitManifest then
+        local blueUnits = MissionDirector.new(BlueUnitManifest)
+        blueUnits:startEngineLoop()
     end
 end
 

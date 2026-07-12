@@ -185,65 +185,72 @@
       ]
     }
   ],
-  "templates": {
-    "air_templates": [
+  "unitTemplates": {
+    "air": [
       {
         "id": "awacs_patrol",
         "name": "AWACS Patrol",
-        "category": "air",
         "units": [{"name": "AWACS Lead", "type": "E-3A", "quantity": 2}],
-        "waypointTemplate": "awacs_orbit"
+        "route": "awacs_orbit"
       },
       {
         "id": "air_defense_mig29",
         "name": "Air Defense Patrol (MiG-29)",
-        "category": "air",
         "units": [{"name": "Air Defense Lead", "type": "MiG-29", "quantity": 3}],
-        "waypointTemplate": "interceptor_scramble"
+        "route": "interceptor_scramble"
       },
       {
         "id": "close_air_support_a10",
         "name": "Close Air Support (A-10)",
-        "category": "air",
         "units": [{"name": "CAS Lead", "type": "A-10C", "quantity": 3}],
-        "waypointTemplate": "cas_sweep"
+        "route": "cas_sweep"
       }
     ],
-    "ground_templates": [
+    "ground": [
       {
         "id": "air_defense_battery",
         "name": "Air Defense Battery",
-        "category": "ground",
         "units": [{"name": "SAM Battery", "type": "S-300PMU1", "quantity": 4}]
       },
       {
         "id": "mechanized_infantry",
         "name": "Mechanized Infantry Patrol",
-        "category": "ground",
         "units": [{"name": "BMP Platoon", "type": "BMP-2", "quantity": 6}]
       },
       {
         "id": "armored_company",
         "name": "Armored Company",
-        "category": "ground",
         "units": [
           {"name": "Tank Platoon", "type": "T-90", "quantity": 4},
           {"name": "Mech Platoon", "type": "BMP-2", "quantity": 3}
         ]
+      },
+      {
+        "id": "naval_patrol_no_route",
+        "name": "Naval Patrol (No Route Template)",
+        "units": [
+          {"name": "Patrol Boat 1", "type": "T800", "quantity": 2},
+          {"name": "Patrol Boat 2", "type": "T800", "quantity": 2}
+        ],
+        "route": [
+          {"type": "turn_point", "x": 0, "y": 0, "altitude": 0, "speed": 40},
+          {"type": "turn_point", "x": 5, "y": 0, "altitude": 0, "speed": 40},
+          {"type": "orbit", "x": 5, "y": 5, "altitude": 0, "speed": 35, "radius": 2, "pattern": "clockwise"}
+        ]
       }
     ]
   },
-  "waypoint_templates": {
+  "route_templates": {
     "awacs_orbit": {
       "name": "AWACS Orbit Pattern",
-      "waypoints": [
+      "route": [
         {"type": "orbit", "x": 0, "y": 0, "altitude": 31000, "speed": 290, "radius": 5, "pattern": "clockwise"},
         {"type": "orbit", "x": 5, "y": 0, "altitude": 31000, "speed": 290, "radius": 5, "pattern": "clockwise"}
       ]
     },
     "cas_sweep": {
       "name": "CAS Sweep Pattern",
-      "waypoints": [
+      "route": [
         {"type": "turn_point", "x": 10, "y": 5, "altitude": 3000, "speed": 500, "heading": 0},
         {"type": "orbit", "x": 0, "y": 0, "altitude": 3000, "speed": 400, "radius": 3, "pattern": "clockwise"},
         {"type": "turn_point", "x": -10, "y": 5, "altitude": 3000, "speed": 500, "heading": 180}
@@ -251,7 +258,7 @@
     },
     "striker_flight": {
       "name": "Striker Flight Attack Pattern",
-      "waypoints": [
+      "route": [
         {"type": "turn_point", "x": 5, "y": 10, "altitude": 5000, "speed": 600, "heading": 0},
         {"type": "turn_point", "x": 0, "y": 15, "altitude": 5000, "speed": 600, "heading": 0},
         {"type": "turn_point", "x": -5, "y": 10, "altitude": 5000, "speed": 600, "heading": 0}
@@ -259,14 +266,14 @@
     },
     "tanker_station": {
       "name": "Tanker Station Pattern",
-      "waypoints": [
+      "route": [
         {"type": "orbit", "x": 0, "y": 0, "altitude": 25000, "speed": 300, "radius": 8, "pattern": "clockwise"},
         {"type": "orbit", "x": 8, "y": 0, "altitude": 25000, "speed": 300, "radius": 8, "pattern": "clockwise"}
       ]
     },
     "interceptor_scramble": {
       "name": "Interceptor Scramble Pattern",
-      "waypoints": [
+      "route": [
         {"type": "turn_point", "x": 0, "y": 0, "altitude": 40000, "speed": 700, "heading": 0},
         {"type": "turn_point", "x": 10, "y": 5, "altitude": 40000, "speed": 700, "heading": 90}
       ]

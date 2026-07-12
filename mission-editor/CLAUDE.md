@@ -50,8 +50,21 @@ renderer/          # Vue.js renderer (UI layer)
 - `naval.json` - Naval units
 - `support.json` - Support assets (tankers, command posts)
 
-**Route Templates:** Prebuilt waypoint sequences stored in `config/route_templates/`:
+**Route Templates:** Prebuilt route sequences stored in `config/route_templates/`:
 - Reusable route definitions for units
+
+### Terminology Notes
+
+The project uses updated terminology to distinguish between concepts:
+
+| Old Term | New Term | Description |
+|----------|----------|-------------|
+| Group | Unit | A mission asset (air, ground, naval) |
+| Waypoint | Route Point | A single node in a route |
+| Template | Unit Template | Prebuilt unit configuration |
+| Waypoint Template | Route Template | Prebuilt route pattern |
+
+**Note:** In DCS terminology, "Waypoint" is the general term for any coordinate on a flight plan. For ground units, the default type is "Waypoint" (simple movement to coordinate). For air units, types include "orbit", "turn_point", "heading", and "landing".
 
 ### Tech Stack
 
@@ -260,7 +273,29 @@ Defines all reference points used for coordinate positioning:
 JSON files defining reusable mission unit configurations. Templates can be applied directly in the UI or modified as JSON.
 
 ### Route Templates (`config/route_templates/`)
-JSON files defining reusable waypoint sequences for unit routes.
+JSON files defining reusable route sequences for units. Each route consists of route points with specific types:
+
+**Route Point Types:**
+- `orbit` - Circular loiter pattern (air units)
+- `turn_point` - Turn point with coordinates (air units)
+- `heading` - Direct course (air units)
+- `landing` - Landing at an airbase (air units)
+- `waypoint` - Standard ground movement waypoint (ground units)
+
+**Structure:**
+```json
+{
+  "route_templates": {
+    "awacs_orbit": {
+      "name": "AWACS Orbit Pattern",
+      "route": [
+        {"type": "orbit", "x": 0, "y": 0, "altitude": 31000, "speed": 290, "radius": 5, "pattern": "clockwise"},
+        {"type": "orbit", "x": 5, "y": 0, "altitude": 31000, "speed": 290, "radius": 5, "pattern": "clockwise"}
+      ]
+    }
+  }
+}
+```
 
 ## Export Formats
 

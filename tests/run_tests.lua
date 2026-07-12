@@ -45,7 +45,7 @@ local test_files = {
     "tests/test_config_standards.lua",
     "tests/test_spatial_solver.lua",
     "tests/test_radar_handler.lua",
-    "tests/test_sector.lua",
+    "tests/test_unit.lua",
     "tests/test_waypoint_builder.lua",
     "tests/test_awacs_tanker.lua",
     "tests/test_group_check.lua"

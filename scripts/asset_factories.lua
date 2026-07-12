@@ -795,7 +795,7 @@ function AssetFactories.buildPlatoon(config, x, y)
 end
 
 --- Builds a point defense ring (air defense units around a radar).
--- @param config table Radar sector configuration
+-- @param config table Radar unit configuration
 -- @param x number Center X coordinate (meters)
 -- @param y number Center Y coordinate (meters)
 -- @return table Point defense payload ready for mist.dynAdd

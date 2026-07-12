@@ -17,35 +17,35 @@
           </FormRow>
         </div>
 
-        <!-- Scrollable Waypoint List -->
+        <!-- Scrollable Route List -->
         <div class="list-scroll" :style="{ height: listHeight + 'px' }">
           <div class="list-container">
-            <!-- Waypoint Type Header -->
+            <!-- Route Type Header -->
             <div class="list-item-header">
-              <span class="waypoint-index">#</span>
-              <span class="waypoint-type">Type</span>
-              <span class="waypoint-details">Details</span>
+              <span class="route-index">#</span>
+              <span class="route-type">Type</span>
+              <span class="route-details">Details</span>
               <span></span>
             </div>
 
-            <!-- Waypoint Edit Rows -->
+            <!-- Route Edit Rows -->
             <div
-              v-for="(wp, index) in waypoints"
+              v-for="(wp, index) in route"
               :key="index"
               class="list-item"
             >
               <div class="list-item-content">
-                <span class="waypoint-index">{{ index + 1 }}</span>
+                <span class="route-index">{{ index + 1 }}</span>
 
                 <!-- Type selector -->
                 <FormSelect
                   v-model="wp.type"
-                  :options="waypointTypeOptions"
-                  class="waypoint-type"
+                  :options="routeTypeOptions"
+                  class="route-type"
                 />
 
                 <!-- Type-specific fields -->
-                <div class="waypoint-edit-fields">
+                <div class="route-edit-fields">
                   <!-- Orbit fields -->
                   <div v-if="wp.type === 'orbit'">
                     <FormRow>
@@ -106,13 +106,13 @@
                 </div>
               </div>
 
-              <Button variant="danger" size="sm" @click="removeWaypoint(index)" title="Remove Waypoint">
+              <Button variant="danger" size="sm" @click="removeRouteItem(index)" title="Remove Route Point">
                 <span class="btn-remove-icon">✕</span>
               </Button>
             </div>
 
-            <Button @click="addWaypoint" variant="secondary" size="sm" block>
-              <span>+</span> Add Waypoint
+            <Button @click="addRouteItem" variant="secondary" size="sm" block>
+              <span>+</span> Add Route Point
             </Button>
           </div>
         </div>
@@ -125,10 +125,10 @@
 import { ref, computed, watch } from 'vue'
 import { FormInput, FormSelect, FormRow, FormLabel, EditorPanel, Button } from '../ui'
 
-const emit = defineEmits(['save', 'cancel', 'update:waypoints', 'update:templateName'])
+const emit = defineEmits(['save', 'cancel', 'update:route', 'update:templateName'])
 
 const props = defineProps({
-  waypoints: {
+  route: {
     type: Array,
     default: () => []
   },
@@ -150,12 +150,12 @@ watch(localTemplateName, (newVal) => {
   emit('update:templateName', newVal)
 })
 
-// Watch for waypoints changes and emit to parent
-watch(() => props.waypoints, (newVal) => {
-  emit('update:waypoints', newVal)
+// Watch for route changes and emit to parent
+watch(() => props.route, (newVal) => {
+  emit('update:route', newVal)
 }, { deep: true })
 
-const waypointTypeOptions = computed(() => [
+const routeTypeOptions = computed(() => [
   { value: 'orbit', label: 'Orbit' },
   { value: 'turn_point', label: 'Turning Point' },
   { value: 'heading', label: 'Heading' },
@@ -174,9 +174,9 @@ const airbaseOptions = computed(() => {
 // Use resize composable for list height (optional - can be removed)
 const listHeight = ref(250)
 
-// Add a new waypoint with default values
-const addWaypoint = () => {
-  props.waypoints.push({
+// Add a new route point with default values
+const addRouteItem = () => {
+  props.route.push({
     type: 'orbit',
     altitude: 3000,
     speed: 500,
@@ -188,12 +188,12 @@ const addWaypoint = () => {
   })
 }
 
-const removeWaypoint = (index) => {
-  props.waypoints.splice(index, 1)
+const removeRouteItem = (index) => {
+  props.route.splice(index, 1)
 }
 
 const onSave = () => {
-  emit('save', props.waypoints)
+  emit('save', props.route)
 }
 
 const onCancel = () => {
@@ -204,5 +204,5 @@ const onCancel = () => {
 <style scoped>
 /* Uses shared classes from _components.css: editor-content, editor-section */
 /* Uses shared classes from _list-editor.css: list-scroll, list-container, list-item, list-item-header */
-/* Custom classes for waypoint-specific styling */
+/* Custom classes for route-specific styling */
 </style>

@@ -2,7 +2,7 @@
 -- UNIT MANAGEMENT MODULE
 -- ==============================================================================
 -- Provides core logic for unit management, spatial calculations, trigger
--- evaluation, and sector handling for DCS World mission scripting.
+-- evaluation, and unit handling for DCS World mission scripting.
 -- Units in config: altitude in feet, distance in nautical miles, speed in knots.
 -- Conversions to meters/m/s handled by constructors/factories.
 -- ==============================================================================
@@ -17,7 +17,7 @@
 ConfigStandards = {}
 
 -- Configuration Templates - All use feet, nautical miles, knots for user clarity
-ConfigStandards.SECTOR_TEMPLATE = {
+ConfigStandards.UNIT_TEMPLATE = {
     enabled = true,
     category = "GROUND", -- "GROUND", "AIRPLANE", "HELICOPTER"
     triggerType = "IMMEDIATE", -- "IMMEDIATE", "TRIGGER_ZONE", "RADAR", "OBJECTIVE_COMPLETE"
@@ -81,7 +81,7 @@ ConfigStandards.DRONE_TEMPLATE = {
     targetY = nil
 }
 
-ConfigStandards.RADAR_SECTOR_TEMPLATE = {
+ConfigStandards.RADAR_UNIT_TEMPLATE = {
     radarFilterEnabled = false,
     pointDefense = nil,
     maxDetectRange = 200000.0, -- METERS (DCS internal)
@@ -125,9 +125,9 @@ function ConfigStandards.mergeConfig(defaults, overrides)
     return result
 end
 
--- Create a new sector configuration based on the template
-function ConfigStandards.createSector(config)
-    return ConfigStandards.mergeConfig(ConfigStandards.SECTOR_TEMPLATE, config or {})
+-- Create a new unit configuration based on the template
+function ConfigStandards.createUnit(config)
+    return ConfigStandards.mergeConfig(ConfigStandards.UNIT_TEMPLATE, config or {})
 end
 
 -- Create a new route waypoint based on the template.
@@ -161,22 +161,22 @@ function ConfigStandards.createDrone(config)
     return drone
 end
 
--- Create a new radar sector configuration based on the template
-function ConfigStandards.createRadarSector(config)
-    local sector = ConfigStandards.createSector(config)
-    local radarConfig = ConfigStandards.mergeConfig(ConfigStandards.RADAR_SECTOR_TEMPLATE, config or {})
+-- Create a new radar unit configuration based on the template
+function ConfigStandards.createRadarUnit(config)
+    local unit = ConfigStandards.createUnit(config)
+    local radarConfig = ConfigStandards.mergeConfig(ConfigStandards.RADAR_UNIT_TEMPLATE, config or {})
 
     for key, value in pairs(radarConfig) do
         if key ~= "triggeredUnits" then
-            sector[key] = value
+            unit[key] = value
         end
     end
 
     if config and config.triggeredUnits then
-        sector.triggeredUnits = ConfigStandards.createSector(config.triggeredUnits)
+        unit.triggeredUnits = ConfigStandards.createUnit(config.triggeredUnits)
     end
 
-    return sector
+    return unit
 end
 
 -- Create a new point defense configuration based on the template.
@@ -343,12 +343,12 @@ end
 -- ============================================================================
 
 MapMarkerRegistry = {
-    activeMarkers = {}, -- Keys: sector/group name, Value: { id = Int, lastPos = vec3, text = String }
+    activeMarkers = {}, -- Keys: unit/group name, Value: { id = Int, lastPos = vec3, text = String }
     activeRadios = {} -- Key: groupName, Value: menuRef
 }
 
 --- Generate a unique marker ID or update an existing one safely.
--- @param trackingKey string The tracking key (sector/group name)
+-- @param trackingKey string The tracking key (unit/group name)
 -- @param textMessage string The text message to display
 -- @param positionVector table The position {x, y, z}
 -- @return number newMarkerId The marker ID that was created
@@ -375,7 +375,7 @@ function MapMarkerRegistry.drawTacticalMark(trackingKey, textMessage, positionVe
 end
 
 --- Safely remove a marker from the F10 map layout.
--- @param trackingKey string The tracking key (sector/group name)
+-- @param trackingKey string The tracking key (unit/group name)
 function MapMarkerRegistry.clearMark(trackingKey)
     local markerData = MapMarkerRegistry.activeMarkers[trackingKey]
     if markerData then
@@ -735,11 +735,11 @@ function RadarHandler.logThreat(radarUnit, det)
 end
 
 --- Main routine that queries the radar for detections.
--- @param radarSector table The radar sector configuration
+-- @param radarUnit table The radar unit configuration
 -- @return boolean true if a threat was detected, false otherwise
-function RadarHandler.checkRadar(radarSector)
-    local groupName = radarSector.groupName
-    local radarGroup = Group.getByName(radarSector.groupName)
+function RadarHandler.checkRadar(radarUnitConfig)
+    local groupName = radarUnitConfig.groupName
+    local radarGroup = Group.getByName(radarUnitConfig.groupName)
     if not radarGroup then
         return false
     end
@@ -766,16 +766,16 @@ function RadarHandler.checkRadar(radarSector)
             -- Flag to decide whether target is found
             threatFound = true
 
-            if radarSector.radarFilterEnabled then
+            if radarUnitConfig.radarFilterEnabled then
                 threatFound = RadarHandler.isThreat(det)
             end
 
             -- Optional: ignore very far detections (maxDetectRange is in meters)
             if threatFound and det.distance then
                 local distance = RadarHandler.getDistanceInNM(radarUnit, det.object)
-                if distance and distance > radarSector.maxDetectRange then
+                if distance and distance > radarUnitConfig.maxDetectRange then
                     threatFound = false
-                    env.info(string.format("[RadarCheck] Skipping – beyond max range (%.1f nm).", radarSector.maxDetectRange))
+                    env.info(string.format("[RadarCheck] Skipping – beyond max range (%.1f nm).", radarUnitConfig.maxDetectRange))
                 end
             end
 
@@ -793,16 +793,16 @@ end
 -- ============================================================================
 
 TriggerRegistry = {
-    monitoredSectors = {},
+    monitoredUnits = {},
     actionQueue = {},
     isActive = false,
     tickInterval = 15.0 -- Evaluation heartbeat frequency in seconds
 }
 
---- Add a sector to the tracking pool.
--- @param sectorInstance table The sector instance to monitor
-function TriggerRegistry.register(sectorInstance)
-    table.insert(TriggerRegistry.monitoredSectors, sectorInstance)
+--- Add a unit to the tracking pool.
+-- @param unitInstance table The unit instance to monitor
+function TriggerRegistry.register(unitInstance)
+    table.insert(TriggerRegistry.monitoredUnits, unitInstance)
     TriggerRegistry._ensureHeartbeat()
 end
 
@@ -853,17 +853,17 @@ function TriggerRegistry._heartbeat(args, time)
     end
 
     -- --------------------------------------------------------------------------
-    -- JOB 2: PROCESS SECTOR MONITORING TRIGGERS
+    -- JOB 2: PROCESS UNIT MONITORING TRIGGERS
     -- --------------------------------------------------------------------------
-    for i = #TriggerRegistry.monitoredSectors, 1, -1 do
-        local sector = TriggerRegistry.monitoredSectors[i]
-        if TriggerRegistry.evaluate(sector) then
-            table.remove(TriggerRegistry.monitoredSectors, i)
+    for i = #TriggerRegistry.monitoredUnits, 1, -1 do
+        local unit = TriggerRegistry.monitoredUnits[i]
+        if TriggerRegistry.evaluate(unit) then
+            table.remove(TriggerRegistry.monitoredUnits, i)
         end
     end
 
     -- Sleep the loop if there's absolutely nothing left to do
-    if #TriggerRegistry.monitoredSectors == 0 and #TriggerRegistry.actionQueue == 0 then
+    if #TriggerRegistry.monitoredUnits == 0 and #TriggerRegistry.actionQueue == 0 then
         TriggerRegistry.isActive = false
         env.info("[TriggerRegistry] All queues cleared. Sleeping heartbeat loop.")
         return nil
@@ -872,31 +872,31 @@ function TriggerRegistry._heartbeat(args, time)
     return time + TriggerRegistry.tickInterval
 end
 
---- Process the sector. Return true to signal that all processing is complete.
--- @param sector table The sector to evaluate
--- @return boolean true if sector processing is complete
-function TriggerRegistry.evaluate(sector)
-    if sector.drone and sector.drone.enabled then
+--- Process the unit. Return true to signal that all processing is complete.
+-- @param unit table The unit to evaluate
+-- @return boolean true if unit processing is complete
+function TriggerRegistry.evaluate(unit)
+    if unit.drone and unit.drone.enabled then
         -- check if drone is dead and cleanup
-        local isDead = sector:checkDroneDead()
+        local isDead = unit:checkDroneDead()
         if isDead then
-            sector.drone.enabled = false
+            unit.drone.enabled = false
         end
     end
 
-    if sector.triggerType == "TRIGGER_ZONE" then
-        local triggered = TriggerRegistry._checkZone(sector.zoneName)
-        local shouldSpawn = shouldGroupSpawn(sector.groupName)
+    if unit.triggerType == "TRIGGER_ZONE" then
+        local triggered = TriggerRegistry._checkZone(unit.zoneName)
+        local shouldSpawn = shouldGroupSpawn(unit.groupName)
         if triggered and shouldSpawn then
-            sector:spawnUnits()
+            unit:spawnUnits()
         end
         return triggered
 
-    elseif sector.triggerType == "RADAR" then
-        TriggerRegistry._checkRadarDetection(sector)
+    elseif unit.triggerType == "RADAR" then
+        TriggerRegistry._checkRadarDetection(unit)
 
-    elseif sector.triggerType == "OBJECTIVE_COMPLETE" then
-        return TriggerRegistry._checkGroupDestroyed(sector.parentGroupName)
+    elseif unit.triggerType == "OBJECTIVE_COMPLETE" then
+        return TriggerRegistry._checkGroupDestroyed(unit.parentGroupName)
 
     else
         -- Unrecognized or faulty trigger logic drops safe fallback logging
@@ -920,11 +920,11 @@ function TriggerRegistry._checkZone(zoneName)
 end
 
 --- Check for radar detection and spawn triggered units.
--- @param radarSector table The radar sector configuration
-function TriggerRegistry._checkRadarDetection(radarSector)
-    local threatFound = RadarHandler.checkRadar(radarSector)
-    if threatFound and shouldGroupSpawn(radarSector.triggeredUnits.groupName) then
-        radarSector:spawnTriggeredUnits()
+-- @param radarUnit table The radar unit configuration
+function TriggerRegistry._checkRadarDetection(radarUnit)
+    local threatFound = RadarHandler.checkRadar(radarUnit)
+    if threatFound and shouldGroupSpawn(radarUnit.triggeredUnits.groupName) then
+        radarUnit:spawnTriggeredUnits()
     end
 end
 
@@ -1015,15 +1015,15 @@ function UnitSpawner.spawnGroup(config, defaultBullseye, groupName)
 end
 
 --- Spawns radar station with radar-specific logic.
--- @param radarSector table The radar sector configuration
+-- @param radarUnit table The radar unit configuration
 -- @return boolean true if spawned successfully
-function UnitSpawner.spawnRadarStation(radarSector)
-    if not radarSector.groupName or not radarSector.unitType then
+function UnitSpawner.spawnRadarStation(radarUnit)
+    if not radarUnit.groupName or not radarUnit.unitType then
         env.error("[UnitSpawner] Radar spawn failed: missing groupName or unitType")
         return false
     end
 
-    local zoneName = radarSector.placement.zoneName
+    local zoneName = radarUnit.placement.zoneName
     local finalX, finalY
 
     -- Strategy 1: Zone Randomization
@@ -1045,11 +1045,11 @@ function UnitSpawner.spawnRadarStation(radarSector)
     -- Strategy 2: Fallback to coordinates from placement config
     if not finalX or not finalY then
         finalX, finalY = SpatialSolver.findSafeGroundCoordinates(
-            SpatialSolver.getBullseye("blue"), radarSector.placement, radarSector.groupName)
+            SpatialSolver.getBullseye("blue"), radarUnit.placement, radarUnit.groupName)
     end
 
     -- Build and spawn radar
-    local radarPayload = AssetFactories.buildRadar(radarSector, finalX, finalY)
+    local radarPayload = AssetFactories.buildRadar(radarUnit, finalX, finalY)
     mist.dynAdd(radarPayload)
 
     -- Activate radar (Red/ALARM_STATE)
@@ -1058,18 +1058,18 @@ function UnitSpawner.spawnRadarStation(radarSector)
         if g and g:getController() then
             g:getController():setOption(AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.RED)
         end
-    end, { name = radarSector.groupName })
+    end, { name = radarUnit.groupName })
 
     -- Spawn air defense ring if configured
-    if radarSector.pointDefense and type(radarSector.pointDefense.units) == "table" and #radarSector.pointDefense.units > 0 then
-        local adPayload = AssetFactories.buildPointDefense(radarSector, finalX, finalY)
+    if radarUnit.pointDefense and type(radarUnit.pointDefense.units) == "table" and #radarUnit.pointDefense.units > 0 then
+        local adPayload = AssetFactories.buildPointDefense(radarUnit, finalX, finalY)
         mist.dynAdd(adPayload)
         AssetFactories.activatePointDefense(adPayload)
     end
 
     -- Spawn drone if configured
-    if radarSector.drone then
-        radarSector:spawnDynamicDrone(finalX, finalY)
+    if radarUnit.drone then
+        radarUnit:spawnDynamicDrone(finalX, finalY)
     end
 
     return true
@@ -1131,59 +1131,59 @@ function UnitRouteWaypoint.new(routeConfig)
 end
 
 -- ============================================================================
--- SECTION 9: SECTOR CLASS
+-- SECTION 9: UNIT CLASS
 -- ============================================================================
 
-Sector = {}
-Sector.__index = Sector
+Unit = {}
+Unit.__index = Unit
 local GlobalUnitGroupRegistry = {}
 
---- Create a new Sector instance.
--- @param sectorConfig table Sector configuration (feet, NM, knots)
--- @return table Sector instance
-function Sector:new(sectorConfig)
-    local self = setmetatable({}, Sector)
+--- Create a new Unit instance.
+-- @param unitConfig table Unit configuration (feet, NM, knots)
+-- @return table Unit instance
+function Unit:new(unitConfig)
+    local self = setmetatable({}, Unit)
     self.__index = self
 
-    if isNilOrEmpty(sectorConfig) then return self end
+    if isNilOrEmpty(unitConfig) then return self end
 
     -- Validate configuration against standard template
-    local valid, error = ConfigStandards.validateConfig(sectorConfig, ConfigStandards.SECTOR_TEMPLATE)
+    local valid, error = ConfigStandards.validateConfig(unitConfig, ConfigStandards.UNIT_TEMPLATE)
     if not valid then
-        env.info(string.format("[Sector] Configuration validation error: %s", error))
+        env.info(string.format("[Unit] Configuration validation error: %s", error))
     end
 
-    self.enabled = sectorConfig.enabled
+    self.enabled = unitConfig.enabled
 
     -- Activation Rules Configuration
-    self.category = sectorConfig.category or "GROUND"
-    self.triggerType = sectorConfig.triggerType or "IMMEDIATE"
-    self.zoneName = sectorConfig.zoneName
+    self.category = unitConfig.category or "GROUND"
+    self.triggerType = unitConfig.triggerType or "IMMEDIATE"
+    self.zoneName = unitConfig.zoneName
 
     -- Conditional Triggers parameters
-    self.groupName = sectorConfig.groupName
-    self.unitType = sectorConfig.unitType
+    self.groupName = unitConfig.groupName
+    self.unitType = unitConfig.unitType
 
-    self.parentGroupName = sectorConfig.parentGroupName
+    self.parentGroupName = unitConfig.parentGroupName
 
     -- Spawning Layout Parameters
-    self.country = sectorConfig.country or "Russia"
-    self.units = sectorConfig.units
+    self.country = unitConfig.country or "Russia"
+    self.units = unitConfig.units
 
-    if sectorConfig.placement then
-        self.placement = UnitPlacementConfig.new(sectorConfig.placement)
+    if unitConfig.placement then
+        self.placement = UnitPlacementConfig.new(unitConfig.placement)
     end
 
-    if sectorConfig.route then
+    if unitConfig.route then
         self.route = {}
-        for idx, wpConfig in ipairs(sectorConfig.route) do
+        for idx, wpConfig in ipairs(unitConfig.route) do
             table.insert(self.route, UnitRouteWaypoint.new(wpConfig))
         end
     end
 
-    self.task = sectorConfig.task
+    self.task = unitConfig.task
 
-    self.drone = sectorConfig.drone -- Stores the nested drone sub-table
+    self.drone = unitConfig.drone -- Stores the nested drone sub-table
 
     -- State Lifecycles
     self.hasSpawned = false
@@ -1194,7 +1194,7 @@ function Sector:new(sectorConfig)
 end
 
 --- Add drone radio menu to F10 map.
-function Sector:addDroneRadioMenu()
+function Unit:addDroneRadioMenu()
     if not self.drone then
         env.info("Not adding radio menu, no drone config found")
         return
@@ -1212,7 +1212,7 @@ function Sector:addDroneRadioMenu()
         missionCommands.removeItem(MapMarkerRegistry.activeRadios[droneName])
     end
 
-    -- Add an action button specific to this sector drone instance
+    -- Add an action button specific to this unit drone instance
     local cmdPath = missionCommands.addCommand(string.format("Request Update: %s", droneName),
         MapMarkerRegistry.rootMenu, function()
             local liveDrone = Group.getByName(droneName)
@@ -1236,7 +1236,7 @@ function Sector:addDroneRadioMenu()
                                 "[Radio] %s: Data updated. Check F10 tactical marks map.", droneName), 7)
                         else
                             trigger.action.outText(string.format(
-                                "[Radio] %s: Scanned target sector area. Target appears completely neutralized.",
+                                "[Radio] %s: Scanned target area. Target appears completely neutralized.",
                                 droneName), 7)
                             MapMarkerRegistry.clearMark(self.groupName)
                         end
@@ -1271,7 +1271,7 @@ end
 --- Assign drone to target zone for searching.
 -- @param droneGroupName string Name of the drone group
 -- @param targetGroupName string Name of the target group
-function Sector:assignDroneToTarget(droneGroupName, targetGroupName)
+function Unit:assignDroneToTarget(droneGroupName, targetGroupName)
     local droneGroup = Group.getByName(droneGroupName)
 
     if droneGroup then
@@ -1301,7 +1301,7 @@ end
 --- Create a tactical ground target markpoint on F10 map.
 -- @param targetX number Target X coordinate
 -- @param targetY number Target Y coordinate
-function Sector:createGroundTargetMarkpoint(targetX, targetY)
+function Unit:createGroundTargetMarkpoint(targetX, targetY)
     local groundGroup = Group.getByName(self.groupName)
     if groundGroup and groundGroup:getUnit(1) and groundGroup:getUnit(1):isExist() then
         local pos = groundGroup:getUnit(1):getPosition().p
@@ -1331,11 +1331,11 @@ end
 
 --- Check if the drone is dead.
 -- @return boolean true if drone is dead
-function Sector:checkDroneDead()
+function Unit:checkDroneDead()
     local droneName = self.drone.groupName
     local liveDrone = Group.getByName(droneName)
 
-    -- If the sector has spawned, but the drone attached to it is now missing/dead
+    -- If the unit has spawned, but the drone attached to it is now missing/dead
     if self.hasSpawned and (not liveDrone or liveDrone:getSize() == 0) then
         env.info(string.format("Drone %s is dead", droneName))
         -- clear map marker after 5 minutes of drone being shot down
@@ -1359,7 +1359,7 @@ end
 --- Spawn the dynamic drone asset.
 -- @param spawnX number Spawn X coordinate
 -- @param spawnY number Spawn Y coordinate
-function Sector:spawnDynamicDrone(spawnX, spawnY)
+function Unit:spawnDynamicDrone(spawnX, spawnY)
     if self.drone.enabled == false then
         return
     end
@@ -1381,7 +1381,7 @@ end
 
 --- Wraps UnitSpawner.spawnRadarStation for backwards compatibility.
 -- @return boolean true if spawned successfully
-function Sector:spawnRadarStation()
+function Unit:spawnRadarStation()
     return UnitSpawner.spawnRadarStation(self)
 end
 
@@ -1393,8 +1393,8 @@ local function spawnUnitsFromConfig(config)
     return UnitSpawner.spawnGroup(config, bullseye, config.groupName)
 end
 
---- Spawn this sector's units.
-function Sector:spawnUnits()
+--- Spawn this unit's units.
+function Unit:spawnUnits()
     if self.hasSpawned then
         return
     end
@@ -1410,8 +1410,8 @@ function Sector:spawnUnits()
     self.hasSpawned = true
 end
 
---- Spawn triggered units for this sector.
-function Sector:spawnTriggeredUnits()
+--- Spawn triggered units for this unit.
+function Unit:spawnTriggeredUnits()
     if self.triggeredUnits then
         local bullseye = SpatialSolver.getBullseye("blue")
         UnitSpawner.spawnGroup(self.triggeredUnits, bullseye, self.triggeredUnits.groupName)
@@ -1419,24 +1419,24 @@ function Sector:spawnTriggeredUnits()
 end
 
 -- ============================================================================
--- SECTION 10: RADAR SECTOR CLASS
+-- SECTION 10: RADAR UNIT CLASS
 -- ============================================================================
 
-RadarSector = {}
-RadarSector.__index = RadarSector
-setmetatable(RadarSector, { __index = Sector }) -- inherit from Sector
+RadarUnit = {}
+RadarUnit.__index = RadarUnit
+setmetatable(RadarUnit, { __index = Unit }) -- inherit from Unit
 
---- Create a new RadarSector instance.
--- @param config table Radar sector configuration (feet, NM, knots)
--- @return table RadarSector instance
-function RadarSector:new(config)
-    local s = Sector:new(config)
+--- Create a new RadarUnit instance.
+-- @param config table Radar unit configuration (feet, NM, knots)
+-- @return table RadarUnit instance
+function RadarUnit:new(config)
+    local s = Unit:new(config)
     setmetatable(s, self)
 
     -- Validate radar-specific configuration
-    local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.RADAR_SECTOR_TEMPLATE)
+    local valid, error = ConfigStandards.validateConfig(config, ConfigStandards.RADAR_UNIT_TEMPLATE)
     if not valid then
-        env.info(string.format("[RadarSector] Configuration validation error: %s", error))
+        env.info(string.format("[RadarUnit] Configuration validation error: %s", error))
     end
 
     s.radarFilterEnabled = config.radarFilterEnabled
@@ -1444,7 +1444,7 @@ function RadarSector:new(config)
     s.maxDetectRange = config.maxDetectRange or 200000.0
 
     if config.triggeredUnits then
-        s.triggeredUnits = Sector:new(config.triggeredUnits)
+        s.triggeredUnits = Unit:new(config.triggeredUnits)
     end
 
     return s
@@ -1461,20 +1461,20 @@ MissionDirector.__index = MissionDirector
 local GlobalDirectorRegistry = {}
 
 --- Create a new MissionDirector instance.
--- @param coalitionConfig table Array of sector configurations (feet, NM, knots)
+-- @param coalitionConfig table Array of unit configurations (feet, NM, knots)
 -- @return table MissionDirector instance
 function MissionDirector.new(coalitionConfig)
     local self = setmetatable({}, MissionDirector)
-    self.sectors = {}
-    for _, sector in ipairs(coalitionConfig) do
-        if sector.enabled == true then
-            local s
-            if sector.triggerType == "RADAR" then
-               s = RadarSector:new(sector)
+    self.units = {}
+    for _, unit in ipairs(coalitionConfig) do
+        if unit.enabled == true then
+            local u
+            if unit.triggerType == "RADAR" then
+               u = RadarUnit:new(unit)
             else
-                s = Sector:new(sector)
+                u = Unit:new(unit)
             end
-            table.insert(self.sectors, s)
+            table.insert(self.units, u)
         end
     end
     return self
@@ -1496,26 +1496,26 @@ function MissionDirector:initializeGlobalAssets(globalConfig)
     end
 end
 
---- Check if this sector's units are all dead.
+--- Check if this unit's units are all dead.
 -- @return boolean true if all units are dead
-function Sector:_checkOwnUnitsDead()
+function Unit:_checkOwnUnitsDead()
     -- Using unified checkGroupState: expectAlive=true means group should have active units
     -- Return not(checkGroupState) because we want to know if all are dead
     return not checkGroupState(self.groupName, true)
 end
 
---- Start the engine loop for all sectors.
--- Spawns immediate sectors immediately, registers others with TriggerRegistry.
+--- Start the engine loop for all units.
+-- Spawns immediate units immediately, registers others with TriggerRegistry.
 function MissionDirector:startEngineLoop()
-    for _, sector in ipairs(self.sectors) do
-        -- IMMEDIATE SECTORS: Fire instantly without scheduling background checks
-        if sector.triggerType == "IMMEDIATE" then
-            sector:spawnUnits()
-        elseif sector.triggerType == "RADAR" then
-            sector:spawnRadarStation()
+    for _, unit in ipairs(self.units) do
+        -- IMMEDIATE UNITS: Fire instantly without scheduling background checks
+        if unit.triggerType == "IMMEDIATE" then
+            unit:spawnUnits()
+        elseif unit.triggerType == "RADAR" then
+            unit:spawnRadarStation()
         end
         -- Hand off tracking responsibility directly to the master ticker registry
-        TriggerRegistry.register(sector)
+        TriggerRegistry.register(unit)
     end
 end
 

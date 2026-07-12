@@ -1,4 +1,4 @@
--- Test Sector class
+-- Test Unit class
 
 -- Load mocks first
 dofile("tests/mocks/dcs_mocks.lua")
@@ -13,48 +13,48 @@ dofile("tests/test_framework.lua")
 -- Load test utilities
 local TestUtils = dofile("tests/test_utils.lua")
 
--- Tests for Sector class
-describe("Sector:new", function()
-    it("should create a new sector with default values", function()
-        local sector_config = {
-            groupName = "Test_Sector",
+-- Tests for Unit class
+describe("Unit:new", function()
+    it("should create a new unit with default values", function()
+        local unit_config = {
+            groupName = "Test_Unit",
             units = {"T-72B", "BMP-2"}
         }
 
-        local sector = Sector:new(sector_config)
+        local unit = Unit:new(unit_config)
 
-        assert_not_nil(sector)
-        assert_equal("Test_Sector", sector.groupName)
-        assert_equal("GROUND", sector.category)
-        assert_equal("IMMEDIATE", sector.triggerType)
-        assert_equal("Russia", sector.country)
-        assert_false(sector.hasSpawned)
+        assert_not_nil(unit)
+        assert_equal("Test_Unit", unit.groupName)
+        assert_equal("GROUND", unit.category)
+        assert_equal("IMMEDIATE", unit.triggerType)
+        assert_equal("Russia", unit.country)
+        assert_false(unit.hasSpawned)
     end)
 
-    it("should create a sector with custom values", function()
-        local sector_config = {
-            groupName = "Test_Sector",
+    it("should create a unit with custom values", function()
+        local unit_config = {
+            groupName = "Test_Unit",
             category = "AIRPLANE",
             country = "USA",
             triggerType = "RADAR",
             units = {"F-16C_50"}
         }
 
-        local sector = Sector:new(sector_config)
+        local unit = Unit:new(unit_config)
 
-        assert_equal("Test_Sector", sector.groupName)
-        assert_equal("AIRPLANE", sector.category)
-        assert_equal("RADAR", sector.triggerType)
-        assert_equal("USA", sector.country)
+        assert_equal("Test_Unit", unit.groupName)
+        assert_equal("AIRPLANE", unit.category)
+        assert_equal("RADAR", unit.triggerType)
+        assert_equal("USA", unit.country)
     end)
 
     it("should handle empty configuration", function()
-        local sector = Sector:new(nil)
-        assert_not_nil(sector)
+        local unit = Unit:new(nil)
+        assert_not_nil(unit)
     end)
 end)
 
-describe("Sector:_checkOwnUnitsDead", function()
+describe("Unit:_checkOwnUnitsDead", function()
     it("should detect when units are dead", function()
         -- Mock a dead group
         local dead_group = {
@@ -71,13 +71,13 @@ describe("Sector:_checkOwnUnitsDead", function()
             return original_getByName(name)
         end
 
-        local sector_config = {
+        local unit_config = {
             groupName = "Dead_Group",
             units = {"T-72B"}
         }
 
-        local sector = Sector:new(sector_config)
-        local is_dead = sector:_checkOwnUnitsDead()
+        local unit = Unit:new(unit_config)
+        local is_dead = unit:_checkOwnUnitsDead()
 
         -- Restore original function
         Group.getByName = original_getByName
@@ -86,13 +86,13 @@ describe("Sector:_checkOwnUnitsDead", function()
     end)
 
     it("should detect when units are alive", function()
-        local sector_config = {
+        local unit_config = {
             groupName = "Alive_Group",
             units = {"T-72B", "BMP-2"}
         }
 
-        local sector = Sector:new(sector_config)
-        local is_dead = sector:_checkOwnUnitsDead()
+        local unit = Unit:new(unit_config)
+        local is_dead = unit:_checkOwnUnitsDead()
 
         assert_false(is_dead)
     end)

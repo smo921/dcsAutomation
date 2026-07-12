@@ -1,35 +1,35 @@
 <template>
-  <div class="waypoint-editor">
-    <!-- Scrollable Waypoint List -->
-    <div class="waypoint-list-scroll scrollbar-custom" :style="{ height: listHeight + 'px' }">
-      <div class="waypoint-list">
+  <div class="route-editor">
+    <!-- Scrollable Route List -->
+    <div class="route-list-scroll scrollbar-custom" :style="{ height: listHeight + 'px' }">
+      <div class="route-list">
         <div
-          v-for="(wp, index) in waypoints"
+          v-for="(wp, index) in route"
           :key="index"
-          class="waypoint-item"
-          :class="{ active: activeWaypoint === index }"
-          :data-waypoint-num="index + 1"
-          @click="setActiveWaypoint(index)"
+          class="route-item"
+          :class="{ active: activeRouteIndex === index }"
+          :data-route-num="index + 1"
+          @click="setActiveRouteIndex(index)"
         >
-          <div class="waypoint-header">
-            <span class="waypoint-index">{{ index + 1 }}</span>
-            <span class="waypoint-type">{{ wp.type }}</span>
-            <Button variant="danger" size="sm" @click.stop="removeWaypoint(index)" title="Remove Waypoint">
-              <span class="btn-remove">- Delete Waypoint</span>
+          <div class="route-header">
+            <span class="route-index">{{ index + 1 }}</span>
+            <span class="route-type">{{ wp.type }}</span>
+            <Button variant="danger" size="sm" @click.stop="removeRouteItem(index)" title="Remove Route Point">
+              <span class="btn-remove">- Delete Route Point</span>
             </Button>
           </div>
-          <div class="waypoint-coords" v-if="wp.x !== undefined && wp.y !== undefined">
+          <div class="route-coords" v-if="wp.x !== undefined && wp.y !== undefined">
             {{ Math.round(wp.x) }}, {{ Math.round(wp.y) }}
           </div>
-          <div class="waypoint-details" v-else>
+          <div class="route-details" v-else>
             <span v-if="wp.altitude">Alt: {{ wp.altitude }}</span>
             <span v-if="wp.altitude && wp.speed"> | </span>
             <span v-if="wp.speed">Spd: {{ wp.speed }}</span>
           </div>
         </div>
 
-        <Button @click="addWaypoint" variant="primary" block>
-          <span>+</span> Add Waypoint
+        <Button @click="addRouteItem" variant="primary" block>
+          <span>+</span> Add Route Point
         </Button>
       </div>
     </div>
@@ -39,12 +39,12 @@
       <span class="resizer-line"></span>
     </div>
 
-    <div class="waypoint-editor-form" v-if="activeWaypoint !== null">
+    <div class="route-editor-form" v-if="activeRouteIndex !== null">
       <div class="form-row">
-        <FormGroup label="Waypoint Type">
+        <FormGroup label="Route Type">
           <FormSelect
-            v-model="activeWp.type"
-            :options="waypointTypeOptions"
+            v-model="activeRp.type"
+            :options="routeTypeOptions"
           />
         </FormGroup>
       </div>
@@ -52,52 +52,52 @@
       <div class="form-row">
         <FormGroup label="Altitude (ft)">
           <FormInput
-            v-model="activeWp.altitude"
+            v-model="activeRp.altitude"
             type="number"
           />
         </FormGroup>
         <FormGroup label="Speed (kts)">
           <FormInput
-            v-model="activeWp.speed"
+            v-model="activeRp.speed"
             type="number"
           />
         </FormGroup>
       </div>
 
-      <div v-if="activeWp.type === 'orbit'" class="form-row">
+      <div v-if="activeRp.type === 'orbit'" class="form-row">
         <FormGroup label="Orbit Radius (NM)">
           <FormInput
-            v-model="activeWp.radius"
+            v-model="activeRp.radius"
             type="number"
           />
         </FormGroup>
         <FormGroup label="Pattern">
           <FormSelect
-            v-model="activeWp.pattern"
+            v-model="activeRp.pattern"
             :options="patternOptions"
           />
         </FormGroup>
       </div>
 
-      <div v-if="activeWp.type === 'turn_point' || activeWp.type === 'heading'" class="form-row">
+      <div v-if="activeRp.type === 'turn_point' || activeRp.type === 'heading'" class="form-row">
         <FormGroup label="X Offset (NM)">
           <FormInput
-            v-model="activeWp.x"
+            v-model="activeRp.x"
             type="number"
           />
         </FormGroup>
         <FormGroup label="Y Offset (NM)">
           <FormInput
-            v-model="activeWp.y"
+            v-model="activeRp.y"
             type="number"
           />
         </FormGroup>
       </div>
 
-      <div v-if="activeWp.type === 'landing'" class="form-group">
+      <div v-if="activeRp.type === 'landing'" class="form-group">
         <FormGroup label="Landing Airbase">
           <FormSelect
-            v-model="activeWp.airbase"
+            v-model="activeRp.airbase"
             :options="airbaseOptions"
           />
         </FormGroup>
@@ -106,7 +106,7 @@
       <div class="form-row">
         <FormGroup label="Bearing (°)">
           <FormInput
-            v-model="activeWp.heading"
+            v-model="activeRp.heading"
             type="number"
             :min="0"
             :max="360"
@@ -134,10 +134,10 @@ watch(() => store.airbases, (newAirbases) => {
   refpoints.value.airbases = newAirbases
 }, { immediate: true })
 
-const waypoints = ref([])
-const activeWaypoint = ref(null)
+const route = ref([])
+const activeRouteIndex = ref(null)
 
-const activeWp = ref({
+const activeRp = ref({
   type: 'orbit',
   x: 0,
   y: 0,
@@ -149,7 +149,7 @@ const activeWp = ref({
   airbase: ''
 })
 
-const waypointTypeOptions = computed(() => [
+const routeTypeOptions = computed(() => [
   { value: 'orbit', label: 'Orbit' },
   { value: 'turn_point', label: 'Turning Point' },
   { value: 'heading', label: 'Heading' },
@@ -165,14 +165,14 @@ const airbaseOptions = computed(() => {
   return refpoints.value.airbases.map(a => ({ value: a.name, label: a.name }))
 })
 
-const setActiveWaypoint = (index) => {
-  if (index < 0 || index >= waypoints.value.length) {
-    activeWaypoint.value = null
+const setActiveRouteIndex = (index) => {
+  if (index < 0 || index >= route.value.length) {
+    activeRouteIndex.value = null
     return
   }
-  activeWaypoint.value = index
-  const wp = waypoints.value[index]
-  activeWp.value = { ...wp }
+  activeRouteIndex.value = index
+  const wp = route.value[index]
+  activeRp.value = { ...wp }
 }
 
 // Use resize composable for list/form divider
@@ -184,28 +184,28 @@ const { startResize: startListResize, stopResize: stopListResize, onResize: onLi
   direction: 'vertical'
 })
 
-const addWaypoint = () => {
-  waypoints.value.push({ ...activeWp.value })
-  activeWaypoint.value = waypoints.value.length - 1
+const addRouteItem = () => {
+  route.value.push({ ...activeRp.value })
+  activeRouteIndex.value = route.value.length - 1
 }
 
-const removeWaypoint = (index) => {
-  waypoints.value.splice(index, 1)
-  if (activeWaypoint.value >= waypoints.value.length) {
-    activeWaypoint.value = waypoints.value.length - 1
+const removeRouteItem = (index) => {
+  route.value.splice(index, 1)
+  if (activeRouteIndex.value >= route.value.length) {
+    activeRouteIndex.value = route.value.length - 1
   }
-  if (waypoints.value.length === 0) {
-    activeWaypoint.value = null
+  if (route.value.length === 0) {
+    activeRouteIndex.value = null
   }
 }
 
-const emit = defineEmits(['update:waypoints'])
-watch(waypoints, (newWaypoints) => {
-  emit('update:waypoints', newWaypoints)
+const emit = defineEmits(['update:route'])
+watch(route, (newRoute) => {
+  emit('update:route', newRoute)
 }, { deep: true })
 </script>
 
 <style scoped>
-/* Uses shared classes from _components.css: waypoint-editor, editor-content */
-/* Uses shared classes from _list-editor.css: waypoint-editor-form */
+/* Uses shared classes from _components.css: route-editor, editor-content */
+/* Uses shared classes from _list-editor.css: route-editor-form */
 </style>

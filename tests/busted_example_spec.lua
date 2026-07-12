@@ -7,9 +7,9 @@ dofile("tests/mocks/dcs_mocks.lua")
 dofile("scripts/unit_management.lua")
 
 describe("ConfigStandards with Busted", function()
-    describe("createSector", function()
-        it("creates a sector with default values", function()
-            local config = ConfigStandards.createSector({
+    describe("createUnit", function()
+        it("creates a unit with default values", function()
+            local config = ConfigStandards.createUnit({
                 groupName = "Test_Group"
             })
 
@@ -20,7 +20,7 @@ describe("ConfigStandards with Busted", function()
         end)
 
         it("overrides default values", function()
-            local config = ConfigStandards.createSector({
+            local config = ConfigStandards.createUnit({
                 groupName = "Test_Group",
                 category = "AIRPLANE",
                 country = "USA"

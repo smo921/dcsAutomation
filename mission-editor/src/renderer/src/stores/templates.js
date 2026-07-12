@@ -9,7 +9,7 @@ export const useTemplatesStore = defineStore('templates', {
       naval: [],
       support: []
     },
-    waypointTemplates: []
+    routeTemplates: []
   }),
 
   actions: {
@@ -71,40 +71,41 @@ export const useTemplatesStore = defineStore('templates', {
       }
     },
 
-    loadWaypointTemplates(waypointTemplates) {
-      // Merge waypoint templates with existing ones instead of replacing
-      if (waypointTemplates) {
-        const existingMap = new Map(this.waypointTemplates.map(t => [t.id, t]))
-        Object.entries(waypointTemplates).forEach(([key, value]) => {
+    loadRouteTemplates(routeTemplates) {
+      // Merge route templates with existing ones instead of replacing
+      if (routeTemplates) {
+        const existingMap = new Map(this.routeTemplates.map(t => [t.id, t]))
+        Object.entries(routeTemplates).forEach(([key, value]) => {
           if (!existingMap.has(key)) {
-            this.waypointTemplates.push({ id: key, ...value })
+            this.routeTemplates.push({ id: key, ...value })
           }
         })
       }
     },
 
     loadFromFullConfig(fullConfig) {
-      // Merge templates from a full config object
-      const templates = fullConfig.templates || {}
-      for (const [key, items] of Object.entries(templates)) {
+      // Merge unit templates from a full config object
+      const templates = fullConfig.unitTemplates || fullConfig.templates || {}
+      for (const [templateKey, items] of Object.entries(templates)) {
         if (items && Array.isArray(items)) {
-          const category = key.replace('_templates', '')
+          // Handle both new "air"/"ground" and old "air_templates"/"ground_templates" format
+          const category = templateKey.replace('_templates', '')
           if (this.categories[category]) {
             this.categories[category] = this.mergeTemplates(this.categories[category], items)
           }
         }
       }
 
-      // Merge waypoint templates
-      const waypointTemplates = fullConfig.waypoint_templates || {}
-      this.loadWaypointTemplates(waypointTemplates)
+      // Merge route templates
+      const routeTemplates = fullConfig.route_templates || fullConfig.waypoint_templates || {}
+      this.loadRouteTemplates(routeTemplates)
     },
 
     clear() {
       for (const category of Object.keys(this.categories)) {
         this.categories[category] = []
       }
-      this.waypointTemplates = []
+      this.routeTemplates = []
     },
 
     getTemplateById(id) {
@@ -115,8 +116,8 @@ export const useTemplatesStore = defineStore('templates', {
       return null
     },
 
-    getWaypointTemplateById(id) {
-      return this.waypointTemplates.find(t => t.id === id) || null
+    getRouteTemplateById(id) {
+      return this.routeTemplates.find(t => t.id === id) || null
     },
 
     getCategories() {
@@ -151,10 +152,10 @@ export const useTemplatesStore = defineStore('templates', {
       }
     },
 
-    deleteWaypointTemplate(id) {
-      const index = this.waypointTemplates.findIndex(t => t.id === id)
+    deleteRouteTemplate(id) {
+      const index = this.routeTemplates.findIndex(t => t.id === id)
       if (index !== -1) {
-        this.waypointTemplates.splice(index, 1)
+        this.routeTemplates.splice(index, 1)
       }
     }
   }
