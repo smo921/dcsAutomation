@@ -1,0 +1,262 @@
+{
+  "refpoints": {
+    "bullseyes": [
+      {"name": "blue", "description": "Blue Coalition Forward Operating Base"},
+      {"name": "neutral", "description": "The Valley Corridor / Contested Zone"},
+      {"name": "red", "description": "Russian Federation Stronghold"}
+    ],
+    "zones": [
+      {"name": "Ridge_Line_Alpha", "description": "Phase 1: High-ground observation posts"},
+      {"name": "Valley_Road_Sector", "description": "Phase 2: Primary armored bottleneck"},
+      {"name": "Crossroads_Hub", "description": "Phase 3: Final defensive objective"}
+    ]
+  },
+  "route_templates": {
+    "russian_air_patrol": {
+      "name": "Russian Rapid Response Orbit",
+      "route": [
+        {
+          "type": "orbit",
+          "altitude": 25000,
+          "speed": 350,
+          "radius": 15,
+          "pattern": "clockwise",
+          "alt_type": "BARO"
+        },
+        {
+          "type": "orbit",
+          "altitude": 25000,
+          "speed": 350,
+          "radius": 15,
+          "pattern": "clockwise",
+          "alt_type": "BARO"
+        }
+      ]
+    },
+    "awacs_theater_orbit": {
+      "name": "Blue AWACS Theater Orbit",
+      "route": [
+        {
+          "type": "orbit",
+          "altitude": 30000,
+          "speed": 280,
+          "radius": 25,
+          "pattern": "clockwise",
+          "alt_type": "BARO"
+        }
+      ]
+    },
+    "ground_advance_slow": {
+      "name": "Tactical Ground Advance",
+      "route": [
+        {"type": "On Road", "speed": 35, "offsetX": 0.2, "offsetY": 0.1}
+      ]
+    },
+    "scout_infiltration": {
+      "name": "Scout Off-Road Movement",
+      "route": [
+        {"type": "Off Road", "speed": 25, "offsetX": 1.0, "offsetY": 1.0, "roe": "OPEN_FIRE"}
+      ]
+    }
+  },
+  "unit_templates": {
+    "ground": [
+      {
+        "id": "scout_element",
+        "name": "Russian Scout Element",
+        "units": [
+          {"name": "Scout Lead", "type": "BMP-2", "quantity": 3},
+          {"name": "Recon Support", "type": "BRDM-2", "quantity": 2}
+        ],
+        "routeTemplate": "scout_infiltration"
+      },
+      {
+        "id": "heavy_armor_column",
+        "name": "Russian Iron Fist Column",
+        "units": [
+          {"name": "Main Battle Tank", "type": "T-90M", "quantity": 6},
+          {"name": "Mechanized Support", "type": "BMP-3", "quantity": 4},
+          {"name": "Mobile AA", "type": "Pantsir-S1", "quantity": 2}
+        ],
+        "routeTemplate": "ground_advance_slow"
+      },
+      {
+        "id": "blue_mechanized_support",
+        "name": "Blue Forward Support",
+        "units": [
+          {"name": "Support Lead", "type": "M2_Bradley", "quantity": 4},
+          {"name": "Mortar_Section", "type": "M109_Paladin", "quantity": 2}
+        ]
+      },
+      {
+        "id": "red_guards_qrf",
+        "name": "Russian Guards QRF",
+        "units": [
+          {"name": "Heavy Tank", "type": "T-90M", "quantity": 10},
+          {"name": "Infantry Carrier", "type": "BMP-3", "quantity": 6}
+        ],
+        "routeTemplate": "ground_advance_slow"
+      },
+      {
+        "id": "blue_logistics_support",
+        "name": "Blue Logistics Support",
+        "units": [
+          {"name": "Logistics Truck", "type": "MT-LB", "quantity": 2}
+        ]
+      }
+    ],
+    "air": [
+      {
+        "id": "russian_strike_group",
+        "name": "Russian Rapid Response Air",
+        "units": [
+          {"name": "Strike Lead", "type": "Su-25SM3", "quantity": 4},
+          {"name": "Escort", "type": "MiG-29", "quantity": 2}
+        ],
+        "routeTemplate": "russian_air_patrol"
+      },
+      {
+        "id": "blue_tanker_support",
+        "name": "Blue Tanker Support",
+        "units": [
+          {"name": "Tanker", "type": "KC-135", "quantity": 2}
+        ]
+      },
+      {
+        "id": "blue_awacs_support",
+        "name": "Blue AWACS",
+        "units": [
+          {"name": "AWACS Lead", "type": "E-3A", "quantity": 1}
+        ],
+        "routeTemplate": "awacs_theater_orbit"
+      }
+    ]
+  },
+  "units": [
+    {
+      "unitName": "Blue_AWACS_Support",
+      "category": "AIRPLANE",
+      "triggerType": "IMMEDIATE",
+      "country": "USA",
+      "unitTemplate": "blue_awacs_support",
+      "placement": {
+        "mode": "BEARING_DISTANCE",
+        "reference": "bullseye",
+        "referenceName": "blue",
+        "bearing": 0,
+        "distance": 3.0,
+        "heading": 0
+      }
+    },
+    {
+      "unitName": "Blue_Home_Base_Assets",
+      "category": "GROUND",
+      "triggerType": "IMMEDIATE",
+      "country": "USA",
+      "unitTemplate": "blue_logistics_support",
+      "placement": {
+        "mode": "WAYPOINT",
+        "waypoint": 1,
+        "heading": 0
+      }
+    },
+    {
+      "unitName": "Blue_Alt_Airfield_Assets",
+      "category": "GROUND",
+      "triggerType": "IMMEDIATE",
+      "country": "USA",
+      "unitTemplate": "blue_logistics_support",
+      "placement": {
+        "mode": "WAYPOINT",
+        "waypoint": 2,
+        "heading": 0
+      }
+    },
+    {
+      "unitName": "Blue_Tanker_Support",
+      "category": "AIRPLANE",
+      "triggerType": "IMMEDIATE",
+      "country": "USA",
+      "unitTemplate": "blue_tanker_support",
+      "placement": {
+        "mode": "WAYPOINT",
+        "waypoint": 4,
+        "heading": 0
+      }
+    },
+    {
+      "unitName": "Red_Outpost_Elements",
+      "category": "GROUND",
+      "triggerType": "IMMEDIATE",
+      "country": "Russia",
+      "unitTemplate": "scout_element",
+      "placement": {
+        "mode": "ZONE_RANDOM",
+        "zoneName": "Ridge_Line_Alpha",
+        "heading": 180,
+        "spawnRadius": 0.5
+      }
+    },
+    {
+      "unitName": "Blue_Forward_Support",
+      "category": "GROUND",
+      "triggerType": "IMMEDIATE",
+      "country": "USA",
+      "unitTemplate": "blue_mechanized_support",
+      "placement": {
+        "mode": "BEARING_DISTANCE",
+        "reference": "bullseye",
+        "referenceName": "blue",
+        "bearing": 0,
+        "distance": 2.0,
+        "heading": 180
+      }
+    },
+    {
+      "unitName": "Russian_Rapid_Response_Air",
+      "category": "AIRPLANE",
+      "triggerType": "OBJECTIVE_COMPLETE",
+      "parentUnitName": "Red_Outpost_Elements",
+      "country": "Russia",
+      "unitTemplate": "russian_strike_group",
+      "placement": {
+        "mode": "COORDINATE",
+        "offsetX": 0,
+        "offsetY": 10,
+        "heading": 0
+      }
+    },
+    {
+      "unitName": "Red_Iron_Fist_Column",
+      "category": "GROUND",
+      "triggerType": "OBJECTIVE_COMPLETE",
+      "parentUnitName": "Red_Outpost_Elements",
+      "country": "Russia",
+      "unitTemplate": "heavy_armor_column",
+      "placement": {
+        "mode": "BEARING_DISTANCE",
+        "reference": "bullseye",
+        "referenceName": "neutral",
+        "bearing": 0,
+        "distance": 5.0,
+        "heading": 180
+      }
+    },
+    {
+      "unitName": "Red_Guards_QRF",
+      "category": "GROUND",
+      "triggerType": "OBJECTIVE_COMPLETE",
+      "parentUnitName": "Red_Iron_Fist_Column",
+      "country": "Russia",
+      "unitTemplate": "red_guards_qrf",
+      "placement": {
+        "mode": "BEARING_DISTANCE",
+        "reference": "bullseye",
+        "referenceName": "red",
+        "bearing": 0,
+        "distance": 2.5,
+        "heading": 270
+      }
+    }
+  ]
+}

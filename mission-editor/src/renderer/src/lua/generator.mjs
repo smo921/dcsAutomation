@@ -91,32 +91,42 @@ export function generateLuaFromUnits(units, refpointsStore, options = {}) {
         lines.push(`      startType = "takeoff_ramp",`);
         lines.push(`      airbaseName = "${p.referenceName || 'Unknown'}",`);
         if (p.parking) lines.push(`      groundSpot = ${p.parking},`);
+        lines.push(`      strategy = "",`);
       } else if (p.mode === 'BEARING_DISTANCE') {
         if (p.bearing !== undefined) lines.push(`      offsetHeading = ${p.bearing},`);
         if (p.distance !== undefined) lines.push(`      offsetDistance = ${p.distance},`);
         if (p.altitude !== undefined) lines.push(`      altitude = ${p.altitude},`);
         if (p.speed !== undefined) lines.push(`      speed = ${p.speed},`);
+        lines.push(`      strategy = "BEARING_DISTANCE",`);
       } else if (p.mode === 'COORDINATE') {
-        if (p.x !== undefined && p.y !== undefined) {
-          lines.push(`      offsetX = ${p.x},`);
-          lines.push(`      offsetY = ${p.y},`);
-        }
-      } else if (p.mode === 'ZONE_CENTER') {
+        lines.push(`      strategy = "COORDINATE",`);
+      } else if (p.mode === 'ZONE_RANDOM') {
+        // ZONE_RANDOM: Random spawn within a zone
         lines.push(`      strategy = "ZONE_RANDOM",`);
-        lines.push(`      zoneName = "${p.referenceName || 'Unknown'}",`);
-      }
-
-      // Always set these fields (required by unit_management.lua template)
-      lines.push(`      offsetX = 0,`);
-      lines.push(`      offsetY = 0,`);
-
-      // Always set strategy (required by unit_management.lua template)
-      if (p.mode !== 'ZONE_CENTER') {
+        lines.push(`      zoneName = "${p.zoneName || p.referenceName || 'Unknown'}",`);
+      } else if (p.mode === 'ZONE_CENTER') {
+        // ZONE_CENTER: Spawn at center of a zone
+        lines.push(`      strategy = "ZONE_CENTER",`);
+        lines.push(`      zoneName = "${p.zoneName || p.referenceName || 'Unknown'}",`);
+      } else if (p.mode === 'WAYPOINT') {
+        // WAYPOINT: Spawn at a specific waypoint of another group
+        lines.push(`      strategy = "waypoint",`);
+        lines.push(`      groupName = "${p.groupName || 'Unknown'}",`);
+        lines.push(`      waypoint = ${p.waypoint || 0},`);
+      } else {
+        // Default: no strategy or empty strategy for other modes
         lines.push(`      strategy = "",`);
       }
-      // Always set spawnRadius (required by unit_management.lua template)
-      lines.push(`      spawnRadius = 0,`);
-      // Always set heading (required by unit_management.lua template)
+
+      // Always set offsetX/Y (default to 0 if not provided)
+      lines.push(`      offsetX = ${p.offsetX !== undefined ? p.offsetX : 0},`);
+      lines.push(`      offsetY = ${p.offsetY !== undefined ? p.offsetY : 0},`);
+
+      // Set spawnRadius if provided, otherwise default to 0
+      if (p.spawnRadius !== undefined) lines.push(`      spawnRadius = ${p.spawnRadius},`);
+      else lines.push(`      spawnRadius = 0,`);
+
+      // Always set heading (default to 0 if not provided)
       lines.push(`      heading = ${p.heading !== undefined ? p.heading : 0},`);
 
       lines.push('    },');

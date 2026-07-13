@@ -36,6 +36,21 @@ Key features:
 
 ## Development Commands
 
+### Lua Configuration Generation
+
+To regenerate Lua from JSON configuration after editing the mission in the Electron app:
+
+```bash
+# Run the Lua generation test script (validates output against unit_management.lua templates)
+node ./tests/lua-generation-test.js ./missions/<config>.json ./missions/<config>.lua
+```
+
+This command:
+1. Loads the JSON configuration from `missions/`
+2. Uses the mission-editor stores to generate Lua code
+3. Validates the output against `unit_management.lua` templates
+4. Reports which units pass/fail validation
+
 ### Commit Messages
 When making commits, use the `git commit` command directly with `-m` flag for short messages, or write the message in a text editor. Avoid using PowerShell here-strings (`@'...'@`) for commit messages as they can introduce unwanted symbols.
 

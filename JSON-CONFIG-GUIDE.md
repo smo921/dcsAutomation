@@ -379,6 +379,26 @@ Spawns at specific coordinates (offset from reference).
 - `offsetY`: Y offset in Nautical Miles
 - `heading`: Initial heading (degrees)
 
+#### Mode 5: WAYPOINT
+Spawns at a specific waypoint of another group.
+
+```json
+{
+  "placement": {
+    "mode": "WAYPOINT",
+    "groupName": "ReferenceGroup",
+    "waypoint": 1,
+    "heading": 180
+  }
+}
+```
+
+**Fields:**
+- `mode`: "WAYPOINT"
+- `groupName`: Name of the reference group
+- `waypoint`: Waypoint index (1-based)
+- `heading`: Initial heading (degrees)
+
 ### Route Reference
 
 Routes can be defined in two ways:
