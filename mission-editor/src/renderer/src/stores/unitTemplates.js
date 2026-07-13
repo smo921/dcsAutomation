@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { mergeTemplates, loadUnitTemplatesFromConfig } from '../config/configLoader'
 
 // Use the auto-naming convention: defineStore('unitTemplates') creates useUnitTemplatesStore
 export const useUnitTemplatesStore = defineStore('unitTemplates', {
@@ -12,50 +13,9 @@ export const useUnitTemplatesStore = defineStore('unitTemplates', {
   }),
 
   actions: {
-    // Merge templates with duplicate handling
-    mergeTemplates(existing, newItems) {
-      if (!Array.isArray(existing)) existing = []
-      if (!Array.isArray(newItems)) newItems = []
-
-      // Build set of existing IDs
-      const existingIds = new Set()
-      for (const item of existing) {
-        if (item && item.id) {
-          existingIds.add(item.id)
-        }
-      }
-
-      // Build set of new IDs to track duplicates within newItems
-      const newIds = new Set()
-      for (const item of newItems) {
-        if (item && item.id) {
-          newIds.add(item.id)
-        }
-      }
-
-      const result = [...existing]
-      for (const item of newItems) {
-        if (!item || !item.id) continue
-
-        let currentId = item.id
-        let counter = 1
-
-        // Keep renaming until we find a unique ID
-        while (existingIds.has(currentId) || newIds.has(currentId)) {
-          currentId = `${item.id}_${counter}`
-          counter++
-        }
-
-        if (currentId !== item.id) {
-          item.id = currentId
-        }
-
-        newIds.add(currentId)
-        existingIds.add(currentId)
-        result.push(item)
-      }
-
-      return result
+    // Use pure JS loader
+    loadFromFullConfig(fullConfig) {
+      loadUnitTemplatesFromConfig(this, fullConfig)
     },
 
     loadTemplates(templates) {
@@ -64,20 +24,7 @@ export const useUnitTemplatesStore = defineStore('unitTemplates', {
         if (items && Array.isArray(items)) {
           const category = templateKey.replace('_templates', '')
           if (this.categories[category]) {
-            this.categories[category] = this.mergeTemplates(this.categories[category], items)
-          }
-        }
-      }
-    },
-
-    loadFromFullConfig(fullConfig) {
-      // Merge templates from a full config object
-      const templates = fullConfig.unit_templates || fullConfig.templates || {}
-      for (const [key, items] of Object.entries(templates)) {
-        if (items && Array.isArray(items)) {
-          const category = key.replace('_templates', '')
-          if (this.categories[category]) {
-            this.categories[category] = this.mergeTemplates(this.categories[category], items)
+            this.categories[category] = mergeTemplates(this.categories[category], items)
           }
         }
       }
@@ -116,7 +63,7 @@ export const useUnitTemplatesStore = defineStore('unitTemplates', {
 
     deleteTemplate(category, templateIndex) {
       if (this.categories[category]) {
-        this.categories[category].splice(templateIndex, 1)
+        this.categories[category][templateIndex] = template
       }
     },
 

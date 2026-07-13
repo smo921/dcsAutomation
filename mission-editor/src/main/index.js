@@ -352,7 +352,7 @@ function registerIpcHandlers () {
 
         // Handle formats:
         // 1. Object with template keys: { "awacs_orbit": {...}, ... }
-        // 2. Array of templates: [{ id: "...", name: "...", waypoints: [...] }, ...]
+        // 2. Array of templates: [{ name: "...", route [...] }, ...]
 
         if (Array.isArray(data)) {
           // Array format - convert to object
@@ -362,7 +362,7 @@ function registerIpcHandlers () {
         } else if (typeof data === 'object') {
           // Object format
           Object.keys(data).forEach(key => {
-            if (data[key] && data[key].waypoints) {
+            if (data[key] && data[key].route) {
               routeTemplates[key] = data[key]
             }
           })

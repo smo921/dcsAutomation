@@ -13,7 +13,7 @@
         <div class="list-item-content">
           <h5>{{ template.name }}</h5>
           <Badge variant="primary">
-            {{ template.waypoints?.length || 0 }} waypoints
+            {{ template.route?.length || 0 }} waypoints
           </Badge>
         </div>
         <div class="list-item-actions">

@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { loadRouteTemplatesFromConfig } from '../config/configLoader'
 
 // Use the auto-naming convention: defineStore('routeTemplates') creates useRouteTemplatesStore
 export const useRouteTemplatesStore = defineStore('routeTemplates', {
@@ -7,6 +8,12 @@ export const useRouteTemplatesStore = defineStore('routeTemplates', {
   }),
 
   actions: {
+    // Use pure JS loader
+    loadFromFullConfig(fullConfig) {
+      loadRouteTemplatesFromConfig(this.templates, fullConfig)
+    },
+
+    /*
     loadRouteTemplates(routeTemplates) {
       // Merge route templates with existing ones instead of replacing
       if (routeTemplates) {
@@ -18,19 +25,7 @@ export const useRouteTemplatesStore = defineStore('routeTemplates', {
         })
       }
     },
-
-    loadFromFullConfig(fullConfig) {
-      // Merge route templates from a full config object
-      const routeTemplates = fullConfig.route_templates || fullConfig.waypoint_templates || {}
-      if (routeTemplates) {
-        Object.entries(routeTemplates).forEach(([key, value]) => {
-          if (!this.templates.find(t => t.id === key)) {
-            this.templates.push({ id: key, ...value })
-          }
-        })
-      }
-    },
-
+*/
     clear() {
       this.templates = []
     },
