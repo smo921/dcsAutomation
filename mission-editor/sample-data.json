@@ -14,8 +14,8 @@
       {"name": "Zone Bravo"}
     ],
     "lines": [
-      {"name": "BLUE Front", "startX": 400000, "startY": 500000, "endX": 550000, "endY": 500000},
-      {"name": "RED Front", "startX": 400000, "startY": 600000, "endX": 550000, "endY": 600000}
+      {"name": "BLUE Front", "startX": 0, "startY": 100, "endX": 100, "endY": 100},
+      {"name": "RED Front", "startX": 0, "startY": 200, "endX": 100, "endY": 200}
     ]
   },
   "units": [
@@ -35,7 +35,7 @@
         "referenceName": "Blue",
         "bearing": 45,
         "distance": 50,
-        "heading": 0
+        "heading": 90
       },
       "units": [
         {"name": "AWACS Lead", "type": "E-3A", "quantity": 2}
@@ -61,7 +61,7 @@
         "referenceName": "Blue",
         "bearing": 135,
         "distance": 50,
-        "heading": 0
+        "heading": 180
       },
       "units": [
         {"name": "Tanker 1", "type": "KC-135", "quantity": 2}
@@ -81,12 +81,13 @@
       ],
       "placement": {
         "mode": "COORDINATE",
-        "x": 450000,
-        "y": 580000,
-        "heading": 0
+        "offsetX": -50,
+        "offsetY": 50,
+        "heading": 270
       },
       "radarFilterEnabled": true,
       "maxDetectRange": 200000,
+      "route": [],
       "pointDefense": {
         "minRadius": 10000,
         "maxRadius": 50000,
@@ -102,12 +103,12 @@
         ],
         "placement": {
           "mode": "COORDINATE",
-          "x": 452000,
-          "y": 582000,
+          "offsetX": -48,
+          "offsetY": 52,
           "heading": 0
         },
         "route": [
-          {"type": "turn_point", "x": 460000, "y": 590000, "altitude": 4000, "speed": 700, "alt_type": "BARO"}
+          {"type": "turn_point", "offsetX": -40, "offsetY": 60, "altitude": 4000, "speed": 700, "alt_type": "BARO"}
         ]
       }
     },
@@ -129,7 +130,7 @@
         "heading": 0
       },
       "route": [
-        {"type": "turn_point", "x": 480000, "y": 550000, "altitude": 3000, "speed": 500, "alt_type": "BARO"},
+        {"type": "turn_point", "offsetX": -20, "offsetY": 55, "altitude": 3000, "speed": 500, "alt_type": "BARO"},
         {"type": "orbit", "radius": 10, "altitude": 3000, "speed": 450, "alt_type": "BARO"}
       ]
     },
@@ -149,7 +150,7 @@
         "heading": 0
       },
       "route": [
-        {"type": "turn_point", "x": 430000, "y": 560000, "altitude": 0, "speed": 40, "alt_type": "BARO"}
+        {"type": "turn_point", "offsetX": 0, "offsetY": 0, "altitude": 0, "speed": 40, "alt_type": "BARO"}
       ]
     },
     {
@@ -184,8 +185,8 @@
       ],
       "placement": {
         "mode": "COORDINATE",
-        "x": 520000,
-        "y": 520000,
+        "offsetX": 50,
+        "offsetY": -50,
         "heading": 0
       },
       "route": [
@@ -241,9 +242,9 @@
           {"name": "Patrol Boat 2", "type": "T800", "quantity": 2}
         ],
         "route": [
-          {"type": "turn_point", "x": 0, "y": 0, "altitude": 0, "speed": 40, "alt_type": "BARO"},
-          {"type": "turn_point", "x": 5, "y": 0, "altitude": 0, "speed": 40, "alt_type": "BARO"},
-          {"type": "orbit", "x": 5, "y": 5, "altitude": 0, "speed": 35, "radius": 2, "pattern": "clockwise", "alt_type": "BARO"}
+          {"type": "turn_point", "offsetX": 0, "offsetY": 0, "altitude": 0, "speed": 40, "alt_type": "BARO"},
+          {"type": "turn_point", "offsetX": 5, "offsetY": 0, "altitude": 0, "speed": 40, "alt_type": "BARO"},
+          {"type": "orbit", "radius": 2, "altitude": 0, "speed": 35, "pattern": "clockwise", "alt_type": "BARO"}
         ]
       }
     ]
@@ -252,38 +253,38 @@
     "awacs_orbit": {
       "name": "AWACS Orbit Pattern",
       "route": [
-        {"type": "orbit", "x": 0, "y": 0, "altitude": 31000, "speed": 290, "radius": 5, "pattern": "clockwise", "alt_type": "BARO"},
-        {"type": "orbit", "x": 5, "y": 0, "altitude": 31000, "speed": 290, "radius": 5, "pattern": "clockwise", "alt_type": "BARO"}
+        {"type": "orbit", "radius": 5, "altitude": 31000, "speed": 290, "pattern": "clockwise", "alt_type": "BARO"},
+        {"type": "orbit", "radius": 5, "altitude": 31000, "speed": 290, "pattern": "clockwise", "alt_type": "BARO"}
       ]
     },
     "cas_sweep": {
       "name": "CAS Sweep Pattern",
       "route": [
-        {"type": "turn_point", "x": 10, "y": 5, "altitude": 3000, "speed": 500, "heading": 0, "alt_type": "BARO"},
-        {"type": "orbit", "x": 0, "y": 0, "altitude": 3000, "speed": 400, "radius": 3, "pattern": "clockwise", "alt_type": "BARO"},
-        {"type": "turn_point", "x": -10, "y": 5, "altitude": 3000, "speed": 500, "heading": 180, "alt_type": "BARO"}
+        {"type": "turn_point", "offsetX": 10, "offsetY": 5, "altitude": 3000, "speed": 500, "alt_type": "BARO"},
+        {"type": "orbit", "radius": 3, "altitude": 3000, "speed": 400, "pattern": "clockwise", "alt_type": "BARO"},
+        {"type": "turn_point", "offsetX": -10, "offsetY": 5, "altitude": 3000, "speed": 500, "alt_type": "BARO"}
       ]
     },
     "striker_flight": {
       "name": "Striker Flight Attack Pattern",
       "route": [
-        {"type": "turn_point", "x": 5, "y": 10, "altitude": 5000, "speed": 600, "heading": 0, "alt_type": "BARO"},
-        {"type": "turn_point", "x": 0, "y": 15, "altitude": 5000, "speed": 600, "heading": 0, "alt_type": "BARO"},
-        {"type": "turn_point", "x": -5, "y": 10, "altitude": 5000, "speed": 600, "heading": 0, "alt_type": "BARO"}
+        {"type": "turn_point", "offsetX": 5, "offsetY": 10, "altitude": 5000, "speed": 600, "alt_type": "BARO"},
+        {"type": "turn_point", "offsetX": 0, "offsetY": 15, "altitude": 5000, "speed": 600, "alt_type": "BARO"},
+        {"type": "turn_point", "offsetX": -5, "offsetY": 10, "altitude": 5000, "speed": 600, "alt_type": "BARO"}
       ]
     },
     "tanker_station": {
       "name": "Tanker Station Pattern",
       "route": [
-        {"type": "orbit", "x": 0, "y": 0, "altitude": 25000, "speed": 300, "radius": 8, "pattern": "clockwise", "alt_type": "BARO"},
-        {"type": "orbit", "x": 8, "y": 0, "altitude": 25000, "speed": 300, "radius": 8, "pattern": "clockwise", "alt_type": "BARO"}
+        {"type": "orbit", "radius": 8, "altitude": 25000, "speed": 300, "pattern": "clockwise", "alt_type": "BARO"},
+        {"type": "orbit", "radius": 8, "altitude": 25000, "speed": 300, "pattern": "clockwise", "alt_type": "BARO"}
       ]
     },
     "interceptor_scramble": {
       "name": "Interceptor Scramble Pattern",
       "route": [
-        {"type": "turn_point", "x": 0, "y": 0, "altitude": 40000, "speed": 700, "heading": 0, "alt_type": "BARO"},
-        {"type": "turn_point", "x": 10, "y": 5, "altitude": 40000, "speed": 700, "heading": 90, "alt_type": "BARO"}
+        {"type": "turn_point", "offsetX": 0, "offsetY": 0, "altitude": 40000, "speed": 700, "alt_type": "BARO"},
+        {"type": "turn_point", "offsetX": 10, "offsetY": 5, "altitude": 40000, "speed": 700, "alt_type": "BARO"}
       ]
     }
   }

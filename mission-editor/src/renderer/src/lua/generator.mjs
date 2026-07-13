@@ -71,7 +71,6 @@ export function generateLuaFromUnits(units, refpointsStore, options = {}) {
       } else if (p.mode === 'BEARING_DISTANCE') {
         if (p.bearing !== undefined) lines.push(`      offsetHeading = ${p.bearing},`);
         if (p.distance !== undefined) lines.push(`      offsetDistance = ${p.distance},`);
-        if (p.heading !== undefined) lines.push(`      heading = ${p.heading},`);
         if (p.altitude !== undefined) lines.push(`      altitude = ${p.altitude},`);
         if (p.speed !== undefined) lines.push(`      speed = ${p.speed},`);
       } else if (p.mode === 'COORDINATE') {
@@ -79,11 +78,23 @@ export function generateLuaFromUnits(units, refpointsStore, options = {}) {
           lines.push(`      offsetX = ${p.x},`);
           lines.push(`      offsetY = ${p.y},`);
         }
-        if (p.heading !== undefined) lines.push(`      heading = ${p.heading},`);
       } else if (p.mode === 'ZONE_CENTER') {
         lines.push(`      strategy = "ZONE_RANDOM",`);
         lines.push(`      zoneName = "${p.referenceName || 'Unknown'}",`);
       }
+
+      // Always set these fields (required by unit_management.lua template)
+      lines.push(`      offsetX = 0,`);
+      lines.push(`      offsetY = 0,`);
+
+      // Always set strategy (required by unit_management.lua template)
+      if (p.mode !== 'ZONE_CENTER') {
+        lines.push(`      strategy = "",`);
+      }
+      // Always set spawnRadius (required by unit_management.lua template)
+      lines.push(`      spawnRadius = 0,`);
+      // Always set heading (required by unit_management.lua template)
+      lines.push(`      heading = ${p.heading !== undefined ? p.heading : 0},`);
 
       lines.push('    },');
     }
@@ -102,26 +113,30 @@ export function generateLuaFromUnits(units, refpointsStore, options = {}) {
       lines.push('    },');
     }
 
-    // Route
+    // Route (always include, even if empty - required by template)
+    lines.push('    route = {');
     if (unit.route && unit.route.length > 0) {
-      lines.push('    route = {');
       unit.route.forEach((wp, idx) => {
         if (idx > 0) lines.push(',');
         lines.push('      {');
         lines.push(`        type = "${wp.type || 'Turning Point'}",`);
         if (wp.altitude !== undefined) lines.push(`        alt = ${wp.altitude},`);
-        if (wp.altType !== undefined) lines.push(`       alt_type = ${wp.altType},`)
+        if (wp.alt_type !== undefined) lines.push(`        alt_type = "${wp.alt_type}",`);
         if (wp.speed !== undefined) lines.push(`        speed = ${wp.speed},`);
         if (wp.x !== undefined) lines.push(`        offsetX = ${wp.x},`);
         if (wp.y !== undefined) lines.push(`        offsetY = ${wp.y},`);
+        // Default offsetX/Y for orbit/other waypoint types that don't specify coordinates
+        if (wp.x === undefined && wp.y === undefined) {
+          lines.push('        offsetX = 0,');
+          lines.push('        offsetY = 0,');
+        }
         if (wp.radius !== undefined) lines.push(`        radius = ${wp.radius},`);
         if (wp.pattern) lines.push(`        pattern = "${wp.pattern}",`);
-        if (wp.heading !== undefined) lines.push(`        heading = ${wp.heading},`);
         if (wp.airbaseName) lines.push(`        airbaseName = "${wp.airbaseName}",`);
         lines.push('      }');
       });
-      lines.push('    },');
     }
+    lines.push('    },');
 
     // Point defense
     if (unit.pointDefense) {
