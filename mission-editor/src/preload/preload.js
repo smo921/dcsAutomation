@@ -1,5 +1,21 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+// Set up event handlers
+const eventHandlers = new Map()
+
+// Listen for events from main process
+ipcRenderer.on('menu:export-json', () => {
+  if (eventHandlers.has('export-json')) {
+    eventHandlers.get('export-json')()
+  }
+})
+
+ipcRenderer.on('menu:export-lua', () => {
+  if (eventHandlers.has('export-lua')) {
+    eventHandlers.get('export-lua')()
+  }
+})
+
 // Expose protected methods that allow the renderer process to communicate
 // with the main process without exposing the full Node.js API
 contextBridge.exposeInMainWorld('api', {
@@ -33,7 +49,15 @@ contextBridge.exposeInMainWorld('api', {
   // Export
   export: {
     json: () => ipcRenderer.send('menu:export-json'),
-    lua: () => ipcRenderer.send('menu:export-lua')
+    lua: () => ipcRenderer.send('menu:export-lua'),
+    onJson: (callback) => {
+      eventHandlers.set('export-json', callback)
+      return () => eventHandlers.delete('export-json')
+    },
+    onLua: (callback) => {
+      eventHandlers.set('export-lua', callback)
+      return () => eventHandlers.delete('export-lua')
+    }
   },
 
   // File operations

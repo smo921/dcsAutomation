@@ -40,7 +40,7 @@ export function loadRefpointsFromConfig(store, fullConfig) {
         counter++;
       }
       existingNames.add(name);
-      store.bullseyes.push({ name });
+      store.bullseyes.push({ name, description: b.description });
     }
   });
 
@@ -53,7 +53,7 @@ export function loadRefpointsFromConfig(store, fullConfig) {
       counter++;
     }
     existingNames.add(name);
-    store.airbases.push({ name });
+    store.airbases.push({ name, description: ab.description });
   });
 
   // Load zones
@@ -65,7 +65,7 @@ export function loadRefpointsFromConfig(store, fullConfig) {
       counter++;
     }
     existingNames.add(name);
-    store.zones.push({ name });
+    store.zones.push({ name, description: z.description });
   });
 
   // Load lines

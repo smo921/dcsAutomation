@@ -30,9 +30,18 @@ export const useRefpointsStore = defineStore('refpoints', {
     // Export to config format
     toConfig() {
       return {
-        bullseyes: this.bullseyes,
-        airbases: this.airbases,
-        zones: this.zones,
+        bullseyes: this.bullseyes.map(b => ({
+          name: b.name,
+          ...(b.description && { description: b.description })
+        })),
+        airbases: this.airbases.map(a => ({
+          name: a.name,
+          ...(a.description && { description: a.description })
+        })),
+        zones: this.zones.map(z => ({
+          name: z.name,
+          ...(z.description && { description: z.description })
+        })),
         lines: this.lines
       }
     }

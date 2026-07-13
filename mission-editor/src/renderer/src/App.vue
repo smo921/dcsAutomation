@@ -126,7 +126,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRefpointsStore } from './stores/refpoints'
 import { useUnitTemplatesStore } from './stores/unitTemplates'
 import { useRouteTemplatesStore } from './stores/routeTemplates'
@@ -163,6 +163,13 @@ const selectedUnitIndex = ref(null)
 const editingReferencePoint = ref(null)
 const editingUnitTemplate = ref(null)
 const editingRouteTemplate = ref(null)
+
+// Store original descriptions for export preservation
+const originalRefpointDescriptions = ref({
+  bullseyes: {},
+  zones: {},
+  airbases: {}
+})
 
 // Sidebar sections state - units expanded by default
 const sections = ref({
@@ -346,13 +353,86 @@ const onNewMission = () => {
   setStatus('New mission created', 'success')
 }
 
-const onExportJson = () => {
-  window.api?.export?.json?.()
+const onExportJson = async () => {
+  try {
+    // Generate the complete configuration object in the original format
+    const config = {
+      refpoints: {
+        bullseyes: refpointsStore.bullseyes.map(b => ({
+          name: b.name,
+          description: b.description
+        })).filter(b => b.description !== undefined),
+        zones: refpointsStore.zones.map(z => ({
+          name: z.name,
+          description: z.description
+        })).filter(z => z.description !== undefined),
+        airbases: refpointsStore.airbases.map(a => ({
+          name: a.name,
+          description: a.description
+        })).filter(a => a.description !== undefined)
+      },
+      route_templates: routeTemplatesStore.templates.reduce((acc, template) => {
+        // Convert to the original format
+        acc[template.id] = {
+          name: template.name,
+          route: template.route || []
+        };
+        return acc;
+      }, {}),
+      unit_templates: {
+        air: (unitTemplatesStore.categories.air || []).map(template => ({
+          id: template.id,
+          name: template.name,
+          units: template.units || [],
+          ...(template.routeTemplate && { routeTemplate: template.routeTemplate })
+        })),
+        ground: (unitTemplatesStore.categories.ground || []).map(template => ({
+          id: template.id,
+          name: template.name,
+          units: template.units || [],
+          ...(template.routeTemplate && { routeTemplate: template.routeTemplate })
+        })),
+        naval: (unitTemplatesStore.categories.naval || []).map(template => ({
+          id: template.id,
+          name: template.name,
+          units: template.units || [],
+          ...(template.routeTemplate && { routeTemplate: template.routeTemplate })
+        })),
+        support: (unitTemplatesStore.categories.support || []).map(template => ({
+          id: template.id,
+          name: template.name,
+          units: template.units || [],
+          ...(template.routeTemplate && { routeTemplate: template.routeTemplate })
+        }))
+      },
+      units: units.value
+    };
+
+    // Convert to JSON string with indentation
+    const jsonContent = JSON.stringify(config, null, 2);
+
+    // Save the JSON file using the existing file save API
+    const result = await window.api?.file?.saveJson?.(jsonContent, 'mission-config.json');
+    if (result?.success) {
+      setStatus('Configuration exported to JSON successfully', 'success');
+    } else {
+      setStatus('Failed to export configuration to JSON', 'error');
+    }
+  } catch (error) {
+    console.error('Error exporting JSON:', error);
+    setStatus(`Error exporting JSON: ${error.message}`, 'error');
+  }
 }
 
 const onExportLua = () => {
   // Generate Lua code from units using the shared generator module
-  const luaCode = generateLua(units.value, refpointsStore)
+  // Pass templates from stores to ensure they are expanded in the final Lua manifest
+  const allUnitTemplates = Object.values(unitTemplatesStore.categories).flat();
+
+  const luaCode = generateLua(units.value, refpointsStore, {
+    routeTemplates: routeTemplatesStore.templates,
+    unitTemplates: allUnitTemplates
+  });
   window.api?.file?.saveLua?.(luaCode, 'mission-config.lua')
 }
 
@@ -648,6 +728,18 @@ const setStatus = (message, type = 'info') => {
 onMounted(() => {
   // Resources are not loaded automatically
   // User can click "Load Sample Data" or "Load Config" buttons to load data
+
+  // Add listener for menu export JSON event
+  const removeJsonListener = window.api?.export?.onJson?.(onExportJson)
+
+  // Add listener for menu export Lua event
+  const removeLuaListener = window.api?.export?.onLua?.(onExportLua)
+
+  // Clean up listeners on unmount
+  onUnmounted(() => {
+    if (removeJsonListener) removeJsonListener()
+    if (removeLuaListener) removeLuaListener()
+  })
 })
 </script>
 
