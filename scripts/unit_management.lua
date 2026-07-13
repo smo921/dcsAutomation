@@ -1127,6 +1127,7 @@ function UnitRouteWaypoint.new(routeConfig)
     self.offsetY = mist.utils.NMToMeters(routeConfig.offsetY or 0) -- NM to meters
     self.roe = routeConfig.roe or ""
     self.airbaseName = routeConfig.airbaseName
+    self.altType = routeConfig.alt_type or "BARO"
     return self
 end
 
