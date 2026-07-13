@@ -328,16 +328,33 @@ const { startResize: startListResize, stopResize: stopListResize, onResize: onLi
 
 // Get units filtered by active category
 const getUnitsByCategory = computed(() => {
-  const categoryMap = {
-    'air': ['AIRPLANE', 'HELICOPTER'],
-    'ground': ['GROUND', 'SHIP', 'STATIONARY']
-  }
   return (category) => {
     return props.units.filter(u => {
       const cat = u.category || 'AIRPLANE'
-      if (category === 'air') return ['AIRPLANE', 'HELICOPTER'].includes(cat)
-      if (category === 'ground') return ['GROUND', 'SHIP', 'STATIONARY'].includes(cat)
-      return true
+      switch (category) {
+        case 'air':
+          return ['AIRPLANE', 'HELICOPTER'].includes(cat)
+        case 'ground':
+          // Ground units excluding ships
+          return ['GROUND', 'STATIONARY'].includes(cat)
+        case 'naval':
+          // Naval units are ships
+          return cat === 'SHIP'
+        case 'support':
+          // Support units have specific tasks or roles
+          const task = u.task || ''
+          const hasSupportRole = u.units && u.units.some(unit =>
+            (unit.role || '').toLowerCase().includes('support') ||
+            (unit.role || '').toLowerCase().includes('tanker') ||
+            (unit.role || '').toLowerCase().includes('awacs') ||
+            (unit.role || '').toLowerCase().includes('command') ||
+            (unit.role || '').toLowerCase().includes('refueling')
+          )
+          return task.includes('Support') || task.includes('Refueling') || task.includes('AWACS') ||
+                 task.includes('Tanker') || task.includes('Command') || hasSupportRole
+        default:
+          return false
+      }
     })
   }
 })
