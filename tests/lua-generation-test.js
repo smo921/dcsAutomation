@@ -89,9 +89,16 @@ async function main() {
   console.log(`   Unit Templates: ${Object.values(unitTemplatesStore.categories).reduce((a, b) => a + b.length, 0)}`);
   console.log(`   Route Templates: ${routeTemplatesStore.templates.length}`);
 
+  // Flatten unit templates (all categories into one array)
+  const allUnitTemplates = Object.values(unitTemplatesStore.categories).flat();
+
   // Generate Lua using mission-editor generator
   console.log('\n3. Generating Lua using mission-editor generator...');
-  const luaContent = luaGenerator.generateLuaFromUnits(sampleData.units || [], refpointsStore, { makeGlobal: true });
+  const luaContent = luaGenerator.generateLuaFromUnits(sampleData.units || [], refpointsStore, {
+    makeGlobal: true,
+    routeTemplates: routeTemplatesStore.templates,
+    unitTemplates: allUnitTemplates
+  });
 
   // Write output
   fs.writeFileSync(outputPathFull, luaContent);

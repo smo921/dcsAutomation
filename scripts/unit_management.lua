@@ -53,14 +53,14 @@ ConfigStandards.UNIT_TEMPLATE = {
 ConfigStandards.ROUTE_WAYPOINT_TEMPLATE = {
     type = "Turning Point",
     speed = 200, -- KNOTS
-    alt = 3000, -- FEET
+    alt = nil, -- FEET (optional - nil for ground units, set for air units)
     offsetX = 0,
     offsetY = 0,
     roe = nil,
     threat = nil,
     airbaseName = nil,
     action = nil,
-    alt_type = "BARO"
+    alt_type = nil -- BARO or RAD - optional, defaults to BARO when alt is set
 }
 
 ConfigStandards.AIR_UNIT_TEMPLATE = {
@@ -137,7 +137,13 @@ function ConfigStandards.createWaypoint(config)
 
     -- Convert to internal metric units
     wp.speed = mist.utils.knotsToMps(wp.speed)
-    wp.alt = mist.utils.feetToMeters(wp.alt)
+    if wp.alt ~= nil then
+        wp.alt = mist.utils.feetToMeters(wp.alt)
+    end
+    -- Set default alt_type to BARO if alt is specified but alt_type is not
+    if wp.alt ~= nil and wp.alt_type == nil then
+        wp.alt_type = "BARO"
+    end
     wp.offsetX = mist.utils.NMToMeters(wp.offsetX)
     wp.offsetY = mist.utils.NMToMeters(wp.offsetY)
 

@@ -18,6 +18,8 @@ dofile("tests/test_framework.lua")
 -- Track validation results
 validation_passed = 0
 validation_failed = 0
+waypoint_passed = 0
+waypoint_failed = 0
 
 -- Helper to validate a unit configuration
 function validateUnitConfig(unitConfig, unitIndex)
@@ -37,8 +39,10 @@ end
 function validateWaypointConfig(waypointConfig, unitName, wpIndex)
     local valid, errorMsg = ConfigStandards.validateConfig(waypointConfig, ConfigStandards.ROUTE_WAYPOINT_TEMPLATE)
     if valid then
+        waypoint_passed = waypoint_passed + 1
         print(string.format("    Waypoint %d: VALID", wpIndex))
     else
+        waypoint_failed = waypoint_failed + 1
         print(string.format("    Waypoint %d: INVALID", wpIndex))
         print(string.format("      Error: %s", errorMsg or "unknown"))
     end
@@ -92,7 +96,11 @@ function validateLoadedConfig(config)
         if unit.route and #unit.route > 0 then
             for j, wp in ipairs(unit.route) do
                 local wpValid, wpErr = ConfigStandards.validateConfig(wp, ConfigStandards.ROUTE_WAYPOINT_TEMPLATE)
-                if not wpValid then
+                if wpValid then
+                    waypoint_passed = waypoint_passed + 1
+                    print(string.format("    Unit[%d].route[%d]: VALID", i, j))
+                else
+                    waypoint_failed = waypoint_failed + 1
                     print(string.format("    Unit[%d].route[%d]: INVALID - %s", i, j, wpErr or "unknown"))
                 end
             end
@@ -104,8 +112,10 @@ function validateLoadedConfig(config)
     end
 
     print(string.format("\n=== Validation Summary ==="))
-    print(string.format("Passed: %d", validation_passed))
-    print(string.format("Failed: %d", validation_failed))
+    print(string.format("Unit Passed: %d", validation_passed))
+    print(string.format("Unit Failed: %d", validation_failed))
+    print(string.format("Waypoint Passed: %d", waypoint_passed))
+    print(string.format("Waypoint Failed: %d", waypoint_failed))
 
     return manifestValid
 end

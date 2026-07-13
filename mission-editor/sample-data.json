@@ -194,7 +194,7 @@
       ]
     }
   ],
-  "unitTemplates": {
+  "unit_templates": {
     "air": [
       {
         "id": "awacs_patrol",

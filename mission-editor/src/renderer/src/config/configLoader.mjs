@@ -120,14 +120,6 @@ export function mergeTemplates(existing, newItems) {
     }
   }
 
-  // Build set of new IDs to track duplicates within newItems
-  const newIds = new Set();
-  for (const item of newItems) {
-    if (item && item.id) {
-      newIds.add(item.id);
-    }
-  }
-
   const result = [...existing];
   for (const item of newItems) {
     if (!item || !item.id) continue;
@@ -135,8 +127,8 @@ export function mergeTemplates(existing, newItems) {
     let currentId = item.id;
     let counter = 1;
 
-    // Keep renaming until we find a unique ID
-    while (existingIds.has(currentId) || newIds.has(currentId)) {
+    // Keep renaming until we find a unique ID (only check existingIds)
+    while (existingIds.has(currentId)) {
       currentId = `${item.id}_${counter}`;
       counter++;
     }
@@ -145,7 +137,6 @@ export function mergeTemplates(existing, newItems) {
       item.id = currentId;
     }
 
-    newIds.add(currentId);
     existingIds.add(currentId);
     result.push(item);
   }
