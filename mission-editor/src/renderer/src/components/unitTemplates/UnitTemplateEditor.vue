@@ -88,53 +88,14 @@
         </div>
       </CollapsiblePanel>
 
-      <!-- Default Route Section -->
+      <!-- Default Route Section - uses shared RouteEditor component -->
       <CollapsiblePanel v-model:expanded="expandedSections.route" title="Default Route">
         <div class="editor-section">
-          <div
-            v-for="(wp, index) in editingTemplate.defaultRoute"
-            :key="index"
-            class="waypoint-row"
-            :data-waypoint-num="index + 1"
-          >
-            <div class="waypoint-number-badge">{{ index + 1 }}</div>
-            <div class="waypoint-content">
-              <div class="form-row">
-                <div class="form-group">
-                  <FormLabel label="Type" required />
-                  <FormSelect
-                    v-model="wp.type"
-                    :options="waypointTypeOptions"
-                    placeholder="Select type..."
-                  />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <FormLabel label="Altitude" />
-                  <FormInput
-                    v-model="wp.altitude"
-                    type="number"
-                    placeholder="Altitude in meters"
-                  />
-                </div>
-                <div class="form-group">
-                  <FormLabel label="Speed" />
-                  <FormInput
-                    v-model="wp.speed"
-                    type="number"
-                    placeholder="Speed in m/s"
-                  />
-                </div>
-              </div>
-              <Button variant="danger" size="sm" @click="removeWaypoint(index)" title="Remove Waypoint">
-                <span class="btn-remove-icon">✕</span>
-              </Button>
-            </div>
-          </div>
-          <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">
-            + Add Waypoint
-          </Button>
+          <RouteEditor
+            :route="editingTemplate.defaultRoute"
+            :airbases="airbases"
+            @update:route="editingTemplate.defaultRoute = $event"
+          />
         </div>
       </CollapsiblePanel>
     </div>
@@ -142,8 +103,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { Button, FormLabel, FormInput, FormSelect, FormRow, EditorPanel, CollapsiblePanel } from '../ui'
+import RouteEditor from '../routeTemplates/RouteEditor.vue'
+import { useRefpointsStore } from '../../stores/refpoints'
 
 const emit = defineEmits(['unit-template-change', 'save', 'cancel'])
 
@@ -151,13 +114,17 @@ const props = defineProps({
   editingTemplate: {
     type: Object,
     default: null
+  },
+  airbases: {
+    type: Array,
+    default: () => []
   }
 })
 
 const expandedSections = ref({
-  basic: true,
-  units: true,
-  route: true
+  basic: false,
+  units: false,
+  route: false
 })
 
 // Category options
@@ -168,7 +135,7 @@ const categoryOptions = computed(() => [
   { value: 'support', label: 'Support' }
 ])
 
-// Waypoint type options
+// Waypoint type options (for RouteEditor)
 const waypointTypeOptions = computed(() => [
   { value: 'orbit', label: 'Orbit' },
   { value: 'turn_point', label: 'Turning Point' },

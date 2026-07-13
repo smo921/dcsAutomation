@@ -107,6 +107,13 @@
   margin-bottom: var(--spacing-md);
 }
 
+/* Fill remaining space - for editor contexts */
+.list-scroll--flex {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 0;
+}
+
 /* Custom Scrollbar for List Scroll */
 .list-scroll::-webkit-scrollbar {
   width: 8px;

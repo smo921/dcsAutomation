@@ -216,41 +216,14 @@
         </div>
       </CollapsiblePanel>
 
-      <!-- Route Section -->
+      <!-- Route Section - uses shared RouteEditor component -->
       <CollapsiblePanel v-model:expanded="expandedSections.route" title="Route">
         <div class="editor-section">
-          <div
-            v-for="(wp, index) in unit.route"
-            :key="index"
-            class="waypoint-row"
-            :data-waypoint-num="index + 1"
-          >
-            <div class="waypoint-number-badge">{{ index + 1 }}</div>
-            <div class="waypoint-content">
-              <FormRow>
-                <FormGroup>
-                  <FormLabel label="Type" required />
-                  <FormSelect v-model="wp.type" :options="waypointTypeOptions" placeholder="Select type..." />
-                </FormGroup>
-              </FormRow>
-              <FormRow>
-                <FormGroup>
-                  <FormLabel label="Altitude" />
-                  <FormInput v-model="wp.altitude" type="number" placeholder="Altitude in meters" />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel label="Speed" />
-                  <FormInput v-model="wp.speed" type="number" placeholder="Speed in m/s" />
-                </FormGroup>
-              </FormRow>
-              <Button variant="danger" @click="removeWaypoint(index)" size="sm">
-                <span class="btn-remove-icon">- Delete Waypoint</span>
-              </Button>
-            </div>
-          </div>
-          <Button @click="addWaypoint" variant="secondary" size="sm">
-            + Add Waypoint
-          </Button>
+          <RouteEditor
+            :route="unit.route"
+            :airbases="refpoints.airbases"
+            @update:route="unit.route = $event"
+          />
         </div>
       </CollapsiblePanel>
     </div>
@@ -262,6 +235,7 @@ import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useUnitTemplatesStore } from '../../stores/unitTemplates'
 import { Button, FormLabel, FormInput, FormSelect, FormRow, FormGroup, EditorPanel, CollapsiblePanel } from '../ui'
+import RouteEditor from '../routeTemplates/RouteEditor.vue'
 
 const emit = defineEmits(['unit-change', 'save', 'cancel', 'update'])
 
@@ -279,7 +253,7 @@ const props = defineProps({
       lines: []
     })
   },
-  templates: {
+  unitTemplates: {
     type: Object,
     default: () => ({ air: [], ground: [], naval: [], support: [] })
   }
@@ -381,20 +355,18 @@ const getReferenceOptions = computed(() => {
   }
 })
 
-// Waypoint type options
-const waypointTypeOptions = computed(() => [
-  { value: 'orbit', label: 'Orbit' },
-  { value: 'turn_point', label: 'Turning Point' },
-  { value: 'heading', label: 'Heading' },
-  { value: 'landing', label: 'Landing' }
+const altitudeTypeOptions = computed(() => [
+  { value: 'msl', label: 'MSL' },
+  { value: "baro", label: 'Barometric' },
+  { value: "agl", label: 'AGL' }
 ])
 
-// Section expansion state (all expanded by default)
+// Section expansion state (all collapsed by default)
 const expandedSections = ref({
-  basic: true,
-  units: true,
-  placement: true,
-  route: true
+  basic: false,
+  units: false,
+  placement: false,
+  route: false
 })
 
 const addUnit = () => {

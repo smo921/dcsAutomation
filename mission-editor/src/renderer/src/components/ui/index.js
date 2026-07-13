@@ -25,3 +25,6 @@ export { default as BaseReferenceEditor } from '../refpoints/BaseReferenceEditor
 
 /* Route template editor */
 export { default as RouteTemplateEditor } from '../routeTemplates/RouteTemplateEditor.vue'
+
+/* Route editor (shared component) */
+export { default as RouteEditor } from '../routeTemplates/RouteEditor.vue'
