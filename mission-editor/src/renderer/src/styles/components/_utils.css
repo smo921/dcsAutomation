@@ -86,8 +86,28 @@
   border-radius: var(--spacing-xs);
   padding: var(--spacing-xl);
   min-width: 300px;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: auto;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   animation: zoomIn var(--transition-normal);
+}
+
+/* Modal size variants */
+.modal-sm {
+  max-width: 400px;
+}
+
+.modal-md {
+  max-width: 500px;
+}
+
+.modal-lg {
+  max-width: 700px;
+}
+
+.modal-xl {
+  max-width: 950px;
 }
 
 .modal-header {

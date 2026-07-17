@@ -28,3 +28,7 @@ export { default as RouteTemplateEditor } from '../routeTemplates/RouteTemplateE
 
 /* Route editor (shared component) */
 export { default as RouteEditor } from '../routeTemplates/RouteEditor.vue'
+
+/* Visualizer components */
+export { default as RoutePreviewCanvas } from '../visualizer/RoutePreviewCanvas.vue'
+export { default as ReferencePointCanvas } from '../visualizer/ReferencePointCanvas.vue'

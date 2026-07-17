@@ -22,7 +22,7 @@ const props = defineProps({
   name: {
     type: String,
     required: true,
-    validator: (value) => ['plus', 'minus', 'trash', 'edit', 'x', 'chevronDown', 'chevronUp', 'search', 'settings', 'alert', 'check', 'info'].includes(value)
+    validator: (value) => ['plus', 'minus', 'trash', 'edit', 'x', 'chevronDown', 'chevronUp', 'search', 'settings', 'alert', 'check', 'info', 'map', 'home', 'expand', 'crosshair'].includes(value)
   },
   size: {
     type: [Number, String],
@@ -42,7 +42,11 @@ const icons = {
   settings: () => h('circle', { cx: '12', cy: '12', r: '3' }, h('path', { d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z' })),
   alert: () => h('circle', { cx: '12', cy: '12', r: '10' }, h('line', { x1: '12', y1: '8', x2: '12', y2: '12' }), h('line', { x1: '12', y1: '16', x2: '12.01', y2: '16' })),
   check: () => h('polyline', { points: '20 6 9 17 4 12' }),
-  info: () => h('circle', { cx: '12', cy: '12', r: '10' }, h('line', { x1: '12', y1: '16', x2: '12', y2: '12' }), h('line', { x1: '12', y1: '8', x2: '12.01', y2: '8' }))
+  info: () => h('circle', { cx: '12', cy: '12', r: '10' }, h('line', { x1: '12', y1: '16', x2: '12', y2: '12' }), h('line', { x1: '12', y1: '8', x2: '12.01', y2: '8' })),
+  map: () => h('polygon', { points: '1 6 1 22 11 18 21 22 21 2 11 6 1 6' }),
+  home: () => h('path', { d: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }),
+  expand: () => h('path', { d: 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7' }),
+  crosshair: () => h('circle', { cx: '12', cy: '12', r: '10' }, h('line', { x1: '22', y1: '12', x2: '18', y2: '12' }), h('line', { x1: '6', y1: '12', x2: '2', y2: '12' }), h('line', { x1: '12', y1: '6', x2: '12', y2: '2' }), h('line', { x1: '12', y1: '22', x2: '12', y2: '18' }), h('circle', { cx: '12', cy: '12', r: '3' }))
 }
 </script>
 
@@ -61,7 +65,11 @@ const icons = {
 .icon-x,
 .icon-alert,
 .icon-check,
-.icon-info {
+.icon-info,
+.icon-map,
+.icon-home,
+.icon-expand,
+.icon-crosshair {
   width: 16px;
   height: 16px;
 }

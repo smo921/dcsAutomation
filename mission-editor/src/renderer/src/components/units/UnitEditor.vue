@@ -1,6 +1,10 @@
 <template>
   <EditorPanel title="Unit Editor" variant="primary">
     <template #toolbar>
+      <Button @click="showPreview = true" variant="secondary" size="sm">
+        <Icon name="map" />
+        Visual Preview
+      </Button>
       <Button @click="onSave" variant="primary">Save</Button>
       <Button @click="onCancel" variant="secondary">Cancel</Button>
     </template>
@@ -222,10 +226,32 @@
           <RouteEditor
             :route="unit.route"
             :airbases="refpoints.airbases"
+            :refpoints="refpoints"
+            :placement="unit.placement"
             @update:route="unit.route = $event"
           />
         </div>
       </CollapsiblePanel>
+
+      <!-- Preview Modal -->
+      <Modal
+        v-model:open="showPreview"
+        title="Route Visual Preview"
+        :closeOnBackground="true"
+        size="lg"
+      >
+        <template #content>
+          <div class="preview-modal-content">
+            <RoutePreviewCanvas
+              :route="unit.route"
+              :refpoints="refpoints"
+              :placement="unit.placement"
+              :width="800"
+              :height="550"
+            />
+          </div>
+        </template>
+      </Modal>
     </div>
   </EditorPanel>
 </template>
@@ -234,8 +260,10 @@
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useUnitTemplatesStore } from '../../stores/unitTemplates'
-import { Button, FormLabel, FormInput, FormSelect, FormRow, FormGroup, EditorPanel, CollapsiblePanel } from '../ui'
+import { Button, FormLabel, FormInput, FormSelect, FormRow, FormGroup, EditorPanel, CollapsiblePanel, Modal } from '../ui'
+import Icon from '../ui/Icon.vue'
 import RouteEditor from '../routeTemplates/RouteEditor.vue'
+import RoutePreviewCanvas from '../visualizer/RoutePreviewCanvas.vue'
 
 const emit = defineEmits(['unit-change', 'save', 'cancel', 'update'])
 
@@ -261,6 +289,8 @@ const props = defineProps({
 
 const refpointsStore = useRefpointsStore()
 const unitTemplatesStore = useUnitTemplatesStore()
+
+const showPreview = ref(false)
 
 // Category options
 const categoryOptions = computed(() => [
@@ -411,4 +441,8 @@ const onCancel = () => {
 
 <style scoped>
 /* Uses shared classes from components.css */
+
+.preview-modal-content {
+  padding: var(--spacing-md);
+}
 </style>

@@ -1,15 +1,22 @@
 <template>
   <div class="refpoint-manager list-container">
-    <!-- Category Tabs -->
-    <div class="category-tabs">
-      <button
-        v-for="category in categories"
-        :key="category"
-        :class="['tab-btn', { active: activeCategory === category }]"
-        @click="activeCategory = category"
-      >
-        {{ getCategoryLabelForTab(category) }}
-      </button>
+    <!-- Toolbar -->
+    <div class="refpoint-toolbar">
+      <!-- Category Tabs -->
+      <div class="category-tabs">
+        <button
+          v-for="category in categories"
+          :key="category"
+          :class="['tab-btn', { active: activeCategory === category }]"
+          @click="activeCategory = category"
+        >
+          {{ getCategoryLabelForTab(category) }}
+        </button>
+      </div>
+      <Button @click="showVisualLayout = true" variant="secondary" size="sm">
+        <Icon name="map" />
+        Visual Layout
+      </Button>
     </div>
 
     <!-- Scrollable Reference Point List -->
@@ -141,6 +148,25 @@
     <div v-if="!props.listOnly && !selectedRefPoint" class="no-selection">
       <p>Select a reference point to edit</p>
     </div>
+
+    <!-- Visual Layout Modal -->
+    <Modal
+      v-model:open="showVisualLayout"
+      title="Reference Point Visual Layout"
+      :closeOnBackground="true"
+      size="lg"
+    >
+      <template #content>
+        <div class="visual-layout-modal-content">
+          <ReferencePointCanvas
+            :refpoints="store"
+            :width="900"
+            :height="550"
+            @refpoints-change="handleRefpointsChange"
+          />
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -148,7 +174,11 @@
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
 import { useResize } from '../../composables/useResize'
-import { EmptyState, FormLabel, FormInput, FormRow, CollapsiblePanel, Button, Badge } from '../ui'
+import { EmptyState, FormLabel, FormInput, FormRow, CollapsiblePanel, Button, Badge, Modal } from '../ui'
+import Icon from '../ui/Icon.vue'
+import ReferencePointCanvas from '../visualizer/ReferencePointCanvas.vue'
+
+const showVisualLayout = ref(false)
 
 const emit = defineEmits(['update', 'select', 'refpoint-edit', 'refpoint-delete'])
 
@@ -222,6 +252,11 @@ const onDeleteRefPoint = (refPoint) => {
   emit('refpoint-delete', refPoint)
 }
 
+const handleRefpointsChange = (updatedRefpoints) => {
+  // Emit change event to notify parent
+  emit('update')
+}
+
 // ---- Computed list ---------------------------------------------
 const getRefPointsByCategory = computed(() => {
   const mapType = t => ({ ...t, type: activeCategory.value })
@@ -248,4 +283,20 @@ watch(currentRefPoint, (newVal) => {
 /* Uses shared classes from _utils.css: tab-btn, content-resizer, resizer-line, no-selection */
 /* Uses shared classes from _list-editor.css: list-scroll, list-scroll-fixed-height, list-container */
 /* Uses shared classes from _components.css: editor-panel, editor-content, info-box */
+
+.refpoint-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.refpoint-toolbar .category-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.visual-layout-modal-content {
+  padding: var(--spacing-md);
+}
 </style>

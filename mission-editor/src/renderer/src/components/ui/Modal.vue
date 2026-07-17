@@ -1,6 +1,6 @@
 <template>
   <div v-if="isOpen" class="modal-overlay" @click.self="handleBackgroundClick">
-    <div class="modal-content" role="dialog" aria-modal="true" :aria-labelledby="dialogId">
+    <div class="modal-content" :class="`modal-${size}`" role="dialog" aria-modal="true" :aria-labelledby="dialogId">
       <div v-if="hasHeader" class="modal-header">
         <h3 class="modal-title" :id="dialogId">{{ title }}</h3>
         <button v-if="closable" class="modal-close-btn" @click="close" type="button">
@@ -12,12 +12,8 @@
         <slot name="content" />
       </div>
 
-      <div v-if="$slots.actions || hasDefaultSlot" class="modal-actions">
-        <slot name="actions">
-          <button v-if="hasDefaultSlot" class="btn-close-modal" @click="close">
-            {{ closeText }}
-          </button>
-        </slot>
+      <div v-if="$slots.actions" class="modal-actions">
+        <slot name="actions" />
       </div>
     </div>
   </div>
@@ -28,6 +24,10 @@ import { ref, computed, onMounted, onUnmounted, watch, useSlots } from 'vue'
 
 const props = defineProps({
   modelValue: {
+    type: Boolean,
+    default: false
+  },
+  open: {
     type: Boolean,
     default: false
   },
@@ -46,12 +46,25 @@ const props = defineProps({
   closeText: {
     type: String,
     default: 'Close'
+  },
+  size: {
+    type: String,
+    default: 'md',
+    validator: (value) => ['sm', 'md', 'lg', 'xl'].includes(value)
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'close'])
+const emit = defineEmits(['update:modelValue', 'update:open', 'close'])
 
-const isOpen = ref(props.modelValue)
+// Support both v-model (modelValue) and v-model:open
+// Use computed for two-way binding
+const isOpen = computed({
+  get: () => props.open || props.modelValue,
+  set: (value) => {
+    emit('update:open', value)
+    emit('update:modelValue', value)
+  }
+})
 const dialogId = ref(`modal-${Math.random().toString(36).substring(7)}`)
 
 const hasHeader = computed(() => !!props.title || props.closable)
@@ -69,6 +82,7 @@ const open = () => {
 const close = () => {
   isOpen.value = false
   emit('update:modelValue', false)
+  emit('update:open', false)
   emit('close')
 }
 
@@ -95,6 +109,13 @@ onUnmounted(() => {
 })
 
 watch(() => props.modelValue, (newVal) => {
+  isOpen.value = newVal
+  if (newVal) {
+    trapFocus()
+  }
+})
+
+watch(() => props.open, (newVal) => {
   isOpen.value = newVal
   if (newVal) {
     trapFocus()
