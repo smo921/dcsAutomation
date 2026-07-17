@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 
 /**
  * Composable for handling resize functionality
@@ -26,6 +26,8 @@ export function useResize(options = {}) {
     isResizing.value = false
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
+    document.removeEventListener('mouseup', handleMouseUp)
+    document.removeEventListener('mousemove', handleMouseMove)
   }
 
   const handleMouseMove = (e) => {
@@ -45,6 +47,10 @@ export function useResize(options = {}) {
 
     document.body.style.cursor = direction === 'vertical' ? 'ns-resize' : 'col-resize'
     document.body.style.userSelect = 'none'
+
+    // Add event listeners when resize starts
+    document.addEventListener('mouseup', handleMouseUp)
+    document.addEventListener('mousemove', handleMouseMove)
   }
 
   const stopResize = () => {
@@ -52,18 +58,6 @@ export function useResize(options = {}) {
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
   }
-
-  // Add event listeners on mount
-  onMounted(() => {
-    document.addEventListener('mouseup', handleMouseUp)
-    document.addEventListener('mousemove', handleMouseMove)
-  })
-
-  // Cleanup on unmount
-  onUnmounted(() => {
-    document.removeEventListener('mouseup', handleMouseUp)
-    document.removeEventListener('mousemove', handleMouseMove)
-  })
 
   return {
     isResizing,

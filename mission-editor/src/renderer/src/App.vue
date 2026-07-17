@@ -12,7 +12,9 @@
     </header>
 
     <div class="app-content">
-      <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }" @mousedown="startSidebarResize">
+      <aside class="sidebar" :style="{ width: sidebarWidth + 'px', flex: '0 0 ' + sidebarWidth + 'px' }">
+        <!-- Resize handle -->
+        <div class="sidebar-resize-handle" @mousedown.stop="startSidebarResize"></div>
         <CollapsibleSection :expanded="sections.units" @update:expanded="sections.units = $event" title="Units">
           <UnitManager
             ref="unitManagerRef"
@@ -185,8 +187,8 @@ const sidebarWidth = ref(320)
 // Use resize composable for sidebar
 const { startResize: startSidebarResize } = useResize({
   size: sidebarWidth,
-  minSize: 280,
-  maxSize: 400,
+  minSize: 250,
+  maxSize: 800,
   direction: 'horizontal'
 })
 
@@ -839,11 +841,12 @@ body {
   flex: 1;
   min-height: 0;
   height: 100%;
+  position: relative;
 }
 
 .sidebar {
   width: 320px;
-  flex: 1;
+  flex: 0 0 320px;
   min-height: 0;
   height: 100%;
   background: var(--color-bg-1);
@@ -858,20 +861,22 @@ body {
 }
 
 /* Sidebar resize handle */
-.sidebar::after {
-  content: '';
+.sidebar-resize-handle {
   position: absolute;
   top: 0;
-  right: 0;
-  width: 4px;
+  right: -3px;
+  width: 6px;
   height: 100%;
   cursor: col-resize;
-  background: transparent;
-  z-index: 10;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 100;
+  transition: background var(--transition-fast);
+  pointer-events: auto;
 }
 
-.sidebar::after:hover {
+.sidebar-resize-handle:hover {
   background: var(--color-primary);
+  opacity: 0.8;
 }
 
 .main-content {

@@ -47,10 +47,10 @@
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Reference point (only the one relevant to current placement) -->
+        <!-- Shown at local origin (0,0) since route is relative to reference -->
         <g v-if="showReference && referencePoint" class="reference-layer" :transform="`translate(${panX}, ${panY}) scale(${zoom})`">
-          <!-- Reference point at its absolute position -->
           <g
-            :transform="`translate(${referencePoint.x || 0}, ${referencePoint.y || 0})`"
+            :transform="`translate(0, 0)`"
             class="reference-point"
           >
             <circle r="8" fill="var(--color-warning)" opacity="0.5" />
@@ -328,6 +328,7 @@ const gridSize = 50
 const hasInitializedView = ref(false)
 
 // Compute route points with cumulative coordinates (offsetX/offsetY are relative to previous point)
+// For visualization, NM values are used directly as pixels (no conversion)
 const routePoints = computed(() => {
   // Start from the placement origin
   const startPos = getStartPosition()
@@ -335,7 +336,7 @@ const routePoints = computed(() => {
   let currentY = startPos.y
 
   return props.route.map((point, index) => {
-    // offsetX/offsetY are relative offsets from the previous waypoint (matching Lua behavior)
+    // offsetX/offsetY are in NM, use directly as pixels for visualization
     const offsetX = point.offsetX ?? 0
     const offsetY = point.offsetY ?? 0
 
@@ -369,21 +370,21 @@ const allConnectionPoints = computed(() => {
   return points
 })
 
-// Calculate the center point for auto-centering
+// Calculate the center point for auto-centering (in local route coordinates)
 const getCenterPoint = () => {
   const allPoints = []
 
-  // Add start position
+  // Add start position (local coordinates, relative to reference)
   allPoints.push(getStartPosition())
 
-  // Add route points
+  // Add route points (already in local coordinates)
   routePoints.value.forEach(p => {
     allPoints.push({ x: p.rawX, y: p.rawY })
   })
 
-  // Add reference point if showing reference and we have one
+  // Add reference point at origin (0,0) in local coordinates
   if (showReference.value && referencePoint.value) {
-    allPoints.push(referencePoint.value)
+    allPoints.push({ x: 0, y: 0 })
   }
 
   if (allPoints.length === 0) {
@@ -426,23 +427,24 @@ const getReferencePoint = () => {
 }
 
 // Calculate the start position based on placement mode
+// For visualization, NM values are used directly as pixels (no conversion)
 const getStartPosition = () => {
   if (!props.placement || !props.placement.mode) return { x: 0, y: 0 }
 
   const mode = props.placement.mode
 
-  if (mode === 'COORDINATE' && props.placement.offsetX && props.placement.offsetY) {
+  if (mode === 'COORDINATE' && props.placement.offsetX !== undefined && props.placement.offsetY !== undefined) {
+    // offsetX/offsetY are in NM, use directly as pixels
     return { x: props.placement.offsetX, y: props.placement.offsetY }
   }
 
   if (mode === 'BEARING_DISTANCE') {
     const bearing = props.placement.bearing || 0
     const distanceNm = props.placement.distance || 0
-    const distanceM = distanceNm * 1852 // NM to meters
     const bearingRad = bearing * Math.PI / 180
     return {
-      x: Math.sin(bearingRad) * distanceM,
-      y: Math.cos(bearingRad) * distanceM
+      x: Math.sin(bearingRad) * distanceNm,
+      y: Math.cos(bearingRad) * distanceNm
     }
   }
 
