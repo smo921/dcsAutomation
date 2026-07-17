@@ -46,66 +46,16 @@
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" />
 
-        <!-- Reference points -->
-        <g v-if="showReference" class="reference-layer" :transform="`translate(${panX}, ${panY}) scale(${zoom})`">
-          <!-- Bullseye -->
+        <!-- Reference point (only the one relevant to current placement) -->
+        <g v-if="showReference && referencePoint" class="reference-layer" :transform="`translate(${panX}, ${panY}) scale(${zoom})`">
+          <!-- Reference point at its absolute position -->
           <g
-            v-for="bullseye in refpoints.bullseyes"
-            :key="`bullseye-${bullseye.name}`"
-            :transform="`translate(${bullseye.x || 0}, ${bullseye.y || 0})`"
+            :transform="`translate(${referencePoint.x || 0}, ${referencePoint.y || 0})`"
             class="reference-point"
           >
-            <circle r="8" fill="var(--color-primary)" opacity="0.3" />
-            <text y="-10" text-anchor="middle" fill="var(--color-text-1)" font-size="10">{{ bullseye.name }}</text>
-          </g>
-
-          <!-- Airbases -->
-          <g
-            v-for="airbase in refpoints.airbases"
-            :key="`airbase-${airbase.name}`"
-            :transform="`translate(${airbase.x || 0}, ${airbase.y || 0})`"
-            class="reference-point"
-          >
-            <rect x="-6" y="-6" width="12" height="12" fill="var(--color-success)" opacity="0.3" />
-            <text y="-10" text-anchor="middle" fill="var(--color-text-1)" font-size="10">{{ airbase.name }}</text>
-          </g>
-
-          <!-- Trigger Zones -->
-          <g
-            v-for="zone in refpoints.zones"
-            :key="`zone-${zone.name}`"
-            :transform="`translate(${zone.x || 0}, ${zone.y || 0})`"
-            class="reference-point"
-          >
-            <circle :r="zone.radius ? zone.radius / 100 : 50" fill="var(--color-warning)" opacity="0.15" />
-            <circle :r="3" fill="var(--color-warning)" opacity="0.5" />
-            <text y="-10" text-anchor="middle" fill="var(--color-text-1)" font-size="10">{{ zone.name }}</text>
-          </g>
-
-          <!-- Battle Lines -->
-          <g
-            v-for="line in refpoints.lines"
-            :key="`line-${line.name}`"
-            class="reference-point"
-          >
-            <line
-              :x1="line.start?.x || 0"
-              :y1="line.start?.y || 0"
-              :x2="line.end?.x || 0"
-              :y2="line.end?.y || 0"
-              stroke="var(--color-error)"
-              stroke-width="2"
-              stroke-dasharray="5,5"
-              opacity="0.5"
-            />
-            <text
-              :x="(line.start?.x || 0 + line.end?.x || 0) / 2"
-              :y="(line.start?.y || 0 + line.end?.y || 0) / 2"
-              fill="var(--color-text-1)"
-              font-size="10"
-              text-anchor="middle"
-            >
-              {{ line.name }}
+            <circle r="8" fill="var(--color-warning)" opacity="0.5" />
+            <text y="-10" text-anchor="middle" fill="var(--color-text-1)" font-size="10">
+              {{ referencePoint.name }} (Ref)
             </text>
           </g>
         </g>
@@ -377,25 +327,28 @@ const dragOffset = ref({ x: 0, y: 0 })
 const gridSize = 50
 const hasInitializedView = ref(false)
 
-// Compute route points with raw coordinates (transform applied via SVG)
+// Compute route points with cumulative coordinates (offsetX/offsetY are relative to previous point)
 const routePoints = computed(() => {
+  // Start from the placement origin
+  const startPos = getStartPosition()
+  let currentX = startPos.x
+  let currentY = startPos.y
+
   return props.route.map((point, index) => {
-    let x = 0
-    let y = 0
+    // offsetX/offsetY are relative offsets from the previous waypoint (matching Lua behavior)
+    const offsetX = point.offsetX ?? 0
+    const offsetY = point.offsetY ?? 0
 
-    // Use offsetX/offsetY for coordinates (standardized format)
-    if (point.offsetX === undefined || point.offsetY === undefined) {
-      // Missing coordinates - throw error
-      throw new Error(`Route point ${index + 1} (${point.type}) is missing offsetX/offsetY coordinates.`)
-    }
-
-    x = point.offsetX
-    y = point.offsetY
+    // Cumulative position: previous position + offset
+    currentX = currentX + offsetX
+    currentY = currentY + offsetY
 
     return {
       ...point,
-      rawX: x,
-      rawY: y
+      rawX: currentX,
+      rawY: currentY,
+      cumulativeX: currentX,
+      cumulativeY: currentY
     }
   })
 })
@@ -404,18 +357,11 @@ const routePoints = computed(() => {
 const allConnectionPoints = computed(() => {
   const points = []
 
-  // Add start point at (0,0) if we have any placement mode (represents reference point or origin)
-  // This connects the start to the first route point
-  if (props.placement?.mode) {
-    if (props.placement.mode === 'COORDINATE' && props.placement.x && props.placement.y) {
-      points.push({ x: props.placement.x, y: props.placement.y })
-    } else {
-      // For other modes, start is at origin (0,0) relative to the reference point
-      points.push({ x: 0, y: 0 })
-    }
-  }
+  // Add start position (placement origin)
+  const startPos = getStartPosition()
+  points.push(startPos)
 
-  // Add all route points
+  // Add all route points (already cumulative from start)
   routePoints.value.forEach(p => {
     points.push({ x: p.rawX, y: p.rawY })
   })
@@ -426,64 +372,18 @@ const allConnectionPoints = computed(() => {
 // Calculate the center point for auto-centering
 const getCenterPoint = () => {
   const allPoints = []
-  let centerOnRefPoint = false
 
-  // Add placement origin based on placement mode
-  if (props.placement?.mode) {
-    if (props.placement.mode === 'COORDINATE' && props.placement.x && props.placement.y) {
-      allPoints.push({ x: props.placement.x, y: props.placement.y })
-    } else if (props.placement.mode === 'BEARING_DISTANCE' && props.placement.referenceName) {
-      // Find the reference point and center on it
-      const refType = props.placement.reference
-      let refPoint = null
-
-      if (refType === 'bullseye') {
-        refPoint = props.refpoints?.bullseyes?.find(p => p.name === props.placement.referenceName)
-      } else if (refType === 'airbase') {
-        refPoint = props.refpoints?.airbases?.find(p => p.name === props.placement.referenceName)
-      } else if (refType === 'zone') {
-        refPoint = props.refpoints?.zones?.find(p => p.name === props.placement.referenceName)
-      }
-
-      if (refPoint && refPoint.x !== undefined) {
-        allPoints.push({ x: refPoint.x, y: refPoint.y })
-        centerOnRefPoint = true
-      }
-    } else if (props.placement.mode === 'AIRBASE_RAMP' && props.placement.referenceName) {
-      const airbase = props.refpoints?.airbases?.find(p => p.name === props.placement.referenceName)
-      if (airbase && airbase.x !== undefined) {
-        allPoints.push({ x: airbase.x, y: airbase.y })
-        centerOnRefPoint = true
-      }
-    } else if (props.placement.mode === 'ZONE_CENTER' && props.placement.referenceName) {
-      const zone = props.refpoints?.zones?.find(p => p.name === props.placement.referenceName)
-      if (zone && zone.x !== undefined) {
-        allPoints.push({ x: zone.x, y: zone.y })
-        centerOnRefPoint = true
-      }
-    }
-  }
+  // Add start position
+  allPoints.push(getStartPosition())
 
   // Add route points
-  props.route.forEach((point, index) => {
-    if (point.offsetX !== undefined && point.offsetY !== undefined) {
-      allPoints.push({ x: point.offsetX, y: point.offsetY })
-    } else if (!centerOnRefPoint) {
-      // Only add default positions if not centering on a reference point
-      const spacing = 100
-      allPoints.push({ x: index * spacing, y: 50 + (index % 3) * 30 })
-    }
+  routePoints.value.forEach(p => {
+    allPoints.push({ x: p.rawX, y: p.rawY })
   })
 
-  // Add reference points if showing them
-  if (showReference.value) {
-    props.refpoints?.bullseyes?.forEach(p => { if (p.x !== undefined) allPoints.push({ x: p.x, y: p.y }) })
-    props.refpoints?.airbases?.forEach(p => { if (p.x !== undefined) allPoints.push({ x: p.x, y: p.y }) })
-    props.refpoints?.zones?.forEach(p => { if (p.x !== undefined) allPoints.push({ x: p.x, y: p.y }) })
-    props.refpoints?.lines?.forEach(line => {
-      if (line.start?.x !== undefined) allPoints.push({ x: line.start.x, y: line.start.y })
-      if (line.end?.x !== undefined) allPoints.push({ x: line.end.x, y: line.end.y })
-    })
+  // Add reference point if showing reference and we have one
+  if (showReference.value && referencePoint.value) {
+    allPoints.push(referencePoint.value)
   }
 
   if (allPoints.length === 0) {
@@ -505,24 +405,65 @@ const getCenterPoint = () => {
   }
 }
 
-// Compute placement origin (raw coordinates, transform applied via SVG)
-const placementOrigin = computed(() => {
+// Get the reference point for the current placement
+const getReferencePoint = () => {
   if (!props.placement || !props.placement.mode) return null
+  if (!props.placement.referenceName) return null
+
+  const refType = props.placement.reference
+  const name = props.placement.referenceName
+
+  if (refType === 'bullseye') {
+    return props.refpoints?.bullseyes?.find(p => p.name === name) || null
+  } else if (refType === 'airbase') {
+    return props.refpoints?.airbases?.find(p => p.name === name) || null
+  } else if (refType === 'zone') {
+    return props.refpoints?.zones?.find(p => p.name === name) || null
+  } else if (refType === 'battle_line') {
+    return props.refpoints?.lines?.find(p => p.name === name) || null
+  }
+  return null
+}
+
+// Calculate the start position based on placement mode
+const getStartPosition = () => {
+  if (!props.placement || !props.placement.mode) return { x: 0, y: 0 }
 
   const mode = props.placement.mode
-  if (mode === 'COORDINATE' && props.placement.x && props.placement.y) {
+
+  if (mode === 'COORDINATE' && props.placement.offsetX && props.placement.offsetY) {
+    return { x: props.placement.offsetX, y: props.placement.offsetY }
+  }
+
+  if (mode === 'BEARING_DISTANCE') {
+    const bearing = props.placement.bearing || 0
+    const distanceNm = props.placement.distance || 0
+    const distanceM = distanceNm * 1852 // NM to meters
+    const bearingRad = bearing * Math.PI / 180
     return {
-      rawX: props.placement.x,
-      rawY: props.placement.y
+      x: Math.sin(bearingRad) * distanceM,
+      y: Math.cos(bearingRad) * distanceM
     }
   }
 
-  // For BEARING_DISTANCE and other reference-based modes, use (0,0) as the reference point
-  // The actual position will be relative to the reference point which is shown on the map
+  // AIRBASE_RAMP, ZONE_CENTER, WAYPOINT - start at reference (0,0 relative)
+  return { x: 0, y: 0 }
+}
+
+// Compute placement origin (raw coordinates, transform applied via SVG)
+const placementOrigin = computed(() => {
+  const startPos = getStartPosition()
   return {
-    rawX: 0,
-    rawY: 0
+    rawX: startPos.x,
+    rawY: startPos.y
   }
+})
+
+// Reference point for display (null if no reference or COORDINATE mode)
+const referencePoint = computed(() => {
+  if (!props.placement || !props.placement.mode) return null
+  if (props.placement.mode === 'COORDINATE') return null
+  return getReferencePoint()
 })
 
 // Drag preview position
@@ -550,9 +491,13 @@ const hasCoordinates = (point) => {
   return point.offsetX !== undefined && point.offsetY !== undefined
 }
 
-// Only show placement origin marker when we have explicit coordinates
+// Show placement origin marker when we have a start position
 const showPlacementOrigin = computed(() => {
-  return props.placement?.mode === 'COORDINATE' && props.placement.x && props.placement.y
+  if (!props.placement || !props.placement.mode) return false
+  const startPos = getStartPosition()
+  // Show marker if start position is non-zero (COORDINATE mode) or if we have a reference
+  return (props.placement.mode === 'COORDINATE' && (props.placement.offsetX || props.placement.offsetY)) ||
+         (props.placement.mode === 'BEARING_DISTANCE' && props.placement.bearing !== undefined)
 })
 
 // Point color helpers
@@ -614,6 +559,18 @@ const screenToWorld = (screenX, screenY, svgRect) => {
   }
 }
 
+// Calculate cumulative position up to (but not including) a given index
+const getCumulativePositionBefore = (index) => {
+  let x = 0
+  let y = 0
+  for (let i = 0; i < index; i++) {
+    const point = props.route[i]
+    x += point.offsetX ?? 0
+    y += point.offsetY ?? 0
+  }
+  return { x, y }
+}
+
 // Drag handlers for route points
 const handlePointDragStart = (event, index) => {
   const point = props.route[index]
@@ -625,9 +582,12 @@ const handlePointDragStart = (event, index) => {
   const svgRect = svg.value.getBoundingClientRect()
   const worldPos = screenToWorld(event.clientX, event.clientY, svgRect)
 
-  // Store the offset from the point's position to the mouse
-  const pointX = point.offsetX !== undefined ? point.offsetX : index * 100
-  const pointY = point.offsetY !== undefined ? point.offsetY : 50 + (index % 3) * 30
+  // Get cumulative position of this point (sum of all previous offsets + this point's offset)
+  const prevPos = getCumulativePositionBefore(index)
+  const currentOffsetX = point.offsetX ?? 0
+  const currentOffsetY = point.offsetY ?? 0
+  const pointX = prevPos.x + currentOffsetX
+  const pointY = prevPos.y + currentOffsetY
 
   dragOffset.value = {
     x: worldPos.x - pointX,
@@ -645,7 +605,7 @@ const handleDragMove = (event) => {
   const svgRect = svg.value.getBoundingClientRect()
   const worldPos = screenToWorld(event.clientX, event.clientY, svgRect)
 
-  // Calculate new position (accounting for drag offset)
+  // Calculate new cumulative position (accounting for drag offset)
   const newX = worldPos.x - dragOffset.value.x
   const newY = worldPos.y - dragOffset.value.y
 

@@ -439,12 +439,29 @@ const onCancel = () => {
   emit('cancel')
 }
 
+// Calculate cumulative position up to (but not including) a given index
+const getCumulativePositionBefore = (index) => {
+  let x = 0
+  let y = 0
+  for (let i = 0; i < index; i++) {
+    const point = props.unit.route[i]
+    x += point.offsetX ?? 0
+    y += point.offsetY ?? 0
+  }
+  return { x, y }
+}
+
 // Handle route point drag events from RoutePreviewCanvas
 const handleRoutePointMove = ({ index, x, y, isDragging }) => {
   // Update the route point coordinates (using standardized offsetX/offsetY)
+  // x/y from canvas are cumulative positions, need to convert to relative offsets
   if (props.unit.route[index]) {
-    props.unit.route[index].offsetX = Math.round(x)
-    props.unit.route[index].offsetY = Math.round(y)
+    // Get cumulative position of all previous waypoints
+    const prevPos = getCumulativePositionBefore(index)
+
+    // Calculate relative offset from previous waypoint
+    props.unit.route[index].offsetX = Math.round(x - prevPos.x)
+    props.unit.route[index].offsetY = Math.round(y - prevPos.y)
 
     // Emit update during drag (not on final position which triggers via watch)
     if (isDragging) {
