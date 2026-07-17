@@ -111,7 +111,10 @@
         </g>
 
         <!-- Route path -->
-        <g class="route-layer" :transform="`translate(${panX}, ${panY}) scale(${zoom})`">
+        <g class="route-layer" :transform="`translate(${panX}, ${panY}) scale(${zoom})`"
+          @mousemove="handleDragMove"
+          @mouseup="handleDragEnd"
+          @mouseleave="handleDragEnd">
           <!-- Connection lines from start to route points -->
           <polyline
             v-if="allConnectionPoints.length > 1"
@@ -129,7 +132,11 @@
             :key="index"
             :transform="`translate(${point.rawX}, ${point.rawY})`"
             class="route-point"
-            :class="{ 'route-point-active': index === activePoint }"
+            :class="{
+              'route-point-active': index === activePoint,
+              'route-point-draggable': isPointDraggable(point),
+              'route-point-dragging': isDragging && draggingPointIndex === index
+            }"
           >
             <!-- Point marker -->
             <circle
@@ -137,6 +144,8 @@
               :fill="getPointColor(point.type)"
               :stroke="getPointStroke(point.type)"
               stroke-width="2"
+              :class="{ draggable: isPointDraggable(point) }"
+              @mousedown="handlePointDragStart($event, index)"
             />
 
             <!-- Point number -->
@@ -150,9 +159,21 @@
               {{ index + 1 }}
             </text>
 
+            <!-- Coordinate label for points with x/y (placement info - shown first) -->
+            <text
+              v-if="hasCoordinates(point)"
+              y="-14"
+              text-anchor="middle"
+              fill="var(--color-primary)"
+              font-size="8"
+              font-weight="bold"
+            >
+              ({{ Math.round(point.rawX) }}, {{ Math.round(point.rawY) }})
+            </text>
+
             <!-- Point type label -->
             <text
-              y="-12"
+              y="-26"
               text-anchor="middle"
               fill="var(--color-text-1)"
               font-size="10"
@@ -160,26 +181,26 @@
               {{ formatPointType(point.type) }}
             </text>
 
-            <!-- Speed indicator -->
-            <text
-              v-if="showSpeeds && point.speed"
-              y="25"
-              text-anchor="middle"
-              fill="var(--color-text-2)"
-              font-size="9"
-            >
-              {{ point.speed }} kt
-            </text>
-
-            <!-- Altitude indicator -->
+            <!-- Altitude indicator (before speed for visual hierarchy) -->
             <text
               v-if="point.altitude"
-              y="35"
+              y="18"
               text-anchor="middle"
               fill="var(--color-text-3)"
               font-size="8"
             >
               {{ formatAltitude(point.altitude) }}
+            </text>
+
+            <!-- Speed indicator -->
+            <text
+              v-if="showSpeeds && point.speed"
+              y="30"
+              text-anchor="middle"
+              fill="var(--color-text-2)"
+              font-size="9"
+            >
+              {{ point.speed }} kt
             </text>
 
             <!-- Orbit pattern indicator -->
@@ -210,6 +231,43 @@
             <circle r="4" fill="var(--color-warning)" />
             <text y="-18" text-anchor="middle" fill="var(--color-text-1)" font-size="10">
               Start
+            </text>
+          </g>
+
+          <!-- Drag preview ghost -->
+          <g v-if="isDragging && draggingPointIndex >= 0" class="drag-preview-layer">
+            <circle
+              :cx="dragPreviewPos.x"
+              :cy="dragPreviewPos.y"
+              r="10"
+              fill="var(--color-primary)"
+              opacity="0.3"
+              stroke="var(--color-primary)"
+              stroke-width="2"
+              stroke-dasharray="4,4"
+            />
+          </g>
+
+          <!-- Coordinate tooltip during drag -->
+          <g v-if="isDragging && draggingPointIndex >= 0" class="drag-tooltip-layer">
+            <rect
+              :x="dragPreviewPos.x - 40"
+              :y="dragPreviewPos.y - 45"
+              width="80"
+              height="20"
+              fill="var(--color-bg-2)"
+              stroke="var(--color-border)"
+              stroke-width="1"
+              rx="3"
+            />
+            <text
+              :x="dragPreviewPos.x"
+              :y="dragPreviewPos.y - 31"
+              text-anchor="middle"
+              fill="var(--color-text-1)"
+              font-size="9"
+            >
+              {{ formatCoords(dragPreviewPos) }}
             </text>
           </g>
         </g>
@@ -295,7 +353,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['point-select'])
+const emit = defineEmits(['point-select', 'route-point-move'])
 
 const svg = ref(null)
 const canvasContainer = ref(null)
@@ -310,6 +368,12 @@ const activePoint = ref(-1)
 const isPanning = ref(false)
 const panStart = ref({ x: 0, y: 0 })
 
+// Drag state for route points
+const isDragging = ref(false)
+const draggingPointIndex = ref(-1)
+const dragStartPos = ref({ x: 0, y: 0 })
+const dragOffset = ref({ x: 0, y: 0 })
+
 const gridSize = 50
 const hasInitializedView = ref(false)
 
@@ -319,16 +383,14 @@ const routePoints = computed(() => {
     let x = 0
     let y = 0
 
-    // Use x/y if available (turn_point, heading), otherwise compute from index
-    if (point.x !== undefined && point.y !== undefined) {
-      x = point.x
-      y = point.y
-    } else {
-      // Default spacing for visualization
-      const spacing = 100
-      x = index * spacing
-      y = 50 + (index % 3) * 30
+    // Use offsetX/offsetY for coordinates (standardized format)
+    if (point.offsetX === undefined || point.offsetY === undefined) {
+      // Missing coordinates - throw error
+      throw new Error(`Route point ${index + 1} (${point.type}) is missing offsetX/offsetY coordinates.`)
     }
+
+    x = point.offsetX
+    y = point.offsetY
 
     return {
       ...point,
@@ -404,8 +466,8 @@ const getCenterPoint = () => {
 
   // Add route points
   props.route.forEach((point, index) => {
-    if (point.x !== undefined && point.y !== undefined) {
-      allPoints.push({ x: point.x, y: point.y })
+    if (point.offsetX !== undefined && point.offsetY !== undefined) {
+      allPoints.push({ x: point.offsetX, y: point.offsetY })
     } else if (!centerOnRefPoint) {
       // Only add default positions if not centering on a reference point
       const spacing = 100
@@ -463,6 +525,31 @@ const placementOrigin = computed(() => {
   }
 })
 
+// Drag preview position
+const dragPreviewPos = computed(() => {
+  if (!isDragging.value || draggingPointIndex.value < 0) {
+    return { x: 0, y: 0 }
+  }
+
+  // Get current position from the route-point-move event data
+  // This will be updated by the parent component via props
+  const point = routePoints.value[draggingPointIndex.value]
+  return {
+    x: point?.rawX || 0,
+    y: point?.rawY || 0
+  }
+})
+
+// Format coordinates for tooltip
+const formatCoords = (pos) => {
+  return `${Math.round(pos.x)}, ${Math.round(pos.y)}`
+}
+
+// Check if a point has coordinate data (offsetX/offsetY)
+const hasCoordinates = (point) => {
+  return point.offsetX !== undefined && point.offsetY !== undefined
+}
+
 // Only show placement origin marker when we have explicit coordinates
 const showPlacementOrigin = computed(() => {
   return props.placement?.mode === 'COORDINATE' && props.placement.x && props.placement.y
@@ -510,6 +597,88 @@ const getOrbitArrowPath = (pattern) => {
   const x2 = Math.cos(endAngle) * r
   const y2 = Math.sin(endAngle) * r
   return `M ${x1} ${y1} A ${r} ${r} 0 1 ${direction > 0 ? 1 : 0} ${x2} ${y2}`
+}
+
+// Check if a route point is draggable
+const isPointDraggable = (point) => {
+  // turn_point, heading, and orbit types can all have x/y coordinates
+  // landing points are airbase-based and cannot be dragged
+  return point.type === 'turn_point' || point.type === 'heading' || point.type === 'orbit'
+}
+
+// Screen to world coordinate conversion
+const screenToWorld = (screenX, screenY, svgRect) => {
+  return {
+    x: (screenX - svgRect.left - panX.value) / zoom.value,
+    y: (screenY - svgRect.top - panY.value) / zoom.value
+  }
+}
+
+// Drag handlers for route points
+const handlePointDragStart = (event, index) => {
+  const point = props.route[index]
+  if (!isPointDraggable(point)) return
+
+  event.preventDefault()
+  event.stopPropagation()
+
+  const svgRect = svg.value.getBoundingClientRect()
+  const worldPos = screenToWorld(event.clientX, event.clientY, svgRect)
+
+  // Store the offset from the point's position to the mouse
+  const pointX = point.offsetX !== undefined ? point.offsetX : index * 100
+  const pointY = point.offsetY !== undefined ? point.offsetY : 50 + (index % 3) * 30
+
+  dragOffset.value = {
+    x: worldPos.x - pointX,
+    y: worldPos.y - pointY
+  }
+
+  isDragging.value = true
+  draggingPointIndex.value = index
+  dragStartPos.value = { x: pointX, y: pointY }
+}
+
+const handleDragMove = (event) => {
+  if (!isDragging.value || draggingPointIndex.value < 0) return
+
+  const svgRect = svg.value.getBoundingClientRect()
+  const worldPos = screenToWorld(event.clientX, event.clientY, svgRect)
+
+  // Calculate new position (accounting for drag offset)
+  const newX = worldPos.x - dragOffset.value.x
+  const newY = worldPos.y - dragOffset.value.y
+
+  // Emit the move event for parent to handle
+  emit('route-point-move', {
+    index: draggingPointIndex.value,
+    x: newX,
+    y: newY,
+    isDragging: true
+  })
+}
+
+const handleDragEnd = (event) => {
+  if (!isDragging.value || draggingPointIndex.value < 0) return
+
+  const svgRect = svg.value.getBoundingClientRect()
+  const worldPos = screenToWorld(event.clientX, event.clientY, svgRect)
+
+  const newX = worldPos.x - dragOffset.value.x
+  const newY = worldPos.y - dragOffset.value.y
+
+  // Emit final position
+  emit('route-point-move', {
+    index: draggingPointIndex.value,
+    x: newX,
+    y: newY,
+    isDragging: false
+  })
+
+  // Reset drag state
+  isDragging.value = false
+  draggingPointIndex.value = -1
+  dragOffset.value = { x: 0, y: 0 }
 }
 
 // Pan handlers
@@ -717,11 +886,33 @@ onMounted(() => {
 
 .route-point {
   cursor: pointer;
-  transition: transform var(--transition-fast);
 }
 
-.route-point:hover {
-  transform: scale(1.2);
+.route-point-draggable {
+  cursor: move;
+}
+
+.route-point-draggable circle.draggable {
+  cursor: move;
+  transition: stroke-width var(--transition-fast);
+}
+
+.route-point-draggable circle.draggable:hover {
+  stroke-width: 4;
+}
+
+.route-point-dragging {
+  opacity: 0.5;
+}
+
+.route-point-dragging circle {
+  stroke-dasharray: 4,4;
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+.route-point-dragging circle {
+  stroke-dasharray: 4,4;
+  animation: pulse 0.5s ease-in-out infinite;
 }
 
 .route-point-active circle {
@@ -731,5 +922,22 @@ onMounted(() => {
 
 .placement-origin {
   pointer-events: none;
+}
+
+.drag-preview-layer {
+  pointer-events: none;
+}
+
+.drag-tooltip-layer {
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 </style>

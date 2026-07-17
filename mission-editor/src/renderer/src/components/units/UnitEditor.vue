@@ -248,6 +248,7 @@
               :placement="unit.placement"
               :width="800"
               :height="550"
+              @route-point-move="handleRoutePointMove"
             />
           </div>
         </template>
@@ -436,6 +437,21 @@ const onSave = () => {
 
 const onCancel = () => {
   emit('cancel')
+}
+
+// Handle route point drag events from RoutePreviewCanvas
+const handleRoutePointMove = ({ index, x, y, isDragging }) => {
+  // Update the route point coordinates (using standardized offsetX/offsetY)
+  if (props.unit.route[index]) {
+    props.unit.route[index].offsetX = Math.round(x)
+    props.unit.route[index].offsetY = Math.round(y)
+
+    // Emit update during drag (not on final position which triggers via watch)
+    if (isDragging) {
+      emit('unit-change', props.unit)
+      emit('update', props.unit)
+    }
+  }
 }
 </script>
 

@@ -35,16 +35,12 @@
                 <div v-if="wp.type === 'orbit'">
                   <FormRow>
                     <FormGroup>
-                      <FormLabel label="Altitude" />
-                      <FormInput v-model="wp.altitude" type="number" />
+                      <FormLabel label="X Offset" />
+                      <FormInput v-model="wp.offsetX" type="number" />
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel label="Altitude Type" />
-                      <FormInput v-model="wp.altitudeType" />
-                    </FormGroup>
-                    <FormGroup>
-                      <FormLabel label="Speed" />
-                      <FormInput v-model="wp.speed" type="number" />
+                      <FormLabel label="Y Offset" />
+                      <FormInput v-model="wp.offsetY" type="number" />
                     </FormGroup>
                   </FormRow>
                   <FormRow>
@@ -57,6 +53,20 @@
                       <FormSelect v-model="wp.pattern" :options="patternOptions" />
                     </FormGroup>
                   </FormRow>
+                  <FormRow>
+                    <FormGroup>
+                      <FormLabel label="Altitude" />
+                      <FormInput v-model="wp.altitude" type="number" />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel label="Altitude Type" />
+                      <FormInput v-model="wp.altitudeType" />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel label="Speed" />
+                      <FormInput v-model="wp.speed" type="number" />
+                    </FormGroup>
+                  </FormRow>
                 </div>
 
                 <!-- Turn point / Heading fields -->
@@ -64,11 +74,11 @@
                   <FormRow>
                     <FormGroup>
                       <FormLabel label="X Offset" />
-                      <FormInput v-model="wp.x" type="number" />
+                      <FormInput v-model="wp.offsetX" type="number" />
                     </FormGroup>
                     <FormGroup>
                       <FormLabel label="Y Offset" />
-                      <FormInput v-model="wp.y" type="number" />
+                      <FormInput v-model="wp.offsetY" type="number" />
                     </FormGroup>
                   </FormRow>
                   <FormRow>
@@ -159,16 +169,17 @@ const airbaseOptions = computed(() => {
 // Add a new route point with default values
 const addRouteItem = () => {
   isUpdating.value = true
-  props.route.push({
+  const newPoint = {
     type: 'orbit',
     altitude: 3000,
     speed: 500,
     radius: 10,
     pattern: 'clockwise',
-    x: 0,
-    y: 0,
+    offsetX: 0,
+    offsetY: 0,
     airbase: ''
-  })
+  }
+  props.route.push(newPoint)
   // Scroll to new item after next tick
   nextTick(() => {
     isUpdating.value = false

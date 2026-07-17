@@ -174,13 +174,10 @@ export function generateLuaFromUnits(units, refpointsStore, options = {}) {
         if (wp.altitude !== undefined) lines.push(`        alt = ${wp.altitude},`);
         if (wp.alt_type !== undefined) lines.push(`        alt_type = "${wp.alt_type}",`);
         if (wp.speed !== undefined) lines.push(`        speed = ${wp.speed},`);
-        if (wp.x !== undefined) lines.push(`        offsetX = ${wp.x},`);
-        if (wp.y !== undefined) lines.push(`        offsetY = ${wp.y},`);
-        // Default offsetX/Y for orbit/other waypoint types that don't specify coordinates
-        if (wp.x === undefined && wp.y === undefined) {
-          lines.push('        offsetX = 0,');
-          lines.push('        offsetY = 0,');
-        }
+        if (wp.offsetX !== undefined) lines.push(`        offsetX = ${wp.offsetX},`);
+        else lines.push(`        offsetX = 0,`);
+        if (wp.offsetY !== undefined) lines.push(`        offsetY = ${wp.offsetY},`);
+        else lines.push(`        offsetY = 0,`);
         if (wp.radius !== undefined) lines.push(`        radius = ${wp.radius},`);
         if (wp.pattern) lines.push(`        pattern = "${wp.pattern}",`);
         if (wp.airbaseName) lines.push(`        airbaseName = "${wp.airbaseName}",`);
@@ -246,9 +243,9 @@ export function generateLuaFromUnits(units, refpointsStore, options = {}) {
       }
       if (tu.placement) {
         lines.push('      placement = {');
-        if (tu.placement.x !== undefined && tu.placement.y !== undefined) {
-          lines.push(`        offsetX = ${tu.placement.x},`);
-          lines.push(`        offsetY = ${tu.placement.y},`);
+        if (tu.placement.offsetX !== undefined && tu.placement.offsetY !== undefined) {
+          lines.push(`        offsetX = ${tu.placement.offsetX},`);
+          lines.push(`        offsetY = ${tu.placement.offsetY},`);
         }
         lines.push('      },');
       }
@@ -257,8 +254,8 @@ export function generateLuaFromUnits(units, refpointsStore, options = {}) {
         tu.route.forEach((wp, idx) => {
           if (idx > 0) lines.push(',');
           lines.push('        {');
-          if (wp.x !== undefined) lines.push(`          offsetX = ${wp.x},`);
-          if (wp.y !== undefined) lines.push(`          offsetY = ${wp.y},`);
+          if (wp.offsetX !== undefined) lines.push(`          offsetX = ${wp.offsetX},`);
+          if (wp.offsetY !== undefined) lines.push(`          offsetY = ${wp.offsetY},`);
           if (wp.altitude !== undefined) lines.push(`          alt = ${wp.altitude},`);
           if (wp.speed !== undefined) lines.push(`          speed = ${wp.speed},`);
           lines.push('        }');
