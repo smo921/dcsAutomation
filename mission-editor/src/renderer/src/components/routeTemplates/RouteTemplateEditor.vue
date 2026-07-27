@@ -16,6 +16,15 @@
         </FormRow>
       </div>
 
+      <!-- Route Preview - visual feedback for route template -->
+      <div class="editor-section">
+        <RoutePreviewCanvas
+          :route="route"
+          :width="800"
+          :height="300"
+        />
+      </div>
+
       <!-- Route Editor - reusable component for route management -->
       <div class="editor-section">
         <RouteEditor
@@ -33,6 +42,7 @@ import { ref, computed, watch } from 'vue'
 import { FormInput, FormRow, FormLabel, EditorPanel, Button } from '../ui'
 import FormGroup from '../ui/FormGroup.vue'
 import RouteEditor from './RouteEditor.vue'
+import RoutePreviewCanvas from '../visualizer/RoutePreviewCanvas.vue'
 
 const emit = defineEmits(['save', 'cancel', 'update:route', 'update:templateName'])
 

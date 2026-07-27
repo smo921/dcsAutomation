@@ -4,14 +4,15 @@
     <div class="route-editor-list-section">
       <div class="list-scroll list-scroll--flex">
         <div class="list-container">
-          <!-- Route Header -->
+
+          <!-- Route Header --> <!--
           <div class="list-item-header">
             <span class="route-index">#</span>
             <span class="route-type">Type</span>
             <span class="route-details">Details</span>
             <span></span>
           </div>
-
+-->
           <!-- Route Items -->
           <div
             v-for="(wp, index) in route"
@@ -19,9 +20,9 @@
             class="waypoint-row"
             :data-waypoint-num="index + 1"
           >
-            <div class="list-item-content">
-              <span class="route-index">{{ index + 1 }}</span>
+            <span class="route-index">{{ index + 1 }}</span>
 
+            <div class="list-item-content">
               <!-- Type selector -->
               <FormSelect
                 v-model="wp.type"
@@ -210,6 +211,12 @@ const removeRouteItem = (index) => {
 /* Route-specific column widths */
 .route-index {
   flex: 0 0 50px;
+  padding: 0 12px;
+}
+
+.waypoint-row {
+  display: flex;
+  align-items: center;
 }
 
 .route-type {

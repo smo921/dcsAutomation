@@ -1,6 +1,11 @@
 <template>
-  <div class="route-preview-canvas">
-    <div class="canvas-header">
+  <VisualCanvas
+    :width="width"
+    :height="height"
+    :show-grid="true"
+    @camera-ready="onCameraReady"
+  >
+    <template #header>
       <h4 class="canvas-title">
         <Icon name="map" />
         Route Preview
@@ -11,6 +16,10 @@
           Show Speeds
         </label>
         <label class="control-label">
+          <input type="checkbox" v-model="showAltitude" />
+          Show Altitude
+        </label>
+        <label class="control-label">
           <input type="checkbox" v-model="showReference" />
           Show Reference
         </label>
@@ -19,261 +28,203 @@
         </label>
         <input type="range" v-model="zoom" :min="0.25" :max="4" :step="0.25" class="zoom-slider" />
       </div>
-    </div>
+    </template>
 
-    <div class="canvas-container" ref="canvasContainer">
-      <svg
-        ref="svg"
-        :width="width"
-        :height="height"
-        :viewBox="`0 0 ${width} ${height}`"
-        @mousedown="startPan"
-        @mousemove="handlePan"
-        @mouseup="endPan"
-        @mouseleave="endPan"
-        @wheel="handleWheel"
-      >
-        <!-- Grid background -->
-        <defs>
-          <pattern id="grid" :width="gridSize * zoom" :height="gridSize * zoom" patternUnits="userSpaceOnUse">
-            <path
-              :d="`M ${gridSize * zoom} 0 L 0 0 0 ${gridSize * zoom}`"
-              fill="none"
-              stroke="var(--color-border)"
-              stroke-width="0.5"
-            />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-
-        <!-- Reference point (only the one relevant to current placement) -->
-        <!-- Shown at local origin (0,0) since route is relative to reference -->
-        <g v-if="showReference && referencePoint" class="reference-layer" :transform="`translate(${panX}, ${panY}) scale(${zoom})`">
-          <g
-            :transform="`translate(0, 0)`"
-            class="reference-point"
-          >
-            <circle r="8" fill="var(--color-warning)" opacity="0.5" />
-            <text y="-10" text-anchor="middle" fill="var(--color-text-1)" font-size="10">
-              {{ referencePoint.name }} (Ref)
-            </text>
-          </g>
-        </g>
-
-        <!-- Route path -->
-        <g class="route-layer" :transform="`translate(${panX}, ${panY}) scale(${zoom})`"
-          @mousemove="handleDragMove"
-          @mouseup="handleDragEnd"
-          @mouseleave="handleDragEnd">
-          <!-- Connection lines from start to route points -->
-          <polyline
-            v-if="allConnectionPoints.length > 1"
-            :points="allConnectionPoints.map(p => `${p.x},${p.y}`).join(' ')"
-            fill="none"
-            stroke="var(--color-primary)"
-            stroke-width="2"
-            stroke-dasharray="4,4"
-            opacity="0.6"
-          />
-
-          <!-- Route points -->
-          <g
-            v-for="(point, index) in routePoints"
-            :key="index"
-            :transform="`translate(${point.rawX}, ${point.rawY})`"
-            class="route-point"
-            :class="{
-              'route-point-active': index === activePoint,
-              'route-point-draggable': isPointDraggable(point),
-              'route-point-dragging': isDragging && draggingPointIndex === index
-            }"
-          >
-            <!-- Point marker -->
-            <circle
-              r="10"
-              :fill="getPointColor(point.type)"
-              :stroke="getPointStroke(point.type)"
-              stroke-width="2"
-              :class="{ draggable: isPointDraggable(point) }"
-              @mousedown="handlePointDragStart($event, index)"
-            />
-
-            <!-- Point number -->
-            <text
-              y="4"
-              text-anchor="middle"
-              fill="white"
-              font-size="12"
-              font-weight="bold"
-            >
-              {{ index + 1 }}
-            </text>
-
-            <!-- Coordinate label for points with x/y (placement info - shown first) -->
-            <text
-              v-if="hasCoordinates(point)"
-              y="-14"
-              text-anchor="middle"
-              fill="var(--color-primary)"
-              font-size="8"
-              font-weight="bold"
-            >
-              ({{ Math.round(point.rawX) }}, {{ Math.round(point.rawY) }})
-            </text>
-
-            <!-- Point type label -->
-            <text
-              y="-26"
-              text-anchor="middle"
-              fill="var(--color-text-1)"
-              font-size="10"
-            >
-              {{ formatPointType(point.type) }}
-            </text>
-
-            <!-- Altitude indicator (before speed for visual hierarchy) -->
-            <text
-              v-if="point.altitude"
-              y="18"
-              text-anchor="middle"
-              fill="var(--color-text-3)"
-              font-size="8"
-            >
-              {{ formatAltitude(point.altitude) }}
-            </text>
-
-            <!-- Speed indicator -->
-            <text
-              v-if="showSpeeds && point.speed"
-              y="30"
-              text-anchor="middle"
-              fill="var(--color-text-2)"
-              font-size="9"
-            >
-              {{ point.speed }} kt
-            </text>
-
-            <!-- Orbit pattern indicator -->
-            <circle
-              v-if="point.type === 'orbit' && point.radius"
-              :r="point.radius * 2"
-              fill="none"
-              stroke="var(--color-primary)"
-              stroke-width="1"
-              stroke-dasharray="2,2"
-              opacity="0.4"
-            />
-
-            <!-- Orbit direction arrow -->
-            <path
-              v-if="point.type === 'orbit'"
-              :d="getOrbitArrowPath(point.pattern)"
-              fill="none"
-              stroke="var(--color-primary)"
-              stroke-width="2"
-              marker-end="url(#arrowhead)"
-            />
-          </g>
-
-          <!-- Placement origin marker -->
-          <g v-if="showPlacementOrigin" class="placement-origin" :transform="`translate(${placementOrigin.rawX}, ${placementOrigin.rawY})`">
-            <circle r="15" fill="none" stroke="var(--color-warning)" stroke-width="2" stroke-dasharray="4,4" />
-            <circle r="4" fill="var(--color-warning)" />
-            <text y="-18" text-anchor="middle" fill="var(--color-text-1)" font-size="10">
-              Start
-            </text>
-          </g>
-
-          <!-- Drag preview ghost -->
-          <g v-if="isDragging && draggingPointIndex >= 0" class="drag-preview-layer">
-            <circle
-              :cx="dragPreviewPos.x"
-              :cy="dragPreviewPos.y"
-              r="10"
-              fill="var(--color-primary)"
-              opacity="0.3"
-              stroke="var(--color-primary)"
-              stroke-width="2"
-              stroke-dasharray="4,4"
-            />
-          </g>
-
-          <!-- Coordinate tooltip during drag -->
-          <g v-if="isDragging && draggingPointIndex >= 0" class="drag-tooltip-layer">
-            <rect
-              :x="dragPreviewPos.x - 40"
-              :y="dragPreviewPos.y - 45"
-              width="80"
-              height="20"
-              fill="var(--color-bg-2)"
-              stroke="var(--color-border)"
-              stroke-width="1"
-              rx="3"
-            />
-            <text
-              :x="dragPreviewPos.x"
-              :y="dragPreviewPos.y - 31"
-              text-anchor="middle"
-              fill="var(--color-text-1)"
-              font-size="9"
-            >
-              {{ formatCoords(dragPreviewPos) }}
-            </text>
-          </g>
-        </g>
-
-        <!-- Arrow marker definition -->
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="var(--color-primary)" />
-          </marker>
-        </defs>
-      </svg>
-
-      <!-- Navigation controls -->
+    <template #controls>
       <div class="nav-controls">
-        <button @click="resetView" class="nav-btn" title="Reset View">
-          <Icon name="home" />
-        </button>
         <button @click="fitToContent" class="nav-btn" title="Fit to Content">
           <Icon name="expand" />
         </button>
       </div>
-    </div>
+    </template>
 
-    <!-- Legend -->
-    <div class="canvas-legend">
-      <div class="legend-item">
-        <span class="legend-icon" style="background: var(--color-primary);"></span>
-        <span>Route Point</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-icon" style="background: var(--color-primary); border-radius: 50%;"></span>
-        <span>Orbit</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-icon" style="background: var(--color-primary);"></span>
-        <span>Turn Point/Heading</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-icon" style="background: var(--color-success);"></span>
-        <span>Airbase</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-icon" style="background: var(--color-warning); border-radius: 50%;"></span>
-        <span>Zone</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-icon" style="background: var(--color-primary); border-radius: 50%;"></span>
-        <span>Bullseye</span>
-      </div>
-    </div>
-  </div>
+    <template #default="{ zoom: canvasZoom }">
+      <!-- Reference point (only the one relevant to current placement) -->
+      <g v-if="showReference && referencePoint" class="reference-layer">
+        <g class="reference-point">
+          <circle :r="8 / canvasZoom" fill="var(--color-warning)" opacity="0.5" />
+          <text :y="-10 / canvasZoom" text-anchor="middle" fill="var(--color-text-1)" :font-size="10 / canvasZoom">
+            {{ referencePoint.name }} (Ref)
+          </text>
+        </g>
+      </g>
+
+      <!-- Route path -->
+      <g class="route-layer"
+        @mousemove="handleDragMove"
+        @mouseup="handleDragEnd"
+        @mouseleave="handleDragEnd">
+        <!-- Connection lines from start to route points -->
+        <polyline
+          v-if="allConnectionPoints.length > 1"
+          :points="allConnectionPoints.map(p => `${p.x},${p.y}`).join(' ')"
+          fill="none"
+          stroke="var(--color-primary)"
+          :stroke-width="2 / canvasZoom"
+          stroke-dasharray="4,4"
+          opacity="0.6"
+        />
+
+        <!-- Route points -->
+        <g
+          v-for="(point, index) in routePoints"
+          :key="index"
+          :transform="`translate(${point.rawX}, ${point.rawY})`"
+          class="route-point"
+          :class="{
+            'route-point-active': index === activePoint,
+            'route-point-draggable': isPointDraggable(point),
+            'route-point-dragging': isDragging && draggingPointIndex === index
+          }"
+        >
+          <!-- Point marker -->
+          <circle
+            :r="10 / canvasZoom"
+            :fill="getPointColor(point.type)"
+            :stroke="getPointStroke(point.type)"
+            :stroke-width="2 / canvasZoom"
+            :class="{ draggable: isPointDraggable(point) }"
+            @mousedown="handlePointDragStart($event, index)"
+          />
+
+          <!-- Point number -->
+          <text
+            :y="4 / canvasZoom"
+            text-anchor="middle"
+            fill="white"
+            :font-size="12 / canvasZoom"
+            :font-weight="bold"
+          >
+            {{ index + 1 }}
+          </text>
+
+          <!-- Coordinate label for points with x/y (placement info - shown first) -->
+          <text
+            v-if="hasCoordinates(point)"
+            :y="-14 / canvasZoom"
+            text-anchor="middle"
+            fill="var(--color-primary)"
+            :font-size="8 / canvasZoom"
+            :font-weight="bold"
+          >
+            ({{ Math.round(point.rawX) }}, {{ Math.round(point.rawY) }})
+          </text>
+
+          <!-- Point type label -->
+          <text
+            :y="-26 / canvasZoom"
+            text-anchor="middle"
+            fill="var(--color-text-1)"
+            :font-size="10 / canvasZoom"
+          >
+            {{ formatPointType(point.type) }}
+          </text>
+
+          <!-- Altitude indicator (before speed for visual hierarchy) -->
+          <text
+            v-if="showAltitude && point.altitude"
+            :y="18 / canvasZoom"
+            text-anchor="middle"
+            fill="var(--color-text-3)"
+            :font-size="8 / canvasZoom"
+          >
+            {{ formatAltitude(point.altitude) }}
+          </text>
+
+          <!-- Speed indicator -->
+          <text
+            v-if="showSpeeds && point.speed"
+            :y="30 / canvasZoom"
+            text-anchor="middle"
+            fill="var(--color-text-2)"
+            :font-size="9 / canvasZoom"
+          >
+            {{ point.speed }} kt
+          </text>
+
+          <!-- Orbit pattern indicator -->
+          <circle
+            v-if="point.type === 'orbit' && point.radius"
+            :r="point.radius * 2"
+            fill="none"
+            stroke="var(--color-primary)"
+            :stroke-width="1 / canvasZoom"
+            stroke-dasharray="2,2"
+            opacity="0.4"
+          />
+
+          <!-- Orbit direction arrow -->
+          <path
+            v-if="point.type === 'orbit'"
+            :d="getOrbitArrowPath(point.pattern)"
+            fill="none"
+            stroke="var(--color-primary)"
+            :stroke-width="2 / canvasZoom"
+            marker-end="url(#arrowhead)"
+          />
+        </g>
+
+        <!-- Placement origin marker -->
+        <g v-if="showPlacementOrigin" class="placement-origin" :transform="`translate(${placementOrigin.rawX}, ${placementOrigin.rawY})`">
+          <circle :r="15 / canvasZoom" fill="none" stroke="var(--color-warning)" :stroke-width="2 / canvasZoom" stroke-dasharray="4,4" />
+          <circle :r="4 / canvasZoom" fill="var(--color-warning)" />
+          <text :y="-18 / canvasZoom" text-anchor="middle" fill="var(--color-text-1)" :font-size="10 / canvasZoom">
+            Start
+          </text>
+        </g>
+
+        <!-- Drag preview ghost -->
+        <g v-if="isDragging && draggingPointIndex >= 0" class="drag-preview-layer">
+          <circle
+            :cx="dragPreviewPos.x"
+            :cy="dragPreviewPos.y"
+            :r="10 / canvasZoom"
+            fill="var(--color-primary)"
+            opacity="0.3"
+            stroke="var(--color-primary)"
+            :stroke-width="2 / canvasZoom"
+            stroke-dasharray="4,4"
+          />
+        </g>
+
+        <!-- Coordinate tooltip during drag -->
+        <g v-if="isDragging && draggingPointIndex >= 0" class="drag-tooltip-layer">
+          <rect
+            :x="dragPreviewPos.x - 40 / canvasZoom"
+            :y="dragPreviewPos.y - 45 / canvasZoom"
+            :width="80 / canvasZoom"
+            :height="20 / canvasZoom"
+            fill="var(--color-bg-2)"
+            stroke="var(--color-border)"
+            :stroke-width="1 / canvasZoom"
+            :rx="3 / canvasZoom"
+          />
+          <text
+            :x="dragPreviewPos.x"
+            :y="dragPreviewPos.y - 31 / canvasZoom"
+            text-anchor="middle"
+            fill="var(--color-text-1)"
+            :font-size="9 / canvasZoom"
+          >
+            {{ formatCoords(dragPreviewPos) }}
+          </text>
+        </g>
+      </g>
+
+      <!-- Arrow marker definition -->
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="var(--color-primary)" />
+        </marker>
+      </defs>
+    </template>
+  </VisualCanvas>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, inject } from 'vue'
 import Icon from '../ui/Icon.vue'
+import VisualCanvas from './VisualCanvas.vue'
 
 const props = defineProps({
   route: {
@@ -305,26 +256,30 @@ const props = defineProps({
 
 const emit = defineEmits(['point-select', 'route-point-move'])
 
-const svg = ref(null)
-const canvasContainer = ref(null)
-const zoom = ref(1)
-const panX = ref(0)
-const panY = ref(0)
+// Camera state (synced with VisualCanvas)
+const cameraApi = ref(null)
+
+// These will be set to the camera refs when ready
+let zoom, panX, panY
+
+const onCameraReady = (api) => {
+  cameraApi.value = api
+  // Get the actual refs from the camera API
+  zoom = api.zoom
+  panX = api.panX
+  panY = api.panY
+}
+
 const showSpeeds = ref(true)
+const showAltitude = ref(true)
 const showReference = ref(true)
 const activePoint = ref(-1)
-
-// Pan state
-const isPanning = ref(false)
-const panStart = ref({ x: 0, y: 0 })
 
 // Drag state for route points
 const isDragging = ref(false)
 const draggingPointIndex = ref(-1)
-const dragStartPos = ref({ x: 0, y: 0 })
 const dragOffset = ref({ x: 0, y: 0 })
 
-const gridSize = 50
 const hasInitializedView = ref(false)
 
 // Compute route points with cumulative coordinates (offsetX/offsetY are relative to previous point)
@@ -554,10 +509,14 @@ const isPointDraggable = (point) => {
 }
 
 // Screen to world coordinate conversion
-const screenToWorld = (screenX, screenY, svgRect) => {
+const screenToWorld = (screenX, screenY) => {
+  if (!zoom || !panX || !panY || !cameraApi.value?.svgRect?.value) {
+    return { x: screenX, y: screenY }
+  }
+  const rect = cameraApi.value.svgRect.value
   return {
-    x: (screenX - svgRect.left - panX.value) / zoom.value,
-    y: (screenY - svgRect.top - panY.value) / zoom.value
+    x: (screenX - rect.left - panX.value) / zoom.value,
+    y: (screenY - rect.top - panY.value) / zoom.value
   }
 }
 
@@ -581,8 +540,7 @@ const handlePointDragStart = (event, index) => {
   event.preventDefault()
   event.stopPropagation()
 
-  const svgRect = svg.value.getBoundingClientRect()
-  const worldPos = screenToWorld(event.clientX, event.clientY, svgRect)
+  const worldPos = screenToWorld(event.clientX, event.clientY)
 
   // Get cumulative position of this point (sum of all previous offsets + this point's offset)
   const prevPos = getCumulativePositionBefore(index)
@@ -598,14 +556,12 @@ const handlePointDragStart = (event, index) => {
 
   isDragging.value = true
   draggingPointIndex.value = index
-  dragStartPos.value = { x: pointX, y: pointY }
 }
 
 const handleDragMove = (event) => {
   if (!isDragging.value || draggingPointIndex.value < 0) return
 
-  const svgRect = svg.value.getBoundingClientRect()
-  const worldPos = screenToWorld(event.clientX, event.clientY, svgRect)
+  const worldPos = screenToWorld(event.clientX, event.clientY)
 
   // Calculate new cumulative position (accounting for drag offset)
   const newX = worldPos.x - dragOffset.value.x
@@ -623,8 +579,7 @@ const handleDragMove = (event) => {
 const handleDragEnd = (event) => {
   if (!isDragging.value || draggingPointIndex.value < 0) return
 
-  const svgRect = svg.value.getBoundingClientRect()
-  const worldPos = screenToWorld(event.clientX, event.clientY, svgRect)
+  const worldPos = screenToWorld(event.clientX, event.clientY)
 
   const newX = worldPos.x - dragOffset.value.x
   const newY = worldPos.y - dragOffset.value.y
@@ -643,41 +598,12 @@ const handleDragEnd = (event) => {
   dragOffset.value = { x: 0, y: 0 }
 }
 
-// Pan handlers
-const startPan = (e) => {
-  if (e.target.tagName === 'circle' || e.target.tagName === 'text') return
-  isPanning.value = true
-  panStart.value = { x: e.clientX - panX.value, y: e.clientY - panY.value }
-}
-
-const handlePan = (e) => {
-  if (!isPanning.value) return
-  panX.value = e.clientX - panStart.value.x
-  panY.value = e.clientY - panStart.value.y
-}
-
-const endPan = () => {
-  isPanning.value = false
-}
-
-// Zoom handler
-const handleWheel = (e) => {
-  e.preventDefault()
-  const delta = e.deltaY > 0 ? 0.9 : 1.1
-  zoom.value = Math.max(0.25, Math.min(4, zoom.value * delta))
-}
-
 // View controls
-const resetView = () => {
-  zoom.value = 1
-  panX.value = 0
-  panY.value = 0
-}
-
 const fitToContent = () => {
-  const center = getCenterPoint()
+  if (!zoom || !panX || !panY) return
 
-  if (!center.width && !center.height) return
+  const center = getCenterPoint()
+  if (!center || (!center.width && !center.height)) return
 
   const padding = 50
   const contentWidth = center.width + padding * 2
@@ -685,19 +611,23 @@ const fitToContent = () => {
 
   const zoomX = props.width / contentWidth
   const zoomY = props.height / contentHeight
-  zoom.value = Math.min(zoomX, zoomY, 2)
+  const newZoom = Math.min(zoomX, zoomY, 2)
 
-  // Center the content
-  panX.value = props.width / 2 - center.x * zoom.value
-  panY.value = props.height / 2 - center.y * zoom.value
+  zoom.value = newZoom
+  panX.value = props.width / 2 - center.x * newZoom
+  panY.value = props.height / 2 - center.y * newZoom
 }
 
 // Auto-center on mount and when route changes
 const autoCenter = () => {
   if (hasInitializedView.value) return
+  if (!zoom || !panX || !panY) return
 
   const center = getCenterPoint()
-  if (!center || (!center.width && !center.height && props.route.length === 0)) return
+  if (!center || (!center.width && !center.height && props.route.length === 0)) {
+    hasInitializedView.value = true
+    return
+  }
 
   // Use a comfortable zoom level
   const padding = 80
@@ -706,11 +636,11 @@ const autoCenter = () => {
 
   const zoomX = props.width / contentWidth
   const zoomY = props.height / contentHeight
-  zoom.value = Math.min(zoomX, zoomY, 2)
+  const newZoom = Math.min(zoomX, zoomY, 2)
 
-  // Center on the content
-  panX.value = props.width / 2 - center.x * zoom.value
-  panY.value = props.height / 2 - center.y * zoom.value
+  zoom.value = newZoom
+  panX.value = props.width / 2 - center.x * newZoom
+  panY.value = props.height / 2 - center.y * newZoom
 
   hasInitializedView.value = true
 }
@@ -731,24 +661,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.route-preview-canvas {
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg-1);
-  border-radius: var(--spacing-xs);
-  border: 1px solid var(--color-border);
-  overflow: hidden;
-}
-
-.canvas-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-bg-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
 .canvas-title {
   display: flex;
   align-items: center;
@@ -776,16 +688,6 @@ onMounted(() => {
 .zoom-slider {
   width: 80px;
   accent-color: var(--color-primary);
-}
-
-.canvas-container {
-  position: relative;
-  overflow: hidden;
-  cursor: grab;
-}
-
-.canvas-container:active {
-  cursor: grabbing;
 }
 
 .nav-controls {
@@ -865,11 +767,6 @@ onMounted(() => {
 
 .route-point-dragging {
   opacity: 0.5;
-}
-
-.route-point-dragging circle {
-  stroke-dasharray: 4,4;
-  animation: pulse 0.5s ease-in-out infinite;
 }
 
 .route-point-dragging circle {
