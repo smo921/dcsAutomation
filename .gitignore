@@ -10,3 +10,6 @@ mission-editor/node_modules
 mission-editor/dist
 mission-editor/out
 mission-editor/*.log
+
+# Temporary .miz extraction directory
+miz-temp/

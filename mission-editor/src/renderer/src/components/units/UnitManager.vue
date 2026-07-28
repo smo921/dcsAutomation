@@ -1,253 +1,234 @@
 <template>
-  <div class="list-container unit-manager">
-    <!-- Category Tabs -->
-    <div class="category-tabs">
-      <Button
-        v-for="category in categories"
-        :key="category"
-        variant="ghost"
-        :class="{ active: activeCategory === category }"
-        @click="activeCategory = category"
-      >
-        {{ category.charAt(0).toUpperCase() + category.slice(1) }}
-      </Button>
-    </div>
-
-    <!-- Scrollable Unit List -->
-    <div class="list-scroll" :style="{ height: listHeight + 'px' }">
-      <div class="list-container">
-        <div
-          v-for="unit in getUnitsByCategory(activeCategory)"
-          :key="unit.unitName"
-          class="list-item"
-          :class="{ active: selectedUnit === unit.unitName }"
-          @click="selectUnit(unit.unitName)"
-        >
-          <div class="list-item-content">
-            <h5 class="list-item-header">{{ unit.unitName }}</h5>
-            <div class="list-item-meta">
-              <Badge variant="primary" >{{ getCategoryLabel(unit.category) }}</Badge>
-              <Badge variant="primary">{{ unit.triggerType || 'IMMEDIATE' }}</Badge>
-              <Badge variant="primary">{{ unit.country || 'Unknown' }}</Badge>
-            </div>
-          </div>
-          <div class="list-item-actions">
-            <Button variant="primary" size="sm" @click.stop="onEditUnit(unit)" title="Edit Unit">
-              Edit
-            </Button>
-            <Button variant="danger" size="sm" @click.stop="onDeleteUnit(unit.unitName)" title="Delete Unit">
-              <span class="btn-remove-icon">
-                Delete
-              </span>
-            </Button>
-          </div>
+  <div class="unit-manager">
+    <TabbedList
+      :categories="categories"
+      v-model:activeCategory="activeCategory"
+      :items="getUnitsByCategory(activeCategory)"
+      :listOnly="props.listOnly"
+      itemKey="unitName"
+      :selectedItem="selectedUnitObj"
+      @item-select="onItemSelect"
+    >
+      <!-- List item rendering -->
+      <template #item-meta="{ item }">
+        <div class="list-item-meta">
+          <Badge variant="primary">{{ getCategoryLabel(item.category) }}</Badge>
+          <Badge variant="primary">{{ item.triggerType || 'IMMEDIATE' }}</Badge>
+          <Badge variant="primary">{{ item.country || 'Unknown' }}</Badge>
         </div>
+      </template>
 
-        <div v-if="getUnitsByCategory(activeCategory).length === 0" class="empty-state">
+      <template #item-actions="{ item }">
+        <Button variant="primary" size="sm" @click.stop="onEditUnit(item)" title="Edit Unit">
+          Edit
+        </Button>
+        <Button variant="danger" size="sm" @click.stop="onDeleteUnit(item.unitName)" title="Delete Unit">
+          <span class="btn-remove-icon">Delete</span>
+        </Button>
+      </template>
+
+      <!-- Empty state -->
+      <template #empty-state>
+        <div class="empty-state">
           <p>No {{ activeCategory }} units configured.</p>
         </div>
-      </div>
-    </div>
+      </template>
 
-    <!-- Add from Template button -->
-    <div class="btn-add-from-template" v-if="listOnly">
-      <Button @click="onAddFromTemplate" variant="secondary" size="sm" block>
-        <span>+</span> Add from Unit Template
-      </Button>
-    </div>
-
-    <!-- Resizeable Divider -->
-    <div v-if="!listOnly" class="content-resizer" @mousedown="startListResize">
-      <span class="resizer-line"></span>
-    </div>
-
-    <!-- Unit Editor Panel -->
-    <div v-if="!listOnly && selectedUnit && currentUnit" class="editor-panel">
-      <div class="editor-content">
-        <!-- Basic Settings -->
-        <CollapsibleSection v-model:expanded="expandedSections.basic" title="Basic Settings">
-        <div class="editor-section">
-          <FormRow>
-            <FormGroup>
-              <FormLabel label="Unit Name" />
-              <FormInput v-model="currentUnit.unitName" />
-            </FormGroup>
-          </FormRow>
-          <FormRow>
-            <FormGroup>
-              <FormLabel label="Category" />
-              <FormSelect v-model="currentUnit.category" :options="categoryOptions" placeholder="Select category..." />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel label="Country" />
-              <FormInput v-model="currentUnit.country" />
-            </FormGroup>
-          </FormRow>
-          <FormRow>
-            <FormGroup>
-              <FormLabel label="Task" />
-              <FormSelect v-model="currentUnit.task" :options="taskOptions" placeholder="Select task..." />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel label="Trigger Type" />
-              <FormSelect v-model="currentUnit.triggerType" :options="triggerTypeOptions" placeholder="Select trigger type..." />
-            </FormGroup>
-          </FormRow>
-        </div>
-        </CollapsibleSection>
-
-        <!-- Units Section -->
-        <CollapsibleSection v-model:expanded="expandedSections.units" title="Units">
-          <div class="editor-section">
-            <div v-for="(unit, index) in currentUnit.units" :key="index" class="unit-row" :data-unit-num="index + 1">
-              <div class="unit-number-badge">{{ index + 1 }}</div>
-              <div class="unit-content">
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel label="Unit Type" />
-                    <FormInput v-model="unit.type" />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel label="Quantity" />
-                    <FormInput v-model="unit.quantity" type="number" :min="1" />
-                  </FormGroup>
-                </FormRow>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel label="Name" />
-                    <FormInput v-model="unit.name" />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel label="Role" />
-                    <FormInput v-model="unit.role" />
-                  </FormGroup>
-                </FormRow>
-                <Button variant="danger" size="sm" @click="removeUnit(index)" title="Remove Unit">
-                  <span class="btn-remove-icon">Delete</span>
-                </Button>
-              </div>
-            </div>
-            <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">+ Add Unit</Button>
-          </div>
-        </CollapsibleSection>
-
-        <!-- Placement Section -->
-        <CollapsibleSection v-model:expanded="expandedSections.placement" title="Placement">
-          <div class="editor-section">
-            <FormRow>
-              <FormGroup>
-                <FormLabel label="Placement Mode" />
-                <FormSelect v-model="currentUnit.placement.mode" :options="placementModeOptions" placeholder="Select placement mode..." />
-              </FormGroup>
-            </FormRow>
-
-            <!-- Bearing + Distance -->
-            <div v-if="currentUnit.placement.mode === 'BEARING_DISTANCE'" class="placement-config">
-              <FormRow>
-                <FormGroup>
-                  <FormLabel label="Reference Type" />
-                  <FormSelect v-model="currentUnit.placement.reference" :options="referenceTypeOptions" placeholder="Select reference..." />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel label="Reference Name" />
-                  <FormSelect v-model="currentUnit.placement.referenceName" :options="getReferenceOptions" placeholder="Select a reference..." />
-                </FormGroup>
-              </FormRow>
-              <FormRow>
-                <FormGroup>
-                  <FormLabel label="Bearing (degrees)" />
-                  <FormInput v-model="currentUnit.placement.bearing" type="number" :min="0" :max="360" />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel label="Distance (NM)" />
-                  <FormInput v-model="currentUnit.placement.distance" type="number" :min="0" />
-                </FormGroup>
-              </FormRow>
-            </div>
-
-            <!-- Direct Coordinates -->
-            <div v-if="currentUnit.placement.mode === 'COORDINATE'" class="placement-config">
-              <FormRow>
-                <FormGroup>
-                  <FormLabel label="X Coordinate" />
-                  <FormInput v-model="currentUnit.placement.x" type="number" />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel label="Y Coordinate" />
-                  <FormInput v-model="currentUnit.placement.y" type="number" />
-                </FormGroup>
-              </FormRow>
-            </div>
-
-            <!-- Airbase Ramp -->
-            <div v-if="currentUnit.placement.mode === 'AIRBASE_RAMP'" class="placement-config">
-              <FormRow>
-                <FormGroup>
-                  <FormLabel label="Airbase Name" />
-                  <FormSelect v-model="currentUnit.placement.referenceName" :options="airbaseOptions" placeholder="Select airbase..." />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel label="Parking Slot" />
-                  <FormInput v-model="currentUnit.placement.parking" type="number" />
-                </FormGroup>
-              </FormRow>
-            </div>
-
-            <!-- Zone Center -->
-            <div v-if="currentUnit.placement.mode === 'ZONE_CENTER'" class="placement-config">
-              <FormGroup>
-                <FormLabel label="Zone Name" />
-                <FormSelect v-model="currentUnit.placement.referenceName" :options="zoneOptions" placeholder="Select zone..." />
-              </FormGroup>
-            </div>
-
-            <!-- Waypoint -->
-            <div v-if="currentUnit.placement.mode === 'WAYPOINT'" class="placement-config">
+      <!-- Detail editor -->
+      <template #editor="{ selectedItem }">
+        <div v-if="selectedItem && currentUnit" class="editor-content">
+          <!-- Basic Settings -->
+          <CollapsibleSection v-model:expanded="expandedSections.basic" title="Basic Settings">
+            <div class="editor-section">
               <FormRow>
                 <FormGroup>
                   <FormLabel label="Unit Name" />
-                  <FormSelect v-model="currentUnit.placement.waypointUnit" :options="waypointUnitOptions" placeholder="Select existing unit..." />
+                  <FormInput v-model="currentUnit.unitName" />
+                </FormGroup>
+              </FormRow>
+              <FormRow>
+                <FormGroup>
+                  <FormLabel label="Category" />
+                  <FormSelect v-model="currentUnit.category" :options="categoryOptions" placeholder="Select category..." />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel label="Waypoint Number" />
-                  <FormInput v-model="currentUnit.placement.waypointNumber" type="number" :min="1" />
+                  <FormLabel label="Country" />
+                  <FormInput v-model="currentUnit.country" />
+                </FormGroup>
+              </FormRow>
+              <FormRow>
+                <FormGroup>
+                  <FormLabel label="Task" />
+                  <FormSelect v-model="currentUnit.task" :options="taskOptions" placeholder="Select task..." />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel label="Trigger Type" />
+                  <FormSelect v-model="currentUnit.triggerType" :options="triggerTypeOptions" placeholder="Select trigger type..." />
                 </FormGroup>
               </FormRow>
             </div>
-          </div>
-        </CollapsibleSection>
+          </CollapsibleSection>
 
-        <!-- Route Section -->
-        <CollapsibleSection v-model:expanded="expandedSections.route" title="Route">
-          <div class="editor-section">
-            <div v-for="(wp, index) in currentUnit.route" :key="index" class="waypoint-row" :data-waypoint-num="index + 1">
-              <div class="waypoint-number-badge">{{ index + 1 }}</div>
-              <div class="waypoint-content">
+          <!-- Units Section -->
+          <CollapsibleSection v-model:expanded="expandedSections.units" title="Units">
+            <div class="editor-section">
+              <div v-for="(unit, index) in currentUnit.units" :key="index" class="unit-row" :data-unit-num="index + 1">
+                <div class="unit-number-badge">{{ index + 1 }}</div>
+                <div class="unit-content">
+                  <FormRow>
+                    <FormGroup>
+                      <FormLabel label="Unit Type" />
+                      <FormInput v-model="unit.type" />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel label="Quantity" />
+                      <FormInput v-model="unit.quantity" type="number" :min="1" />
+                    </FormGroup>
+                  </FormRow>
+                  <FormRow>
+                    <FormGroup>
+                      <FormLabel label="Name" />
+                      <FormInput v-model="unit.name" />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel label="Role" />
+                      <FormInput v-model="unit.role" />
+                    </FormGroup>
+                  </FormRow>
+                  <Button variant="danger" size="sm" @click="removeUnit(index)" title="Remove Unit">
+                    <span class="btn-remove-icon">Delete</span>
+                  </Button>
+                </div>
+              </div>
+              <Button @click="addUnit" variant="secondary" size="sm" class="btn-add-unit">+ Add Unit</Button>
+            </div>
+          </CollapsibleSection>
+
+          <!-- Placement Section -->
+          <CollapsibleSection v-model:expanded="expandedSections.placement" title="Placement">
+            <div class="editor-section">
+              <FormRow>
+                <FormGroup>
+                  <FormLabel label="Placement Mode" />
+                  <FormSelect v-model="currentUnit.placement.mode" :options="placementModeOptions" placeholder="Select placement mode..." />
+                </FormGroup>
+              </FormRow>
+
+              <!-- Bearing + Distance -->
+              <div v-if="currentUnit.placement.mode === 'BEARING_DISTANCE'" class="placement-config">
                 <FormRow>
                   <FormGroup>
-                    <FormLabel label="Type" />
-                    <FormSelect v-model="wp.type" :options="waypointTypeOptions" placeholder="Select type..." />
+                    <FormLabel label="Reference Type" />
+                    <FormSelect v-model="currentUnit.placement.reference" :options="referenceTypeOptions" placeholder="Select reference..." />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel label="Reference Name" />
+                    <FormSelect v-model="currentUnit.placement.referenceName" :options="getReferenceOptions" placeholder="Select a reference..." />
                   </FormGroup>
                 </FormRow>
                 <FormRow>
                   <FormGroup>
-                    <FormLabel label="Altitude" />
-                    <FormInput v-model="wp.altitude" type="number" />
+                    <FormLabel label="Bearing (degrees)" />
+                    <FormInput v-model="currentUnit.placement.bearing" type="number" :min="0" :max="360" />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel label="Speed" />
-                    <FormInput v-model="wp.speed" type="number" />
+                    <FormLabel label="Distance (NM)" />
+                    <FormInput v-model="currentUnit.placement.distance" type="number" :min="0" />
                   </FormGroup>
                 </FormRow>
-                <Button variant="danger" size="sm" @click="removeWaypoint(index)" title="Remove Waypoint">
-                  <span class="btn-remove-icon">Delete</span>
-                </Button>
+              </div>
+
+              <!-- Direct Coordinates -->
+              <div v-if="currentUnit.placement.mode === 'COORDINATE'" class="placement-config">
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel label="X Coordinate" />
+                    <FormInput v-model="currentUnit.placement.x" type="number" />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel label="Y Coordinate" />
+                    <FormInput v-model="currentUnit.placement.y" type="number" />
+                  </FormGroup>
+                </FormRow>
+              </div>
+
+              <!-- Airbase Ramp -->
+              <div v-if="currentUnit.placement.mode === 'AIRBASE_RAMP'" class="placement-config">
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel label="Airbase Name" />
+                    <FormSelect v-model="currentUnit.placement.referenceName" :options="airbaseOptions" placeholder="Select airbase..." />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel label="Parking Slot" />
+                    <FormInput v-model="currentUnit.placement.parking" type="number" />
+                  </FormGroup>
+                </FormRow>
+              </div>
+
+              <!-- Zone Center -->
+              <div v-if="currentUnit.placement.mode === 'ZONE_CENTER'" class="placement-config">
+                <FormGroup>
+                  <FormLabel label="Zone Name" />
+                  <FormSelect v-model="currentUnit.placement.referenceName" :options="zoneOptions" placeholder="Select zone..." />
+                </FormGroup>
+              </div>
+
+              <!-- Waypoint -->
+              <div v-if="currentUnit.placement.mode === 'WAYPOINT'" class="placement-config">
+                <FormRow>
+                  <FormGroup>
+                    <FormLabel label="Unit Name" />
+                    <FormSelect v-model="currentUnit.placement.waypointUnit" :options="waypointUnitOptions" placeholder="Select existing unit..." />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel label="Waypoint Number" />
+                    <FormInput v-model="currentUnit.placement.waypointNumber" type="number" :min="1" />
+                  </FormGroup>
+                </FormRow>
               </div>
             </div>
-            <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">+ Add Waypoint</Button>
-          </div>
-        </CollapsibleSection>
-      </div>
+          </CollapsibleSection>
+
+          <!-- Route Section -->
+          <CollapsibleSection v-model:expanded="expandedSections.route" title="Route">
+            <div class="editor-section">
+              <div v-for="(wp, index) in currentUnit.route" :key="index" class="waypoint-row" :data-waypoint-num="index + 1">
+                <div class="waypoint-number-badge">{{ index + 1 }}</div>
+                <div class="waypoint-content">
+                  <FormRow>
+                    <FormGroup>
+                      <FormLabel label="Type" />
+                      <FormSelect v-model="wp.type" :options="waypointTypeOptions" placeholder="Select type..." />
+                    </FormGroup>
+                  </FormRow>
+                  <FormRow>
+                    <FormGroup>
+                      <FormLabel label="Altitude" />
+                      <FormInput v-model="wp.altitude" type="number" />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel label="Speed" />
+                      <FormInput v-model="wp.speed" type="number" />
+                    </FormGroup>
+                  </FormRow>
+                  <Button variant="danger" size="sm" @click="removeWaypoint(index)" title="Remove Waypoint">
+                    <span class="btn-remove-icon">Delete</span>
+                  </Button>
+                </div>
+              </div>
+              <Button @click="addWaypoint" variant="secondary" size="sm" class="btn-add-waypoint">+ Add Waypoint</Button>
+            </div>
+          </CollapsibleSection>
+        </div>
+      </template>
+    </TabbedList>
+
+    <!-- Add from Template button (only in listOnly mode) -->
+    <div v-if="listOnly" class="btn-add-from-template">
+      <Button @click="onAddFromTemplate" variant="secondary" size="sm" block>
+        <span>+</span> Add from Unit Template
+      </Button>
     </div>
   </div>
 </template>
@@ -255,9 +236,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRefpointsStore } from '../../stores/refpoints'
-import { useUnitTemplatesStore } from '../../stores/unitTemplates'
 import { useResize } from '../../composables/useResize'
-import { Button, Badge, FormLabel, FormInput, FormSelect, FormRow, FormGroup } from '../ui'
+import { Button, Badge, FormLabel, FormInput, FormSelect, FormRow, FormGroup, TabbedList } from '../ui'
 import CollapsibleSection from '../CollapsibleSection.vue'
 
 const emit = defineEmits(['unit-change', 'unit-delete', 'unit-select', 'unit-edit', 'unit-add-from-template'])
@@ -279,7 +259,6 @@ const props = defineProps({
 })
 
 const refpointsStore = useRefpointsStore()
-const unitTemplatesStore = useUnitTemplatesStore()
 
 // Flag to prevent watcher loop during bulk updates
 const isSyncingRefpoints = ref(false)
@@ -305,6 +284,7 @@ watch(() => ({
 }, { immediate: true, deep: true })
 
 const selectedUnit = ref('')
+const selectedUnitObj = ref(null)
 const currentUnit = ref(null)
 const categories = ['air', 'ground', 'naval', 'support']
 const activeCategory = ref('air')
@@ -457,11 +437,17 @@ const waypointTypeOptions = computed(() => [
   { value: 'landing', label: 'Landing' }
 ])
 
+// Handle item selection from TabbedList
+const onItemSelect = ({ item }) => {
+  selectUnit(item.unitName)
+}
+
 const selectUnit = (unitName) => {
   selectedUnit.value = unitName
   const unit = props.units.find(u => u.unitName === unitName)
   if (unit) {
     currentUnit.value = JSON.parse(JSON.stringify(unit))
+    selectedUnitObj.value = unit
     // Emit the selected unit index to parent
     const selectedIndex = props.units.findIndex(u => u.unitName === unitName)
     emit('unit-select', selectedIndex)
@@ -473,6 +459,7 @@ const onDeleteUnit = (unitName) => {
   emit('unit-delete', filtered)
   selectedUnit.value = ''
   currentUnit.value = null
+  selectedUnitObj.value = null
 }
 
 const onEditUnit = (unit) => {
