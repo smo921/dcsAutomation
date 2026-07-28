@@ -14,7 +14,7 @@ export default defineConfig({
       rollupOptions: {
         external: ['electron']
       },
-      emptyOutDir: false
+      emptyOutDir: true
     }
   },
   preload: {

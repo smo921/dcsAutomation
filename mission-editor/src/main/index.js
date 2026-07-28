@@ -1,6 +1,35 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, MenuItem } = require('electron')
-const path = require('path')
-const fs = require('fs')
+import { app, BrowserWindow, ipcMain, dialog, Menu, MenuItem } from 'electron'
+import path from 'path'
+import fs from 'fs'
+import { parseMizFile } from './mizParser'
+
+// Settings file for storing user preferences (including DCS path)
+const SETTINGS_PATH = path.join(__dirname, '../../config/settings.json')
+
+function loadSettings() {
+  try {
+    if (fs.existsSync(SETTINGS_PATH)) {
+      return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'))
+    }
+  } catch (e) {
+    console.error('Failed to load settings:', e)
+  }
+  return {}
+}
+
+function saveSettings(settings) {
+  try {
+    const settingsDir = path.dirname(SETTINGS_PATH)
+    if (!fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true })
+    }
+    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2))
+    return true
+  } catch (e) {
+    console.error('Failed to save settings:', e)
+    return false
+  }
+}
 
 let win = null
 const isDev = process.env.NODE_ENV === 'development'
@@ -47,6 +76,26 @@ function createWindow () {
         {
           label: 'Load JSON...',
           click: () => win.webContents.send('menu:load-json')
+        },
+        {
+          label: 'Import from .miz...',
+          click: async () => {
+            const result = await dialog.showOpenDialog(win, {
+              title: 'Select DCS Mission File',
+              filters: [{ name: 'DCS Mission', extensions: ['miz'] }],
+              properties: ['openFile']
+            })
+            if (!result.canceled && result.filePaths.length) {
+              try {
+                // Load settings to get DCS install path
+                const settings = loadSettings()
+                const refpoints = parseMizFile(result.filePaths[0], settings.dcsInstallPath)
+                win.webContents.send('menu:miz-import', refpoints)
+              } catch (e) {
+                dialog.showErrorBox('MIZ Import Error', 'Failed to parse .miz file: ' + e.message)
+              }
+            }
+          }
         },
         { type: 'separator' },
         { role: 'quit' }
@@ -393,6 +442,48 @@ function registerIpcHandlers () {
   // Clear all route templates
   ipcMain.handle('route-templates:clear', async () => {
     return { success: true }
+  })
+
+  // Settings management
+  ipcMain.handle('settings:load', async () => {
+    return { success: true, settings: loadSettings() }
+  })
+
+  ipcMain.handle('settings:save', async (event, settings) => {
+    const success = saveSettings(settings)
+    return { success }
+  })
+
+  // MIZ file operations
+  ipcMain.handle('miz:load-refpoints', async (event, mizPath, dcsInstallPath) => {
+    try {
+      const refpoints = parseMizFile(mizPath, dcsInstallPath)
+      return { success: true, refpoints }
+    } catch (e) {
+      console.error('Error parsing .miz file:', e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('miz:import', async (event, dcsInstallPath) => {
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Select DCS Mission File',
+      defaultPath: path.join(__dirname, '../../'),
+      filters: [{ name: 'DCS Mission', extensions: ['miz'] }],
+      properties: ['openFile']
+    })
+
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, error: 'No file selected' }
+    }
+
+    try {
+      const refpoints = parseMizFile(result.filePaths[0], dcsInstallPath)
+      return { success: true, refpoints, path: result.filePaths[0] }
+    } catch (e) {
+      console.error('Error parsing .miz file:', e)
+      return { success: false, error: e.message }
+    }
   })
 }
 

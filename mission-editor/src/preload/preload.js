@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron')
+import { contextBridge, ipcRenderer } from 'electron'
 
 // Set up event handlers
 const eventHandlers = new Map()
@@ -13,6 +13,13 @@ ipcRenderer.on('menu:export-json', () => {
 ipcRenderer.on('menu:export-lua', () => {
   if (eventHandlers.has('export-lua')) {
     eventHandlers.get('export-lua')()
+  }
+})
+
+// MIZ import event
+ipcRenderer.on('menu:miz-import', (event, refpoints) => {
+  if (eventHandlers.has('miz-import')) {
+    eventHandlers.get('miz-import')(refpoints)
   }
 })
 
@@ -69,5 +76,16 @@ contextBridge.exposeInMainWorld('api', {
   // Templates
   template: {
     save: (template, name) => ipcRenderer.invoke('template:save', template, name)
+  },
+
+  // Settings
+  settings: {
+    load: () => ipcRenderer.invoke('settings:load'),
+    save: (settings) => ipcRenderer.invoke('settings:save', settings)
+  },
+
+  // MIZ import
+  miz: {
+    import: (dcsInstallPath) => ipcRenderer.invoke('miz:import', dcsInstallPath)
   }
 })

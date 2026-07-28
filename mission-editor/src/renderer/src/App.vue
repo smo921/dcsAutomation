@@ -243,6 +243,61 @@ const onLoadJson = () => loadConfig(window.api?.config?.loadJson, 'Configuration
 
 const onLoadSample = () => loadConfig(window.api?.config?.loadSample, 'Sample data loaded successfully')
 
+// DCS install path from settings
+let dcsInstallPath = null
+
+// Handle MIZ import from menu
+const onMizImport = (refpoints) => {
+  try {
+    selectedUnitIndex.value = null
+    unitManagerRef.value?.setSyncing(true)
+
+    // Merge imported reference points with existing data
+    if (refpoints.bullseyes) {
+      refpoints.bullseyes.forEach(imported => {
+        const existing = refpointsStore.bullseyes.find(b => b.name === imported.name)
+        if (!existing) {
+          refpointsStore.bullseyes.push({ name: imported.name, x: imported.x, y: imported.y })
+        } else {
+          existing.x = imported.x
+          existing.y = imported.y
+        }
+      })
+    }
+    if (refpoints.zones) {
+      refpoints.zones.forEach(imported => {
+        const existing = refpointsStore.zones.find(z => z.name === imported.name)
+        if (!existing) {
+          refpointsStore.zones.push({ name: imported.name, x: imported.x, y: imported.y, radius: imported.radius })
+        } else {
+          existing.x = imported.x
+          existing.y = imported.y
+          existing.radius = imported.radius
+        }
+      })
+    }
+    if (refpoints.airbases) {
+      refpoints.airbases.forEach(imported => {
+        const existing = refpointsStore.airbases.find(a => a.name === imported.name)
+        if (!existing) {
+          refpointsStore.airbases.push({ name: imported.name, x: imported.x, y: imported.y })
+        } else {
+          existing.x = imported.x
+          existing.y = imported.y
+        }
+      })
+    }
+
+    const airbaseCount = refpoints.airbases?.length || 0
+    const airbaseNote = airbaseCount > 0 ? `, ${airbaseCount} airbases` : ''
+    setStatus(`Imported ${refpoints.bullseyes?.length || 0} bullseyes, ${refpoints.zones?.length || 0} zones${airbaseNote} from .miz`, 'success')
+  } catch (e) {
+    setStatus(`Error importing .miz: ${e.message}`, 'error')
+  } finally {
+    unitManagerRef.value?.setSyncing(false)
+  }
+}
+
 const onAddUnitTemplates = async () => {
   try {
     selectedUnitIndex.value = null
@@ -731,16 +786,29 @@ onMounted(() => {
   // Resources are not loaded automatically
   // User can click "Load Sample Data" or "Load Config" buttons to load data
 
+  // Load settings (including DCS install path)
+  window.api?.settings?.load?.().then(result => {
+    if (result?.success) {
+      dcsInstallPath = result.settings?.dcsInstallPath || null
+    }
+  })
+
   // Add listener for menu export JSON event
   const removeJsonListener = window.api?.export?.onJson?.(onExportJson)
 
   // Add listener for menu export Lua event
   const removeLuaListener = window.api?.export?.onLua?.(onExportLua)
 
+  // Add listener for MIZ import from menu
+  window.ipcRenderer?.on('menu:miz-import', (event, refpoints) => {
+    onMizImport(refpoints)
+  })
+
   // Clean up listeners on unmount
   onUnmounted(() => {
     if (removeJsonListener) removeJsonListener()
     if (removeLuaListener) removeLuaListener()
+    window.ipcRenderer?.removeAllListeners('menu:miz-import')
   })
 })
 </script>
