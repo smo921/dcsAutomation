@@ -7,8 +7,8 @@ export default defineConfig({
     build: {
       lib: {
         entry: './src/main/index.js',
-        formats: ['cjs'],
-        fileName: 'index'
+        formats: ['es'],
+        fileName: 'index.js'
       },
       outDir: 'out/main',
       rollupOptions: {
@@ -21,7 +21,7 @@ export default defineConfig({
     build: {
       entry: './src/preload/preload.js',
       outDir: 'out/main',
-      fileName: 'preload',
+      fileName: 'preload.js',
       emptyOutDir: false
     }
   },

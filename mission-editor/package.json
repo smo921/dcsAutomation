@@ -4,7 +4,7 @@
   "description": "DCS World Dynamic Mission Editor",
   "author": "Stephen Oberther",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
