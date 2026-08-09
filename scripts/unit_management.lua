@@ -879,36 +879,11 @@ function TriggerRegistry._heartbeat(args, time)
 end
 
 --- Process the unit. Return true to signal that all processing is complete.
+-- Delegates to unit:evaluateCondition() for trigger-type-specific logic.
 -- @param unit table The unit to evaluate
 -- @return boolean true if unit processing is complete
 function TriggerRegistry.evaluate(unit)
-    if unit.drone and unit.drone.enabled then
-        -- check if drone is dead and cleanup
-        local isDead = unit:checkDroneDead()
-        if isDead then
-            unit.drone.enabled = false
-        end
-    end
-
-    if unit.triggerType == "TRIGGER_ZONE" then
-        local triggered = TriggerRegistry._checkZone(unit.zoneName)
-        local shouldSpawn = shouldGroupSpawn(unit.groupName)
-        if triggered and shouldSpawn then
-            unit:spawnUnits()
-        end
-        return triggered
-
-    elseif unit.triggerType == "RADAR" then
-        TriggerRegistry._checkRadarDetection(unit)
-
-    elseif unit.triggerType == "OBJECTIVE_COMPLETE" then
-        return TriggerRegistry._checkGroupDestroyed(unit.parentGroupName)
-
-    else
-        -- Unrecognized or faulty trigger logic drops safe fallback logging
-    end
-
-    return false
+    return unit:evaluateCondition()
 end
 
 --- Check if blue units are in a trigger zone.
@@ -1423,6 +1398,51 @@ function Unit:spawnTriggeredUnits()
         local bullseye = SpatialSolver.getBullseye("blue")
         UnitSpawner.spawnGroup(self.triggeredUnits, bullseye, self.triggeredUnits.groupName)
     end
+end
+
+--- Evaluate trigger conditions for this unit.
+-- Called by TriggerRegistry.evaluate() to delegate trigger-type-specific logic.
+-- @return boolean true if trigger condition is met (unit can be removed from monitoring)
+function Unit:evaluateCondition()
+    -- Handle drone health check (applies to all units with drones)
+    if self.drone and self.drone.enabled then
+        local isDead = self:checkDroneDead()
+        if isDead then
+            self.drone.enabled = false
+        end
+    end
+
+    if self.triggerType == "TRIGGER_ZONE" then
+        local triggered = TriggerRegistry._checkZone(self.zoneName)
+        local shouldSpawn = shouldGroupSpawn(self.groupName)
+        if triggered and shouldSpawn then
+            self:spawnUnits()
+        end
+        return triggered
+
+    elseif self.triggerType == "OBJECTIVE_COMPLETE" then
+        return TriggerRegistry._checkGroupDestroyed(self.parentGroupName)
+    end
+
+    -- Default: not complete, stay in registry
+    return false
+end
+
+--- Evaluate trigger conditions for this radar unit.
+-- Overrides Unit:evaluateCondition() to handle RADAR trigger type.
+-- @return boolean true if trigger condition is met (radar unit can be removed from monitoring)
+function RadarUnit:evaluateCondition()
+    -- Call parent evaluation first to handle drone health check and common logic
+    Unit.evaluateCondition(self)
+
+    if self.triggerType == "RADAR" then
+        TriggerRegistry._checkRadarDetection(self)
+        -- Radar units stay in registry indefinitely, never return true
+        return false
+    end
+
+    -- For non-RADAR trigger types, delegate to parent implementation
+    return Unit.evaluateCondition(self)
 end
 
 -- ============================================================================
