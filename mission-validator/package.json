@@ -1,0 +1,43 @@
+{
+  "name": "dcs-mission-validator",
+  "version": "1.0.0",
+  "description": "DCS World Mission Validation Tool - Automated mission checklist validation",
+  "author": "Stephen Oberther",
+  "license": "ISC",
+  "type": "module",
+  "main": "./src/validator.js",
+  "bin": {
+    "dcs-validator": "./src/cli.js"
+  },
+  "scripts": {
+    "validate": "node src/cli.js",
+    "test": "node tests/validator-test.js",
+    "lint": "eslint src --ext .js --fix",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.18",
+    "luadata": "^1.0.3",
+    "luaparse": "^0.3.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "dcs",
+    "dcs-world",
+    "mission",
+    "validator",
+    "checklist",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dcsAutomation/dcsAutomation.git",
+    "directory": "mission-validator"
+  }
+}

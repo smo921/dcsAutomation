@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, MenuItem } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import { parseMizFile } from './mizParser'
+import { parseMizFile } from './mizParser.js'
+import { MissionEditorValidator } from './missionValidator.js'
 
 // Settings file for storing user preferences (including DCS path)
 const SETTINGS_PATH = path.join(__dirname, '../../config/settings.json')
@@ -490,6 +491,60 @@ function registerIpcHandlers () {
       console.error('Error parsing .miz file:', e)
       return { success: false, error: e.message }
     }
+  })
+
+  // Mission validation
+  let missionValidator = null
+
+  ipcMain.handle('validator:initialize', async (event, configPath) => {
+    try {
+      if (!missionValidator) {
+        // Create a mock editor instance for the validator
+        const mockEditor = {
+          getMissionData: () => global.currentMissionData
+        }
+        missionValidator = new MissionEditorValidator(mockEditor)
+        missionValidator.initialize(configPath)
+      }
+      return { success: true }
+    } catch (e) {
+      console.error('Validator initialization failed:', e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('validator:validate', async (event, dcsInstallPath) => {
+    if (!missionValidator) {
+      return { success: false, error: 'Validator not initialized' }
+    }
+
+    try {
+      const results = await missionValidator.validate(dcsInstallPath)
+      return { success: true, results }
+    } catch (e) {
+      console.error('Validation failed:', e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('validator:export', async (event, format, outputPath) => {
+    if (!missionValidator) {
+      return { success: false, error: 'Validator not initialized' }
+    }
+
+    try {
+      const filePath = missionValidator.exportReport(format, outputPath)
+      return { success: true, path: filePath }
+    } catch (e) {
+      console.error('Export failed:', e)
+      return { success: false, error: e.message }
+    }
+  })
+
+  // Store current mission data for validator access
+  ipcMain.handle('mission:set-data', async (event, missionData) => {
+    global.currentMissionData = missionData
+    return { success: true }
   })
 }
 

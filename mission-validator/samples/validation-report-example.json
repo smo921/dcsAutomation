@@ -1,0 +1,127 @@
+{
+  "passed": [
+    {
+      "ruleId": "naming-001",
+      "name": "BLUE Force Naming",
+      "category": "naming"
+    },
+    {
+      "ruleId": "naming-002",
+      "name": "RED Force Naming",
+      "category": "naming"
+    },
+    {
+      "ruleId": "awacs-002",
+      "name": "AWACS Frequency",
+      "category": "awacs"
+    },
+    {
+      "ruleId": "awacs-003",
+      "name": "AWACS Altitude",
+      "category": "awacs"
+    },
+    {
+      "ruleId": "tanker-001",
+      "name": "Tanker Altitude",
+      "category": "tanker"
+    },
+    {
+      "ruleId": "tanker-002",
+      "name": "Tanker Speed",
+      "category": "tanker"
+    }
+  ],
+  "errors": [
+    {
+      "ruleId": "farp-002",
+      "name": "FARP Dynamic Spawn",
+      "category": "farp",
+      "severity": "error",
+      "description": "FARP must have Dynamic Spawn enabled",
+      "details": "2 unit(s) have incorrect dynamicSpawn setting",
+      "suggestion": "Set dynamicSpawn to true"
+    },
+    {
+      "ruleId": "carrier-001",
+      "name": "CVN73 Frequency",
+      "category": "carrier",
+      "severity": "error",
+      "description": "CVN73 George Washington should use 127.500 MHz",
+      "details": "Carrier frequency mismatch",
+      "suggestion": "Set frequency to 127.500 MHz"
+    },
+    {
+      "ruleId": "blue-002",
+      "name": "COMM Channels Set",
+      "category": "blue_aircraft",
+      "severity": "error",
+      "description": "BLUE aircraft should have communication channels configured",
+      "details": "3 unit(s) missing required communication channels",
+      "suggestion": "Configure channels: UHF, VHF"
+    }
+  ],
+  "warnings": [
+    {
+      "ruleId": "farp-005",
+      "name": "FARP Wind Sock",
+      "category": "farp",
+      "severity": "warning",
+      "description": "FARP should have a wind sock",
+      "details": "Wind sock not found near FARP",
+      "suggestion": "Add wind sock object near FARP"
+    },
+    {
+      "ruleId": "awacs-004",
+      "name": "AWACS Waypoints",
+      "category": "awacs",
+      "severity": "warning",
+      "description": "AWACS should have exactly 2 waypoints",
+      "details": "1 unit(s) don't have exactly 2 waypoints",
+      "suggestion": "Set exactly 2 waypoints"
+    },
+    {
+      "ruleId": "redair-001",
+      "name": "RED Air Advanced Options",
+      "category": "red_air",
+      "severity": "warning",
+      "description": "RED air should have unlimited fuel and afterburner restriction",
+      "details": "4 unit(s) missing required advanced options",
+      "suggestion": "Enable: unlimitedFuel, restrictAfterburner"
+    }
+  ],
+  "info": [
+    {
+      "ruleId": "weather-001",
+      "name": "Time of Day",
+      "category": "weather",
+      "severity": "info",
+      "description": "Mission should be set at Sunrise",
+      "details": "Mission time is 09:00, sunrise is 06:30",
+      "suggestion": "Consider setting mission time closer to sunrise"
+    },
+    {
+      "ruleId": "weather-002",
+      "name": "Cloud Cover",
+      "category": "weather",
+      "severity": "info",
+      "description": "Clouds should be 'High Scattered 3'",
+      "details": "Current cloud preset: 2 (High Scattered 2)",
+      "suggestion": "Set cloud preset to 3"
+    }
+  ],
+  "missionData": {
+    "theater": "Caucasus",
+    "units": 47,
+    "groups": 23,
+    "triggers": 12
+  },
+  "timestamp": 1735689600000,
+  "summary": {
+    "total": 22,
+    "passed": 6,
+    "errors": 3,
+    "warnings": 3,
+    "info": 2,
+    "score": 27
+  }
+}

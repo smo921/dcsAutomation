@@ -1,0 +1,530 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "Sample external rules for DCS mission validation",
+  "categories": [
+    {
+      "id": "naming",
+      "name": "Naming Conventions",
+      "description": "Rules about unit names and patterns"
+    },
+    {
+      "id": "farpc",
+      "name": "FARP Operations",  
+      "description": "Forward Arming Refueling Point requirements"
+    },
+    {
+      "id": "awacs",
+      "name": "AWACS Control",
+      "description": "E-2C AWACS configuration rules"
+    },
+    {
+      "id": "tanker",
+      "name": "Tanker/Refueling",
+      "description": "Air superiority refueling configurations"
+    },
+    {
+      "id": "carrier",
+      "name": "Carrier Operations",
+      "description": "CVN carrier rules"
+    },
+    {
+      "id": "red_air",
+      "name": "RED Air Forces",
+      "description": "RED coalition aircraft requirements"
+    },
+    {
+      "id": "blue_aircraft",
+      "name": "BLUE Aircraft",
+      "description": "BLUE coalition unit configurations"
+    },
+    {
+      "id": "base",
+      "name": "Base Configuration",
+      "description": "Ground base rules and settings"
+    },
+    {
+      "id": "weahter",
+      "name": "Weather/Environment",
+      "description": "Mission weather and time settings"
+    },
+    {
+        "id": "cleanup",
+        "name": "Mission Cleanup",
+        "description": "Remove test aircraft and scripts"
+    }
+  ],
+  "rules": [
+    {
+      "category": "naming",
+      "rules": [
+        {
+          "id": "naming-blue-force-001",
+          "name": "BLUE Force Naming Standard",
+          "description": "All BLUE units must use Blue-X or named convention",
+          "severity": "warning",
+          "type": "naming_pattern",
+          "pattern": "^Blue-|^REDBOMBER|^RED.*|^(Scourge|Danguy|strAero|Jim|Hodges|Mumbles|H1TMAN|Drumbeej|Trigger|Carrier-|Rotary-|Cogs-N-Loyd|Spark-N-Blackclaw|Hawk-|^Abrams-|^SHORAD-|Blue-Ground-Backup-|Ground-)",
+          "target": {
+            "coalition": "blue"
+          }
+        },
+        {
+          "id": "naming-red-force-001", 
+          "name": "RED Force Naming Standard",
+          "description": "All RED units must use RED-X or BOMBER suffix pattern",
+          "severity": "warning", 
+          "type": "naming_pattern",
+          "pattern": "^Red-Bomber|^Red-Escort|^Red-SEAD|^Red-SAM",
+          "target": {
+            "coalition": "red"
+          }
+        }
+      ]
+    },
+    {
+      "category": "farp",
+      "rules": [
+        {
+          "id": "farpc-dynspawn-001",
+          "name": "FARP Dynamic Spawn Enabled",
+          "description": "FARP units must have dynamic spawn enabled for hot missions",
+          "severity": "error", 
+          "type": "property_check",
+          "property": "dynSpawnTemplate",
+          "expectedValue": true,
+          "target": {
+            "task": "FARP"
+          }
+        },
+        {
+          "id": "farpc-hotstart-001", 
+          "name": "FARP Hot Start Enabled",
+          "description": "FARP units should support hot starting",
+          "severity": "error",
+          "type": "property_check",
+          "property": "allowHotStart",
+          "expectedValue": true,
+          "target": {
+            "task": "FARP"
+          }
+        },
+        {
+          "id": "farpc-buildings-001",
+          "name": "FARP Support Buildings Present", 
+          "description": "FARP must have hangar, fueling facilities, etc.",
+          "severity": "info",
+          "type": "presence_check",
+          "target": {
+            "task": "FARP"
+          }
+        },
+        {
+          "id": "farpc-wind-001",
+          "name": "FARP Wind Sock Configured",
+          "description": "FARP should have wind direction indicator",
+          "severity": "info", 
+          "type": "property_check",
+          "property": "wind",
+          "expectedValue": true,
+          "target": {
+            "task": "FARP"
+          }
+        }
+      ]
+    },
+    {
+      "category": "awacs",
+      "rules": [
+        {
+          "id": "awacs-range-001",
+          "name": "AWACS Range Positioning",
+          "description": "AWACS should be positioned for optimal radar coverage",
+          "severity": "warning", 
+          "type": "distance_check",
+          "maxDistance": 3000,
+          "referencePoint": {
+            "x": 0,
+            "y": 0
+          },
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-frequency-001",
+          "name": "AWACS Frequency Set",
+          "description": "AWACS should broadcast standard surveillance frequency",
+          "severity": "error",
+          "type": "frequency_check", 
+          "expectedFrequency": 305,
+          "tolerance": 0.1,
+          "unit": "MHz",
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-altitude-001",
+          "name": "AWACS High Altitude", 
+          "description": "AWACS should fly at altitude for radar coverage",
+          "severity": "info",
+          "type": "altitude_check",
+          "minAltitude": 30000,
+          "unit": "feet",
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-waypoints-001",
+          "name": "AWACS Sufficient Waypoints",
+          "description": "AWACS should have multiple waypoints for complex orbit", 
+          "severity": "info",
+          "type": "waypoint_count",
+          "minCount": 2,
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-orbit-001",
+          "name": "AWACS Orbit Pattern Present", 
+          "description": "AWACS must have Orbit or Race-track on waypoints to loiter",
+          "severity": "error",
+          "type": "awacs_orbit",
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-options-001",
+          "name": "AWACS Advanced Options", 
+          "description": "AWACS should have unlimited fuel, invincible, invisible settings",
+          "severity": "info",
+          "type": "advanced_options",
+          "requiredOptions": ["unlimitedFuel", "invincible", "invisible"],
+          "target": {
+            "task": "AWACS"
+          }
+        }
+      ]
+    },
+    {
+      "category": "tanker", 
+      "rules": [
+        {
+          "id": "tanker-altitude-001",
+          "name": "Tanker Altitude Standard",
+          "description": "Tankers should fly at optimized refueling altitude", 
+          "severity": "info",
+          "type": "altitude_check",
+          "expectedAltitude": 37500,
+          "unit": "feet",
+          "tolerance": 5000,
+          "target": {
+            "task": "Tanker"
+          }
+        },
+        {
+          "id": "tanker-speed-001", 
+          "name": "Tanker Speed Standard",
+          "description": "Tankers maintain refueling speed",
+          "severity": "info",
+          "type": "speed_check",
+          "expectedSpeed": 420,
+          "unit": "kt",
+          "tolerance": 50,
+          "target": {
+            "task": "Tanker"
+          }
+        },
+        {
+          "id": "tanker-late-activation-001", 
+          "name": "KC Tanker Late Activation",
+          "description": "KC130 should use late activation for extended loiter",
+          "severity": "info",
+          "type": "property_check",
+          "property": "lateActivation", 
+          "expectedValue": true,
+          "target": {
+            "unitType": "plane"
+          }
+        },
+        {
+          "id": "tanker-kc130-001",
+          "name": "KC-130 Tanker Configured", 
+          "description": "Verify KC-130 tanker settings",
+          "severity": "warning",
+          "type": "presence_check",
+          "target": {
+            "unitType": "KC130"
+          }
+        },
+        {
+          "id": "tanker-kc135-001",
+          "name": "KC-135 Tanker Configured",
+          "description": "Verify KC-135 tanker settings",  
+          "severity": "warning",
+          "type": "presence_check", 
+          "target": {
+            "unitType": "KC135"
+          }
+        }
+      ]
+    },
+    {
+      "category": "carrier",
+      "rules": [
+        {
+          "id": "carrier-freq-001",
+          "name": "Carrier Frequency Set", 
+          "description": "CVN should broadcast navigation frequency",
+          "severity": "info",
+          "type": "frequency_check",
+          "expectedFrequency": 963,
+          "tolerance": 0.01,
+          "unit": "MHz",
+          "target": {
+            "unitType": "CVN"
+          }
+        },
+        {
+          "id": "carrier-dynspawn-001", 
+          "name": "Carrier Dynamic Spawn Enabled",
+          "description": "Ship units should have dynamic spawn enabled",
+          "severity": "error",
+          "type": "property_check", 
+          "property": "dynSpawnTemplate",
+          "expectedValue": true,
+          "target": {
+            "unitType": "CVN"
+          }
+        },
+        {
+          "id": "carrier-hotstart-001",
+          "name": "Carrier Hot Start Enabled", 
+          "description": "Ship units should support hot starting",
+          "severity": "error",
+          "type": "property_check",
+          "property": "allowHotStart",
+          "expectedValue": true,
+          "target": {
+            "unitType": "CVN"
+          }
+        }
+      ]
+    },
+    {
+      "category": "red_air", 
+      "rules": [
+        {
+          "id": "red-air-options-001",
+          "name": "RED Air Advanced Options Missing", 
+          "description": "RED aircraft may lack required advanced options like unlimited fuel and invincibility",
+          "severity": "warning",
+          "type": "advanced_options",
+          "requiredOptions": ["unlimitedFuel", "invincible"],
+          "target": { 
+            "coalition": "red"
+          }
+        },
+        {
+          "id": "red-air-task-001",
+          "name": "RED Air Task Standard",
+          "description": "RED aircraft should use standard mission task profiles",
+          "severity": "warning",
+          "type": "task_check", 
+          "allowedTasks": [
+            "STRIKE", "AWACS", "Tanker", 
+            "CAS", "SEAD", "CAP", "Escort", 
+            "SAM", "Bomber", "SHORAD"
+          ],
+          "target": {
+            "coalition": "red"
+          }
+        },
+        {
+          "id": "red-air-patrol-001",
+          "name": "RED Air Patrol Pattern", 
+          "description": "REDA aircraft should use patrol mission pattern",
+          "severity": "info",
+          "type": "presence_check",
+          "target": {
+            "coalition": "red"
+          }
+        }
+      ]
+    },
+    {
+      "category": "blue_aircraft", 
+      "rules": [
+        {
+          "id": "blue-client-type-001",
+          "name": "BLUE Client Type Required", 
+          "description": "All BLUE player aircraft must be set as Client type",
+          "severity": "info",
+          "type": "property_check",
+          "property": "controlled", 
+          "expectedValue": false,
+          "target": {
+            "coalition": "blue"
+          }
+        },
+        {
+          "id": "blue-comm-001",
+          "name": "BLUE COMM Channels Set", 
+          "description": "All BLUE units must have UHF/VHF radios configured",
+          "severity": "error",
+          "type": "comm_check",
+          "requiredChannels": ["UHF"],
+          "target": {
+            "coalition": "blue"
+          }
+        },
+        {
+          "id": "blue-cap-freq-001", 
+          "name": "CAP Frequency Standard",
+          "description": "CAP aircraft should use standard surveillance frequency",
+          "severity": "warning",
+          "type": "frequency_check",
+          "expectedFrequency": 485,
+          "tolerance": 1.0,
+          "unit": "MHz", 
+          "target": {
+            "task": "CAP"
+          }
+        },
+        {
+          "id": "blue-sead-freq-001",
+          "name": "SEAD Frequency Standard",
+          "description": "SEAD aircraft should use standard frequency",
+          "severity": "warning", 
+          "type": "frequency_check",
+          "expectedFrequency": 251,
+          "tolerance": 1.0,
+          "unit": "MHz",
+          "target": {
+            "task": "SEAD"
+          }
+        },
+        {
+          "id": "blue-rotary-freq-001", 
+          "name": "Rotary Frequency Standard",
+          "description": "Helicopter COM frequencies should be in rotary band",
+          "severity": "warning",
+          "type": "frequency_check", 
+          "expectedFrequency": 305,
+          "tolerance": 1.0,
+          "unit": "MHz",
+          "target": {
+            "task": "CAS",
+            "aircraftType": "Rotary"
+          }
+        },
+        {
+          "id": "blue-f14-ins-001", 
+          "name": "F-14 INS Configuration Verified",
+          "description": "F-14s should have valid INS configuration",
+          "severity": "info",
+          "type": "presence_check", 
+          "target": {
+            "unitType": "F14"
+          }
+        }
+      ]
+    },
+    {
+      "category": "base", 
+      "rules": [
+        {
+          "id": "blue-base-dynspawn-001", 
+          "name": "BLUE Base Dynamic Spawn",
+          "description": "BLUE ground units should have dynamic spawn enabled",
+          "severity": "error",
+          "type": "property_check",
+          "property": "dynSpawnTemplate",
+          "expectedValue": true,
+          "target": {
+            "coalition": "blue" 
+          }
+        },
+        {
+          "id": "blue-base-hotstart-001", 
+          "name": "BLUE Base Hot Start", 
+          "description": "BLUE ground units should support hot starting",
+          "severity": "error",
+          "type": "property_check",
+          "property": "allowHotStart",
+          "expectedValue": true,
+          "target": {
+            "coalition": "blue"
+          }
+        },
+        {
+          "id": "red-proximity-001", 
+          "name": "RED Force Proximity Check",
+          "description": "RED units should be positioned for optimal engagement",
+          "severity": "info", 
+          "type": "proximity_check",
+          "target": {
+            "coalition": "red"
+          }
+        }
+      ]
+    },
+    {
+      "category": "weather", 
+      "rules": [
+        {
+          "id": "weather-time-001", 
+          "name": "Time of Day Standard", 
+          "description": "Mission time should be configured for visibility",
+          "severity": "info",
+          "type": "time_check",
+          "target": {}
+        },
+        {
+          "id": "weather-cloud-001",
+          "name": "Cloud Cover Configured", 
+          "description": "Mission should have appropriate cloud cover",
+          "severity": "info",
+          "type": "property_check", 
+          "property": "cloudCover",
+          "target": {}
+        },
+        {
+          "id": "weather-wind-001",
+          "name": "Wind Speed Reported", 
+          "description": "Mission should have wind data for realism",
+          "severity": "info",
+          "type": "wind_check",
+          "target": {}
+        }
+      ]
+    },
+    {
+      "category": "cleanup", 
+      "rules": [
+        {
+          "id": "cleanup-test-aircraft-001", 
+          "name": "No Test Aircraft", 
+          "description": "Mission should not contain test/test aircraft",
+          "severity": "error",
+          "type": "absence_check",
+          "forbiddenPatterns": ["/TEST.*/i"],
+          "suggestion": "Remove units with TEST in name" 
+        },
+        {
+          "id": "cleanup-test-script-001", 
+          "name": "No Test Scripting",
+          "description": "Mission should not contain test script files",
+          "severity": "error", 
+          "type": "absence_check",
+          "forbiddenPatterns": ["/test\\.script/i"],
+          "suggestion": "Remove test script files"
+        }
+      ]
+    }
+  ]
+}

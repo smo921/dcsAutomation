@@ -4,6 +4,16 @@ out.lua
 *.miz
 missions/
 
+# Node modules (all directories)
+mission-validator/node_modules
+*/node_modules
+
+IDEAS.md
+*_PLAN.md
+out.lua
+*.miz
+missions/
+
 # DCS Mission Editor (Electron app)
 # See mission-editor/CLAUDE.md for details
 mission-editor/node_modules
