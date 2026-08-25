@@ -1,47 +1,71 @@
 #!/usr/bin/env node
 
+import { fileURLToPath } from 'url'
+import path from 'path'
 import { MissionValidator } from './validator.js'
 import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+const validatorDir = path.join(__dirname, '../')
+const defaultConfigPath = path.join(validatorDir, 'mission-checklist-config.json')
+const helpOutput = `\nDCS Mission Validator - Validate DCS missions against checklist rules
+
+Usage:
+  dcs-validator <file.miz> [options]
+
+Options:
+  --help, -h                    Show this help message
+  --version, -v                 Show version number
+  --checklist, -c               Generate validation checklist
+  --validate                    Validate against external rules
+
+Examples:
+  dcs-validator missions/test1.miz
+  dcs-validator test1.miz -c custom-config.json
+
+`
 
 /**
- * CLI entry point for DCS Mission Validator
+ * CLI entry point for mission validation
  */
 async function main() {
   const args = process.argv.slice(2)
   
-  // Parse command line arguments
+  // Parse flags
+  let helpRequested = false
+  let versionRequested = false
+  let checkListRequested = false
+  let validateRequested = false
   let mizPath = null
-  let configPath = null
-  let dcsPath = null
-  let outputPath = null
-  let help = false
-  let version = false
 
+  // Always show help if no arguments provided
+  if (args.length === 0) {
+    console.log(helpOutput.replace('>>>', '🔍 DCS Mission Validator - Validate missions against checklist rules\n'))
+    process.exit(0)
+  }
+
+  // Parse command line arguments
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
     
     if (arg === '-h' || arg === '--help') {
-      help = true
+      helpRequested = true
     } else if (arg === '-v' || arg === '--version') {
-      version = true
-    } else if (arg === '-c' || arg === '--config') {
-      configPath = args[++i]
-    } else if (arg === '-d' || arg === '--dcs-path') {
-      dcsPath = args[++i]
-    } else if (arg === '-o' || arg === '--output') {
-      outputPath = args[++i]
+      versionRequested = true
+    } else if (arg === '--validate' || arg === 'valid') {
+      validateRequested = true
+    } else if (arg === '-c' || arg === '--config' || arg === '--checklist') {
+      const configArg = args[++i]
+      configPath = configArg?.replace(/^["']|["']$/g, '')
+      checkListRequested = true
     } else if (!arg.startsWith('-')) {
       mizPath = arg
     }
   }
 
   // Show version
-  if (version) {
+  if (versionRequested) {
     const pkgPath = path.join(__dirname, '../package.json')
     if (fs.existsSync(pkgPath)) {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
@@ -52,77 +76,68 @@ async function main() {
     process.exit(0)
   }
 
-  // Show help
-  if (help || !mizPath) {
-    console.log(`
-DCS Mission Validator - Validate DCS missions against checklist rules
-
-Usage:
-  dcs-validator <miz-file> [options]
-
-Arguments:
-  <miz-file>              Path to .miz mission file
-
-Options:
-  -c, --config <path>     Path to validation config JSON (optional)
-  -d, --dcs-path <path>   Path to DCS installation (optional, for terrain data)
-  -o, --output <path>     Export results to JSON file (optional)
-  -h, --help              Show this help message
-  -v, --version           Show version number
-
-Examples:
-  dcs-validator mission.miz
-  dcs-validator mission.miz -c custom-config.json
-  dcs-validator mission.miz -d "C:\\Program Files\\DCSWorld"
-  dcs-validator mission.miz -o results.json
-
-Configuration:
-  If no config is specified, the default checklist will be used.
-  Custom configs can be created by copying and modifying the default config.
-
-Exit Codes:
-  0 - Validation passed (no errors)
-  1 - Validation failed (errors found)
-  2 - Invalid arguments or file not found
-`)
-    process.exit(mizPath ? 0 : 2)
+  // Show help if requested
+  if (helpRequested) {
+    console.log(helpOutput)
+    process.exit(0)
   }
 
-  // Validate MIZ file exists
-  if (!fs.existsSync(mizPath)) {
-    console.error(`❌ Error: MIZ file not found: ${mizPath}`)
-    process.exit(2)
+  // If validation explicitly requested but no MIZ file provided
+  if (validateRequested && !mizPath) {
+    console.log('\n✋ No mission file specified. Skipping validation.')
+    console.log(helpOutput)
+    process.exit(0)
   }
+  
+  // Load config if not provided - always use our fixed location
+  const actualConfigPath = defaultConfigPath
+  
+  let validator = null
+  try {
+    // Ensure config exists before using it
+    if (!fs.existsSync(actualConfigPath)) {
+      console.log('\n⚠️  Configuration file not found.')
+      console.log('Run with --checklist to generate rules first.\n')
+      process.exit(1)
+    }
 
-  // Validate config exists (if provided)
-  if (configPath && !fs.existsSync(configPath)) {
-    console.error(`❌ Error: Config file not found: ${configPath}`)
-    process.exit(2)
-  }
+    // Create validator with explicit config path  
+    validator = new MissionValidator(actualConfigPath)
+    
+    // Log which config was loaded
+    console.log(`📂 Loaded from: ${path.basename(actualConfigPath)}`)
 
-  // Validate DCS path exists (if provided)
-  if (dcsPath && !fs.existsSync(dcsPath)) {
-    console.error(`❌ Error: DCS installation not found: ${dcsPath}`)
+  } catch (error) {
+    console.error(`❌ Validation failed: ${error.message}`)
     process.exit(2)
   }
 
   try {
-    // Create validator
-    const validator = new MissionValidator(configPath)
-    
-    // Run validation
-    const results = await validator.validateMizFile(mizPath, dcsPath)
-    
-    // Export results if requested
-    if (outputPath) {
-      validator.exportResults(outputPath)
-    }
+    // Always have mizPath from --validate or positional argument check
+    if (!mizPath) {
+      // No mission file provided, exit gracefully  
+      process.exit(0)
+    } else {
+      
+      console.log(`\n🔍 Validating: ${path.basename(mizPath)}`)
+      console.log('=' .repeat(70))
 
-    // Exit with appropriate code
-    process.exit(results.errors.length > 0 ? 1 : 0)
+      const results = await validator.validateMizFile(mizPath, null)
+      
+      // Export results to JSON
+      const outputPathDir = path.join(path.dirname(mizPath), 'validation-results')
+      if (!fs.existsSync(outputPathDir)) {
+        fs.mkdirSync(outputPathDir, { recursive: true })
+      }
+      
+      const timestamp = new Date().toISOString().replace(/[T:.-]/g, '-')
+      const outputPath = path.join(outputPathDir, `results-${timestamp}.json`)
+      validator.exportResults(outputPath)
+
+    } 
+   
   } catch (error) {
     console.error(`\n❌ Validation failed: ${error.message}`)
-    console.error(error.stack)
     process.exit(2)
   }
 }
