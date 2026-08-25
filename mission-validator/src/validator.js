@@ -313,13 +313,26 @@ export class MissionValidator {
     }
 
     const regex = new RegExp(rule.pattern)
-    const nonMatching = units.filter(unit => !regex.test(unit.name))
-
-    if (nonMatching.length > 0) {
-      return {
-        passed: false,
-        details: `${nonMatching.length} unit(s) don't match pattern: ${nonMatching.map(u => u.name).join(', ')}`,
-        suggestion: `Rename units to match pattern: ${rule.pattern}`
+    
+    // Inverse mode: check that names DON'T match forbidden patterns
+    if (rule.inverse === true) {
+      const matching = units.filter(unit => regex.test(unit.name))
+      if (matching.length > 0) {
+        return {
+          passed: false,
+          details: `${matching.length} unit(s) contain forbidden pattern: ${matching.map(u => u.name).join(', ')}`,
+          suggestion: `Remove forbidden patterns from unit names: ${rule.pattern}`
+        }
+      }
+    } else {
+      // Normal mode: check that names DO match required patterns
+      const nonMatching = units.filter(unit => !regex.test(unit.name))
+      if (nonMatching.length > 0) {
+        return {
+          passed: false,
+          details: `${nonMatching.length} unit(s) don't match pattern: ${nonMatching.map(u => u.name).join(', ')}`,
+          suggestion: `Rename units to match pattern: ${rule.pattern}`
+        }
       }
     }
 
@@ -570,14 +583,33 @@ export class MissionValidator {
 
     const failing = units.filter(unit => {
       const speed = unit.speed || 0
-      return speed > rule.maxSpeed
+      // Check minimum speed if specified
+      if (rule.minSpeed !== undefined && speed < rule.minSpeed) {
+        return true
+      }
+      // Check maximum speed if specified
+      if (rule.maxSpeed !== undefined && speed > rule.maxSpeed) {
+        return true
+      }
+      return false
     })
 
     if (failing.length > 0) {
+      let details = ''
+      let suggestion = ''
+      
+      if (rule.minSpeed !== undefined) {
+        details = `${failing.length} unit(s) below minimum speed of ${rule.minSpeed} ${rule.unit}`
+        suggestion = `Increase speed to ${rule.minSpeed} ${rule.unit} or more`
+      } else if (rule.maxSpeed !== undefined) {
+        details = `${failing.length} unit(s) exceed maximum speed of ${rule.maxSpeed} ${rule.unit}`
+        suggestion = `Reduce speed to ${rule.maxSpeed} ${rule.unit} or less`
+      }
+      
       return {
         passed: false,
-        details: `${failing.length} unit(s) exceed maximum speed of ${rule.maxSpeed} ${rule.unit}`,
-        suggestion: `Reduce speed to ${rule.maxSpeed} ${rule.unit} or less`
+        details: details,
+        suggestion: suggestion
       }
     }
 

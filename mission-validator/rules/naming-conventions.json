@@ -38,11 +38,8 @@
           "severity": "error",
           "type": "naming_pattern",
           "pattern": "TEST|FAKE|DEBUG|TEMP|BOMBER",
-          "target": {
-            "coalition": {
-              "exclude": true
-            }
-          }
+          "inverse": true,
+          "target": {}
         }
       ]
     }
