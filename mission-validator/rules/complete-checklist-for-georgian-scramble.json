@@ -1,0 +1,16 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0", 
+  "description": "Complete validation checklist for Georgian-Scramble.miz with all extracted rules",
+  "externalRules": [
+    "./rules/awacs.json",
+    "./rules/carrier-rules.json",
+    "./rules/red-air-forces.json",
+    "./rules/blue-aircraft-checks.json", 
+    "./rules/farp-rules.json",
+    "./rules/tankers.json",
+    "./rules/naming-conventions.json",
+    "./rules/cleanup-rules.json"
+  ],
+  "$comment": "Validates all key mission elements: AWACS, carriers, air forces, FARPs, tankers, cleanup"
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "../RULES-META.json", 
+  "version": "1.0.0",
+  "description": "Mission weather and environmental settings rules",
+  "categories": [
+    {
+      "id": "weather", 
+      "name": "Environmental Settings",
+      "description": "Mission weather, time of day and environmental configuration checks",
+      "rules": [
+        {
+          "id": "weather-time-001", 
+          "name": "Time of Day Standard", 
+          "description": "Mission time should be configured for optimal visibility conditions",
+          "severity": "info",
+          "type": "time_check",
+          "expectedTime": "sunrise",
+          "tolerance": 3600,
+          "target": {}
+        },
+        {
+          "id": "weather-cloud-001", 
+          "name": "Cloud Cover Configured", 
+          "description": "Mission should have appropriate cloud cover for engagement scenarios",
+          "severity": "info", 
+          "type": "property_check", 
+          "property": "cloudCover",
+          "expectedValue": 3,  // High Scattered
+          "target": {}
+        },
+        {
+          "id": "weather-wind-001", 
+          "name": "Wind Speed Reported", 
+          "description": "Mission should have wind data for realism and tactical planning",
+          "severity": "info",
+          "type": "wind_check",
+          "maxSpeed": 6,  // knots
+          "unit": "knots",
+          "target": {}
+        },
+        {
+          "id": "weather-moon-001", 
+          "name": "Moon Phase Standard", 
+          "description": "Mission moon phase should match scenario requirements",
+          "severity": "info", 
+          "type": "property_check",
+          "property": "moonPhase",
+          "expectedValues": ["new", "full", "first-quarter"],
+          "target": {}
+        }
+      ]
+    }
+  ]
+}

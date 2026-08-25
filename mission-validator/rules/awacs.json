@@ -1,0 +1,84 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "AWACS Control rules - extracted from main configuration for modular editing",
+  "categories": [
+    {
+      "id": "awacs",
+      "name": "AWACS Control",
+      "description": "E-2C AWACS configuration and positioning requirements",
+      "rules": [
+        {
+          "id": "awacs-range-001",
+          "name": "AWACS Range Positioning", 
+          "description": "AWACS should be positioned for optimal radar coverage (not too close to action)",
+          "severity": "warning",
+          "type": "distance_check",
+          "maxDistance": 333360,
+          "unit": "meters",
+          "referenceType": "combat_zone",
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-freq-001", 
+          "name": "AWACS Frequency Standard",
+          "description": "AWACS should broadcast standard surveillance frequency 305.00 MHz",
+          "severity": "error",
+          "type": "frequency_check",
+          "expectedFrequency": 305.00,
+          "tolerance": 0.01,
+          "unit": "MHz",
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-alt-001",
+          "name": "AWACS High Altitude Standard", 
+          "description": "AWACS should fly at minimum 30,000 feet for maximum radar coverage",
+          "severity": "info",
+          "type": "altitude_check",
+          "minAltitude": 30000,
+          "unit": "feet",
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-wp-001", 
+          "name": "AWACS Sufficient Waypoints", 
+          "description": "AWACS should have minimum 2 waypoints for reasonable orbit pattern",
+          "severity": "info",
+          "type": "waypoint_count",
+          "minCount": 2,
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-orbit-001", 
+          "name": "AWACS Orbit Pattern Required", 
+          "description": "AWACS must have Orbit or Race-track action on waypoints to loiter for air superiority coverage",
+          "severity": "error",
+          "type": "awacs_orbit",
+          "target": {
+            "task": "AWACS"
+          }
+        },
+        {
+          "id": "awacs-options-001", 
+          "name": "AWACS Advanced Options Required", 
+          "description": "AWACS should have unlimited fuel, invincible, and invisible settings for operational longevity",
+          "severity": "warning",
+          "type": "advanced_options",
+          "requiredOptions": ["unlimitedFuel", "invincible", "invisible"],
+          "target": {
+            "task": "AWACS"
+          }
+        }
+      ]
+    }
+  ]
+}

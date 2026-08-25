@@ -1,0 +1,92 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "CVN Carrier operations rules - extracted for carrier mission support",
+  "categories": [
+    {
+      "id": "carrier",
+      "name": "Carrier Operations", 
+      "description": "CVN Airboss/George Washington/Stennis flight deck and frequency requirements",
+      "rules": [
+        {
+          "id": "carrier-freq-001", 
+          "name": "CVN73 George Washington Frequency", 
+          "description": "CVN73 should broadcast NAV frequency 127.500 MHz, TACAN 73X, ILS 3, Airboss: fsjboss",
+          "severity": "error",
+          "type": "carrier_config",
+          "carrierType": "CVN73",
+          "expectedConfig": {
+            "frequency": 127.500,
+            "tacan": "73X",
+            "ils": 3,
+            "airboss": true,
+            "airbossPassword": "fsjboss"
+          },
+          "target": {
+            "unitType": "CVN"
+          }
+        },
+        {
+          "id": "carrier-freq-002", 
+          "name": "CVN74 Stennis Frequency",
+          "description": "CVN74 should broadcast NAV frequency 129.00 MHz, TACAN 74X, ILS 4, Airboss: fsjboss",
+          "severity": "error",
+          "type": "carrier_config", 
+          "carrierType": "CVN74",
+          "expectedConfig": {
+            "frequency": 129.00,
+            "tacan": "74X",
+            "ils": 4,
+            "airboss": true,
+            "airbossPassword": "fsjboss"
+          },
+          "target": {
+            "unitType": "CVN"
+          }
+        },
+        {
+          "id": "carrier-dynspawn-001", 
+          "name": "Carrier Dynamic Spawn", 
+          "description": "Carrier units must have dynamic spawn enabled for hot starting capability",
+          "severity": "error",
+          "type": "property_check",
+          "property": "dynSpawnTemplate",
+          "expectedValue": true,
+          "target": {
+            "unitType": "CVN"
+          }
+        },
+        {
+          "id": "carrier-hotstart-001", 
+          "name": "Carrier Hot Start Support", 
+          "description": "Carrier units should allow hot starting for reduced cold start times",
+          "severity": "error",
+          "type": "property_check",
+          "property": "allowHotStart",
+          "expectedValue": true,
+          "target": {
+            "unitType": "CVN"
+          }
+        },
+        {
+          "id": "carrier-cv75-001", 
+          "name": "CVN75 Dwight D. Eisenhower Frequency", 
+          "description": "CVN75 should use 130.50 MHz frequency, TACAN 75X, ILS 5, Airboss: feeboss",
+          "severity": "error",
+          "type": "carrier_config",
+          "carrierType": "CVN75",
+          "expectedConfig": {
+            "frequency": 130.50,
+            "tacan": "75X",
+            "ils": 5,
+            "airboss": true,
+            "airbossPassword": "feeboss"
+          },
+          "target": {
+            "unitType": "CVN"
+          }
+        }
+      ]
+    }
+  ]
+}

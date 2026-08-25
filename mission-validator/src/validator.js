@@ -44,7 +44,54 @@ export class MissionValidator {
       throw new Error('Validation configuration file not found')
     }
 
-    return JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    const loaded = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    
+    // Merge external rule files from 'externalRules' field or 'mergedFrom'
+    let merged = JSON.parse(JSON.stringify(loaded))
+    
+    console.log('\n🔗 Loading external rules:')
+    
+    const hasExternalRules = Array.isArray(loaded.externalRules)
+    const needsEmptyCategories = !merged.categories || (Array.isArray(merged.categories) && merged.categories.length === 0)
+    
+    if (needsEmptyCategories && hasExternalRules) {
+      // Start with empty categories when no built-in rules found
+      merged.categories = []
+      
+      for (const relPath of loaded.externalRules) {
+        const fullPath = path.resolve(__dirname, '..', relPath)
+        if (fs.existsSync(fullPath)) {
+          console.log(`  ✓ ${relPath}`)
+          const extRules = JSON.parse(fs.readFileSync(fullPath, 'utf8'))
+          
+          // Merge categories from external rule files
+          for (const cat of extRules.categories || []) {
+            merged.categories.push(cat)
+          }
+        } else {
+          console.log(`  ✗ ${relPath} -> Not found`)
+        }
+      }
+    } else if (!merged.categories && Array.isArray(loaded.mergedFrom)) {
+      // Alternative: use 'mergedFrom' array for file paths
+      merged.categories = []
+      
+      for (const relPath of loaded.mergedFrom) {
+        const fullPath = path.resolve(__dirname, '..', relPath)
+        if (fs.existsSync(fullPath)) {
+          console.log(`  ✓ ${relPath}`)
+          const catRules = JSON.parse(fs.readFileSync(fullPath, 'utf8'))
+          
+          for (const cat of catRules.categories || []) {
+            merged.categories.push(cat)
+          }
+        } else {
+          console.log(`  ✗ ${relPath} -> Not found`)
+        }
+      }
+    }
+    
+    return merged
   }
 
   /**

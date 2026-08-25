@@ -1,0 +1,50 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "RED Air Forces rules - mission task verification for RED coalition",
+  "categories": [
+    {
+      "id": "red_air", 
+      "name": "RED Air Forces",
+      "description": "RED coalition aircraft requirements and configurations",
+      "rules": [
+        {
+          "id": "red-air-options-001", 
+          "name": "RED Air Advanced Options Missing", 
+          "description": "RED aircraft may lack required advanced options like unlimited fuel and invincibility",
+          "severity": "warning",
+          "type": "advanced_options",
+          "requiredOptions": ["unlimitedFuel", "invincible"],
+          "target": { 
+            "coalition": "red"
+          }
+        },
+        {
+          "id": "red-air-task-001", 
+          "name": "RED Air Task Standard",
+          "description": "RED aircraft should use standard mission task profiles",
+          "severity": "warning",
+          "type": "task_check", 
+          "allowedTasks": [
+            "STRIKE", "AWACS", "Tanker", 
+            "CAS", "SEAD", "CAP", "Escort", 
+            "SAM", "Bomber", "SHORAD"
+          ],
+          "target": {
+            "coalition": "red"
+          }
+        },
+        {
+          "id": "red-air-patrol-001", 
+          "name": "RED Air Patrol Pattern", 
+          "description": "REDA aircraft should use patrol mission pattern",
+          "severity": "info",
+          "type": "presence_check",
+          "target": {
+            "coalition": "red"
+          }
+        }
+      ]
+    }
+  ]
+}

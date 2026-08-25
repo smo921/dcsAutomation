@@ -1,0 +1,87 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "BLUE coalition unit configuration rules - frequency, COM channels and settings",
+  "categories": [
+    {
+      "id": "blue_aircraft", 
+      "name": "BLUE Aircraft Configuration",
+      "description": "BLUE coalition unit configurations for air superiority",
+      "rules": [
+        {
+          "id": "blue-client-type-001", 
+          "name": "BLUE Client Type Required", 
+          "description": "All BLUE player aircraft must be set as Client type",
+          "severity": "info",
+          "type": "property_check",
+          "property": "controlled", 
+          "expectedValue": false,
+          "target": {
+            "coalition": "blue"
+          }
+        },
+        {
+          "id": "blue-comm-001",
+          "name": "BLUE COMM Channels Set", 
+          "description": "All BLUE units must have UHF/VHF radios configured",
+          "severity": "error",
+          "type": "comm_check",
+          "requiredChannels": ["UHF", "VHF"],
+          "target": {
+            "coalition": "blue"
+          }
+        },
+        {
+          "id": "blue-cap-freq-001", 
+          "name": "CAP Frequency Standard",
+          "description": "CAP aircraft should use standard surveillance frequency 485 MHz",
+          "severity": "warning",
+          "type": "frequency_check", 
+          "expectedFrequency": 485, 
+          "tolerance": 1.0,
+          "unit": "MHz", 
+          "target": {
+            "task": "CAP"
+          }
+        },
+        {
+          "id": "blue-sead-freq-001", 
+          "name": "SEAD Frequency Standard", 
+          "description": "SEAD aircraft should use standard frequency 251 MHz",
+          "severity": "warning", 
+          "type": "frequency_check", 
+          "expectedFrequency": 251,
+          "tolerance": 1.0,
+          "unit": "MHz",
+          "target": {
+            "task": "SEAD"
+          }
+        },
+        {
+          "id": "blue-rotary-freq-001", 
+          "name": "Rotary Frequency Standard", 
+          "description": "Helicopter COM frequencies should be in rotary band 30 FM",
+          "severity": "warning",
+          "type": "frequency_check", 
+          "expectedFrequency": 30.5,
+          "tolerance": 1.0,
+          "unit": "MHz",
+          "target": {
+            "task": "CAS",
+            "aircraftType": "Rotary"
+          }
+        },
+        {
+          "id": "blue-f14-ins-001", 
+          "name": "F-14 INS Configuration Verified", 
+          "description": "F-14s should have valid INS configuration enabled on cold starts",
+          "severity": "info",
+          "type": "presence_check", 
+          "target": {
+            "unitType": "F14"
+          }
+        }
+      ]
+    }
+  ]
+}
