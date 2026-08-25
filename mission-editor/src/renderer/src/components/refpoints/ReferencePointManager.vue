@@ -121,6 +121,9 @@
                 <p v-if="refPointType === 'zone'">
                   <strong>Zones</strong> reference trigger zones defined in the DCS Mission Editor. Enter the exact zone name here to reference it.
                 </p>
+                <p v-if="refPointType === 'town'">
+                  <strong>Towns</strong> are populated places imported from the DCS terrain data or MIZ files. Use these for civilian location references or F10 map markers.
+                </p>
                 <p v-if="refPointType === 'battle_line'">
                   <strong>Battle Lines</strong> are linear reference points defined by start and end coordinates. Use these for linear deployment patterns along battle fronts.
                 </p>
@@ -177,7 +180,7 @@ const props = defineProps({
 const store = useRefpointsStore()
 
 // Categories for tabs
-const categories = ['bullseye', 'airbase', 'zone', 'battle_line']
+const categories = ['bullseye', 'airbase', 'zone', 'town', 'battle_line']
 const activeCategory = ref('bullseye')
 
 // Get category label for display
@@ -186,6 +189,7 @@ const getCategoryLabel = (type) => {
     'bullseye': 'Bullseye Reference',
     'airbase': 'Airbase Reference',
     'zone': 'Trigger Zone',
+    'town': 'Town Reference',
     'battle_line': 'Battle Line'
   }
   return labelMap[type] || type
@@ -249,6 +253,7 @@ const getRefPointsByCategory = computed(() => {
     case 'bullseye': return store.bullseyes.map(mapType)
     case 'airbase':  return store.airbases.map(mapType)
     case 'zone':     return store.zones.map(mapType)
+    case 'town':     return store.towns.map(mapType)
     case 'battle_line': return store.lines.map(mapType)
     default: return []
   }

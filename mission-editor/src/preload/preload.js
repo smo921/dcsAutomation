@@ -4,6 +4,12 @@ import { contextBridge, ipcRenderer } from 'electron'
 const eventHandlers = new Map()
 
 // Listen for events from main process
+ipcRenderer.on('menu:load-json', () => {
+  if (eventHandlers.has('load-json')) {
+    eventHandlers.get('load-json')()
+  }
+})
+
 ipcRenderer.on('menu:export-json', () => {
   if (eventHandlers.has('export-json')) {
     eventHandlers.get('export-json')()
@@ -17,9 +23,9 @@ ipcRenderer.on('menu:export-lua', () => {
 })
 
 // MIZ import event
-ipcRenderer.on('menu:miz-import', (event, refpoints) => {
+ipcRenderer.on('menu:miz-import', (event, data) => {
   if (eventHandlers.has('miz-import')) {
-    eventHandlers.get('miz-import')(refpoints)
+    eventHandlers.get('miz-import')(data)
   }
 })
 
@@ -64,6 +70,14 @@ contextBridge.exposeInMainWorld('api', {
     onLua: (callback) => {
       eventHandlers.set('export-lua', callback)
       return () => eventHandlers.delete('export-lua')
+    },
+    onLoadJson: (callback) => {
+      eventHandlers.set('load-json', callback)
+      return () => eventHandlers.delete('load-json')
+    },
+    onMizImport: (callback) => {
+      eventHandlers.set('miz-import', callback)
+      return () => eventHandlers.delete('miz-import')
     }
   },
 

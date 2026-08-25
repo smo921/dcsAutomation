@@ -334,5 +334,13 @@ export function generateRefpointsSection(refpointsStore) {
   lines.push('};');
   lines.push('');
 
+  // Towns
+  lines.push('local Towns = {');
+  (refpointsStore.towns || []).forEach(t => {
+    lines.push(`  ["${t.name}"] = true,  -- Town reference point`);
+  });
+  lines.push('};');
+  lines.push('');
+
   return lines.join('\n');
 }

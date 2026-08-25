@@ -80,18 +80,24 @@ function createWindow () {
         {
           label: 'Import from .miz...',
           click: async () => {
+            console.log('[MIZ Import] Menu item clicked')
             const result = await dialog.showOpenDialog(win, {
               title: 'Select DCS Mission File',
               filters: [{ name: 'DCS Mission', extensions: ['miz'] }],
               properties: ['openFile']
             })
+            console.log('[MIZ Import] Dialog result:', result.canceled ? 'canceled' : 'file selected')
             if (!result.canceled && result.filePaths.length) {
               try {
+                console.log('[MIZ Import] Parsing file:', result.filePaths[0])
                 // Load settings to get DCS install path
                 const settings = loadSettings()
-                const refpoints = parseMizFile(result.filePaths[0], settings.dcsInstallPath)
-                win.webContents.send('menu:miz-import', refpoints)
+                console.log('[MIZ Import] DCS path:', settings.dcsInstallPath || 'not set')
+                const data = parseMizFile(result.filePaths[0], settings.dcsInstallPath)
+                console.log('[MIZ Import] Sending data to renderer:', data)
+                win.webContents.send('menu:miz-import', data)
               } catch (e) {
+                console.error('[MIZ Import] Error:', e)
                 dialog.showErrorBox('MIZ Import Error', 'Failed to parse .miz file: ' + e.message)
               }
             }
@@ -457,8 +463,8 @@ function registerIpcHandlers () {
   // MIZ file operations
   ipcMain.handle('miz:load-refpoints', async (event, mizPath, dcsInstallPath) => {
     try {
-      const refpoints = parseMizFile(mizPath, dcsInstallPath)
-      return { success: true, refpoints }
+      const data = parseMizFile(mizPath, dcsInstallPath)
+      return { success: true, data }
     } catch (e) {
       console.error('Error parsing .miz file:', e)
       return { success: false, error: e.message }
@@ -478,8 +484,8 @@ function registerIpcHandlers () {
     }
 
     try {
-      const refpoints = parseMizFile(result.filePaths[0], dcsInstallPath)
-      return { success: true, refpoints, path: result.filePaths[0] }
+      const data = parseMizFile(result.filePaths[0], dcsInstallPath)
+      return { success: true, data, path: result.filePaths[0] }
     } catch (e) {
       console.error('Error parsing .miz file:', e)
       return { success: false, error: e.message }

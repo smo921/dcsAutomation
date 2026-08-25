@@ -6,6 +6,7 @@
         <Button @click="onNewMission" variant="primary">New Mission</Button>
         <Button @click="onLoadSample" variant="primary">Load Sample Data</Button>
         <Button @click="onLoadJson" variant="primary">Load JSON</Button>
+        <Button @click="onMizImport" variant="primary">Import MIZ</Button>
         <Button @click="onExportJson" variant="primary">Export JSON</Button>
         <Button @click="onExportLua" variant="primary">Export Lua</Button>
       </nav>
@@ -27,6 +28,12 @@
         </CollapsibleSection>
 
         <CollapsibleSection :expanded="sections.referencePoints" @update:expanded="sections.referencePoints = $event" title="Reference Points">
+          <div class="refpoints-toolbar" style="margin-bottom: var(--spacing-sm);">
+            <Button @click="showTerrainSelector = true" variant="secondary" size="sm">
+              <Icon name="map" />
+              Add from Terrain
+            </Button>
+          </div>
           <div class="section-load-hint" v-if="refpointsStore.bullseyes.length === 0 && refpointsStore.airbases.length === 0 && refpointsStore.zones.length === 0 && refpointsStore.lines.length === 0">
             <p>No reference points loaded.</p>
             <Button @click="onAddReferencePoints" variant="primary" size="sm">Add Reference Point(s)...</Button>
@@ -124,6 +131,13 @@
       </span>
       <span class="version">v0.1.0</span>
     </footer>
+
+    <!-- Terrain Point Selector Modal -->
+    <TerrainPointSelector
+      v-model="showTerrainSelector"
+      :theater="selectedTheater"
+      @add-points="onTerrainPointsAdd"
+    />
   </div>
 </template>
 
@@ -133,6 +147,7 @@ import { useRefpointsStore } from './stores/refpoints'
 import { useUnitTemplatesStore } from './stores/unitTemplates'
 import { useRouteTemplatesStore } from './stores/routeTemplates'
 import ReferencePointManager from './components/refpoints/ReferencePointManager.vue'
+import TerrainPointSelector from './components/refpoints/TerrainPointSelector.vue'
 import UnitTemplateLibrary from './components/unitTemplates/UnitTemplateLibrary.vue'
 import UnitTemplateEditor from './components/unitTemplates/UnitTemplateEditor.vue'
 import RouteTemplateLibrary from './components/routeTemplates/RouteTemplateLibrary.vue'
@@ -143,6 +158,7 @@ import ReferencePointDetailEditor from './components/refpoints/ReferencePointDet
 import CollapsibleSection from './components/CollapsibleSection.vue'
 import { useResize } from './composables/useResize'
 import { Button } from './components/ui'
+import Icon from './components/ui/Icon.vue'
 import { generateLuaFromUnits as generateLua, generateRefpointsSection } from './lua/generator'
 
 // Stores
@@ -172,6 +188,10 @@ const originalRefpointDescriptions = ref({
   zones: {},
   airbases: {}
 })
+
+// Terrain selector state
+const showTerrainSelector = ref(false)
+const selectedTheater = ref('Caucasus')
 
 // Sidebar sections state - units expanded by default
 const sections = ref({
@@ -239,22 +259,48 @@ const loadConfig = async (loadFn, successMessage) => {
 }
 
 // Menu handlers - Add Unit Template(s) and Load Sample handlers
-const onLoadJson = () => loadConfig(window.api?.config?.loadJson, 'Configuration loaded successfully')
+const onLoadJson = async () => {
+  const result = await window.api?.config?.loadJson?.()
+  if (result?.success) {
+    await loadConfig(() => Promise.resolve(result), 'Configuration loaded successfully')
+  } else {
+    setStatus(`Failed to load: ${result?.error || 'No file selected'}`, 'error')
+  }
+}
 
 const onLoadSample = () => loadConfig(window.api?.config?.loadSample, 'Sample data loaded successfully')
 
 // DCS install path from settings
 let dcsInstallPath = null
 
-// Handle MIZ import from menu
-const onMizImport = (refpoints) => {
+// Handle MIZ import from button or menu
+// Button click triggers the IPC call directly
+const onMizImport = async () => {
+  const result = await window.api?.miz?.import?.(dcsInstallPath)
+  if (result?.success) {
+    onMizImportSuccess(result.data)
+  } else if (!result?.canceled) {
+    setStatus(`Failed to import MIZ: ${result?.error || 'Unknown error'}`, 'error')
+  }
+}
+
+// Menu passes refpoints directly to this handler
+const onMizImportFromMenu = (refpoints) => {
+  console.log('[App.vue] MIZ import from menu received refpoints:', refpoints)
+  onMizImportSuccess(refpoints)
+}
+
+const onMizImportSuccess = (data) => {
   try {
     selectedUnitIndex.value = null
     unitManagerRef.value?.setSyncing(true)
 
-    // Merge imported reference points with existing data
-    if (refpoints.bullseyes) {
-      refpoints.bullseyes.forEach(imported => {
+    // data contains: bullseyes, airbases (used in mission), zones, allAirbases (from terrain), towns
+    console.log('[MIZ Import] Received data:', data)
+
+    // Merge imported bullseyes
+    if (data.bullseyes) {
+      data.bullseyes.forEach(imported => {
         const existing = refpointsStore.bullseyes.find(b => b.name === imported.name)
         if (!existing) {
           refpointsStore.bullseyes.push({ name: imported.name, x: imported.x, y: imported.y })
@@ -264,8 +310,10 @@ const onMizImport = (refpoints) => {
         }
       })
     }
-    if (refpoints.zones) {
-      refpoints.zones.forEach(imported => {
+
+    // Merge imported trigger zones
+    if (data.zones) {
+      data.zones.forEach(imported => {
         const existing = refpointsStore.zones.find(z => z.name === imported.name)
         if (!existing) {
           refpointsStore.zones.push({ name: imported.name, x: imported.x, y: imported.y, radius: imported.radius })
@@ -276,8 +324,10 @@ const onMizImport = (refpoints) => {
         }
       })
     }
-    if (refpoints.airbases) {
-      refpoints.airbases.forEach(imported => {
+
+    // Merge airbases used in the mission
+    if (data.airbases) {
+      data.airbases.forEach(imported => {
         const existing = refpointsStore.airbases.find(a => a.name === imported.name)
         if (!existing) {
           refpointsStore.airbases.push({ name: imported.name, x: imported.x, y: imported.y })
@@ -288,9 +338,70 @@ const onMizImport = (refpoints) => {
       })
     }
 
-    const airbaseCount = refpoints.airbases?.length || 0
-    const airbaseNote = airbaseCount > 0 ? `, ${airbaseCount} airbases` : ''
-    setStatus(`Imported ${refpoints.bullseyes?.length || 0} bullseyes, ${refpoints.zones?.length || 0} zones${airbaseNote} from .miz`, 'success')
+    // Store allAirbases and terrain towns for user selection (not automatically added)
+    // These are available via the refpointsStore for the UI to access
+    if (data.allAirbases) {
+      refpointsStore.setAllAirbases(data.allAirbases)
+    }
+    if (data.towns) {
+      refpointsStore.setTerrainTowns(data.towns)
+    }
+
+    // Import units from the mission
+    if (data.units && data.units.length > 0) {
+      // Convert MIZ units to the app's unit format
+      const importedUnits = data.units.map(unit => {
+        // Map MIZ unit type to app category
+        const categoryMap = {
+          'plane': 'air',
+          'helicopter': 'air',
+          'ground': 'ground',
+          'ship': 'naval'
+        }
+        const category = categoryMap[unit.type] || 'support'
+
+        return {
+          unitName: unit.name,
+          category,
+          coalition: unit.coalition?.toLowerCase() || 'blue',
+          country: unit.country || 'USA',
+          task: unit.task || 'CAS',
+          type: unit.units?.[0]?.type || '',
+          count: unit.units?.length || 1,
+          skill: unit.units?.[0]?.skill || 'Average',
+          x: unit.x || 0,
+          y: unit.y || 0,
+          heading: unit.units?.[0]?.heading || 0,
+          route: unit.route.map((pt, idx) => ({
+            type: pt.type || 'turn_point',
+            x: pt.x,
+            y: pt.y,
+            altitude: pt.alt,
+            altitudeType: pt.alt_type,
+            action: pt.action,
+            speed: pt.speed
+          }))
+        }
+      })
+
+      // Merge with existing units (avoid duplicates by name)
+      importedUnits.forEach(imported => {
+        const existing = units.value.find(u => u.unitName === imported.unitName)
+        if (!existing) {
+          units.value.push(imported)
+        }
+      })
+    }
+
+    const airbaseCount = data.airbases?.length || 0
+    const allAirbaseCount = data.allAirbases?.length || 0
+    const townCount = Object.keys(data.towns || {}).length
+    const unitCount = data.units?.length || 0
+    const airbaseNote = airbaseCount > 0 ? `, ${airbaseCount} mission airbases` : ''
+    const terrainNote = allAirbaseCount > 0 ? ` (${allAirbaseCount} total from terrain)` : ''
+    const townNote = townCount > 0 ? `, ${townCount} towns available` : ''
+    const unitNote = unitCount > 0 ? `, ${unitCount} units` : ''
+    setStatus(`Imported ${data.bullseyes?.length || 0} bullseyes, ${data.zones?.length || 0} zones${airbaseNote}${terrainNote}${townNote}${unitNote}`, 'success')
   } catch (e) {
     setStatus(`Error importing .miz: ${e.message}`, 'error')
   } finally {
@@ -773,6 +884,30 @@ const onRouteTemplateSave = (route) => {
   }
 }
 
+// Handle terrain point selection
+const onTerrainPointsAdd = (pointsToAdd) => {
+  // pointsToAdd is an array of { type, name, x, y, radius? }
+  pointsToAdd.forEach(point => {
+    if (point.type === 'airbase') {
+      const existing = refpointsStore.airbases.find(a => a.name === point.name)
+      if (!existing) {
+        refpointsStore.airbases.push({ name: point.name, x: point.x, y: point.y })
+      }
+    } else if (point.type === 'zone') {
+      const existing = refpointsStore.zones.find(z => z.name === point.name)
+      if (!existing) {
+        refpointsStore.zones.push({ name: point.name, x: point.x, y: point.y, radius: point.radius || 5000 })
+      }
+    } else if (point.type === 'town') {
+      const existing = refpointsStore.towns.find(t => t.name === point.name)
+      if (!existing) {
+        refpointsStore.towns.push({ name: point.name, x: point.x, y: point.y })
+      }
+    }
+  })
+  setStatus(`Added ${pointsToAdd.length} reference points from terrain`, 'success')
+}
+
 // Status helper
 const setStatus = (message, type = 'info') => {
   status.value = { message, type }
@@ -793,6 +928,9 @@ onMounted(() => {
     }
   })
 
+  // Add listener for menu load JSON event
+  const removeLoadJsonListener = window.api?.export?.onLoadJson?.(onLoadJson)
+
   // Add listener for menu export JSON event
   const removeJsonListener = window.api?.export?.onJson?.(onExportJson)
 
@@ -800,15 +938,14 @@ onMounted(() => {
   const removeLuaListener = window.api?.export?.onLua?.(onExportLua)
 
   // Add listener for MIZ import from menu
-  window.ipcRenderer?.on('menu:miz-import', (event, refpoints) => {
-    onMizImport(refpoints)
-  })
+  const removeMizImportListener = window.api?.export?.onMizImport?.(onMizImportFromMenu)
 
   // Clean up listeners on unmount
   onUnmounted(() => {
+    if (removeLoadJsonListener) removeLoadJsonListener()
     if (removeJsonListener) removeJsonListener()
     if (removeLuaListener) removeLuaListener()
-    window.ipcRenderer?.removeAllListeners('menu:miz-import')
+    if (removeMizImportListener) removeMizImportListener()
   })
 })
 </script>

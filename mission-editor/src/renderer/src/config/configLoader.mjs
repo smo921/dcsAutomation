@@ -16,7 +16,7 @@ export const VALID_BULLSEYES = ['Red', 'Blue', 'Neutral'];
 
 /**
  * Load reference points from full config into a store-like object
- * @param {Object} store - Object with bullseyes, airbases, zones, lines arrays
+ * @param {Object} store - Object with bullseyes, airbases, zones, towns, lines arrays
  * @param {Object} fullConfig - Full configuration object
  */
 export function loadRefpointsFromConfig(store, fullConfig) {
@@ -27,6 +27,7 @@ export function loadRefpointsFromConfig(store, fullConfig) {
   store.bullseyes.forEach(b => existingNames.add(b.name));
   store.airbases.forEach(ab => existingNames.add(ab.name));
   store.zones.forEach(z => existingNames.add(z.name));
+  store.towns.forEach(t => existingNames.add(t.name));
   store.lines.forEach(l => existingNames.add(l.name));
 
   // Load bullseyes
@@ -66,6 +67,18 @@ export function loadRefpointsFromConfig(store, fullConfig) {
     }
     existingNames.add(name);
     store.zones.push({ name, description: z.description });
+  });
+
+  // Load towns
+  (refpoints.towns || []).forEach(t => {
+    let name = t.name;
+    let counter = 1;
+    while (existingNames.has(name)) {
+      name = `${t.name}_${counter}`;
+      counter++;
+    }
+    existingNames.add(name);
+    store.towns.push({ name, description: t.description });
   });
 
   // Load lines

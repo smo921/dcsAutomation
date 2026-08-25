@@ -7,7 +7,12 @@ export const useRefpointsStore = defineStore('refpoints', {
     bullseyes: [],
     airbases: [],
     zones: [],
-    lines: []
+    towns: [], // Town reference points (imported from MIZ or added from terrain)
+    lines: [],
+    // All airbases from terrain (for user selection during import)
+    allAirbases: [],
+    // All towns from terrain (for user selection during import) - raw data
+    terrainTowns: {}
   }),
 
   actions: {
@@ -24,7 +29,20 @@ export const useRefpointsStore = defineStore('refpoints', {
       this.bullseyes = []
       this.airbases = []
       this.zones = []
+      this.towns = []
       this.lines = []
+      this.allAirbases = []
+      this.terrainTowns = {}
+    },
+
+    // Set all airbases from terrain (called during MIZ import)
+    setAllAirbases(airbases) {
+      this.allAirbases = airbases || []
+    },
+
+    // Set terrain towns raw data (called during MIZ import)
+    setTerrainTowns(towns) {
+      this.terrainTowns = towns || {}
     },
 
     // Export to config format
@@ -41,6 +59,10 @@ export const useRefpointsStore = defineStore('refpoints', {
         zones: this.zones.map(z => ({
           name: z.name,
           ...(z.description && { description: z.description })
+        })),
+        towns: this.towns.map(t => ({
+          name: t.name,
+          ...(t.description && { description: t.description })
         })),
         lines: this.lines
       }
