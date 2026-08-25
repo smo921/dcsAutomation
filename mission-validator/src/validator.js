@@ -138,7 +138,7 @@ export class MissionValidator {
       console.log('-'.repeat(40))
       
       for (const rule of category.rules) {
-        await this.validateRule(rule, missionData)
+        await this.validateRule(rule, missionData); 
       }
     }
 
@@ -786,7 +786,7 @@ export class MissionValidator {
       console.log('-'.repeat(40))
       
       for (const rule of category.rules) {
-        await this.validateRule(rule, missionData)
+        await this.validateRule(rule, missionData); 
       }
     }
 

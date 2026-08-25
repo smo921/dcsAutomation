@@ -38,6 +38,7 @@ async function main() {
   let checkListRequested = false
   let validateRequested = false
   let mizPath = null
+  let configPath = null
 
   // Always show help if no arguments provided
   if (args.length === 0) {
