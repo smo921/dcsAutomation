@@ -167,6 +167,9 @@ export class MissionValidator {
       if (target.aircraftType && !unit.units?.some(u => u.type?.includes(target.aircraftType))) {
         return false
       }
+      if (target.controlled !== undefined && unit.controlled !== target.controlled) {
+        return false
+      }
       return true
     })
   }

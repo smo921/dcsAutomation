@@ -1,10 +1,10 @@
 {
-  "$schema": "../RULES-META.json", 
+  "$schema": "../RULES-META.json",
   "version": "1.0.0",
   "description": "Unit naming pattern rules for BLUE and RED coalition forces",
   "categories": [
     {
-      "id": "naming", 
+      "id": "naming",
       "name": "Naming Conventions",
       "description": "Rules about unit names and patterns across all coalitions",
       "rules": [
@@ -16,14 +16,15 @@
           "type": "naming_pattern",
           "pattern": "^Blue-|^REDBOMBER|^RED.*|^(Scourge|Danguy|strAero|Jim|Hodges|Mumbles|H1TMAN|Drumbeej|Trigger|Carrier-|Rotary-|Cogs-N-Loyd|Spark-N-Blackclaw|Hawk-|^Abrams-|^SHORAD-|Blue-Ground-Backup-|Ground-)",
           "target": {
-            "coalition": "blue"
+            "coalition": "blue",
+            "controlled": true
           }
         },
         {
-          "id": "naming-red-force-001", 
-          "name": "RED Force Naming Standard", 
+          "id": "naming-red-force-001",
+          "name": "RED Force Naming Standard",
           "description": "All RED units must use RED-X or BOMBER suffix pattern for identification",
-          "severity": "warning", 
+          "severity": "warning",
           "type": "naming_pattern",
           "pattern": "^Red-Bomber|^Red-Escort|^Red-SEAD|^Red-SAM|^Red-Air|^Red-Ground",
           "target": {
@@ -31,14 +32,16 @@
           }
         },
         {
-          "id": "naming-test-patterns-001", 
+          "id": "naming-test-patterns-001",
           "name": "No Test Aircraft Pattern",
           "description": "Units with TEST patterns should not appear in production missions",
           "severity": "error",
           "type": "naming_pattern",
-          "pattern": "TEST|FAKE|DEBUG|TEMP|BOMBER", 
+          "pattern": "TEST|FAKE|DEBUG|TEMP|BOMBER",
           "target": {
-            "coalition": {"exclude": true} 
+            "coalition": {
+              "exclude": true
+            }
           }
         }
       ]
