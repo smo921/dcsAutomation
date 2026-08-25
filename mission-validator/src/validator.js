@@ -745,9 +745,10 @@ export class MissionValidator {
     console.log(`\n🔍 Validating mission: ${path.basename(mizPath)}`)
     console.log('=' .repeat(60))
 
+    let missionData;
     try {
       // Parse the MIZ file with error handling
-      const missionData = parseMizFile(mizPath, dcsInstallPath)
+      missionData = parseMizFile(mizPath, dcsInstallPath)
       
       // Validate if we got successful parsed data
       if (!missionData || !missionData.units) {
