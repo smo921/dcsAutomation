@@ -23,3 +23,6 @@ mission-editor/*.log
 
 # Temporary .miz extraction directory
 miz-temp/
+# Validator documentation (working drafts)
+*ISSUES.md
+*FIX-PLAN.md
