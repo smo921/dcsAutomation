@@ -312,26 +312,34 @@ export class MissionValidator {
       return { passed: true }
     }
 
+    // Defensive: handle missing/empty names - use empty string fallback
+    const unitsWithNames = units.map(unit => ({
+      ...unit,
+      name: unit.name || ''
+    }))
+
     const regex = new RegExp(rule.pattern)
     
     // Inverse mode: check that names DON'T match forbidden patterns
     if (rule.inverse === true) {
-      const matching = units.filter(unit => regex.test(unit.name))
+      const matching = unitsWithNames.filter(unit => regex.test(unit.name))
+      const namesStr = matching.map(u => u.name).join(', ')
       if (matching.length > 0) {
         return {
           passed: false,
-          details: `${matching.length} unit(s) contain forbidden pattern: ${matching.map(u => u.name).join(', ')}`,
-          suggestion: `Remove forbidden patterns from unit names: ${rule.pattern}`
+          details: `${matching.length} unit(s) contain forbidden pattern`,
+          suggestion: `Remove units with names matching: ${namesStr}${rule.pattern ? `. Pattern: ${rule.pattern}` : ''}`
         }
       }
     } else {
       // Normal mode: check that names DO match required patterns
-      const nonMatching = units.filter(unit => !regex.test(unit.name))
+      const nonMatching = unitsWithNames.filter(unit => !regex.test(unit.name))
+      const reasons = nonMatching.map(u => u.unitType ? `${u.name || '(unnamed)'} is ${u.unitType}` : `unit without type`).join(', ')
       if (nonMatching.length > 0) {
         return {
           passed: false,
-          details: `${nonMatching.length} unit(s) don't match pattern: ${nonMatching.map(u => u.name).join(', ')}`,
-          suggestion: `Rename units to match pattern: ${rule.pattern}`
+          details: `${nonMatching.length} unit(s) don't match pattern`,
+          suggestion: `Apply naming convention to all units. Examples: ${reasons}`
         }
       }
     }
@@ -672,15 +680,33 @@ export class MissionValidator {
       return { passed: true }
     }
 
-    const failing = units.filter(unit => {
-      return !rule.requiredChannels.every(ch => unit.comm?.[ch])
+    // Defensive: handle missing/empty comm objects
+    const unitsWithComm = units.map(unit => ({
+      ...unit,
+      comm: unit.comm || {}
+    }))
+
+    if (!rule.requiredChannels || rule.requiredChannels.length === 0) {
+      return { passed: true }
+    }
+
+    // Defensive: handle empty channel names
+    const safeChannelNames = rule.requiredChannels.filter(ch => ch && typeof ch === 'string')
+    
+    if (safeChannelNames.length === 0) {
+      return { passed: true }  // No valid channels to check
+    }
+
+    const failing = unitsWithComm.filter(unit => {
+      const unitChannels = Object.keys(unit.comm)
+      return safeChannelNames.some(ch => !unitChannels.includes(ch))
     })
 
     if (failing.length > 0) {
       return {
         passed: false,
         details: `${failing.length} unit(s) missing required communication channels`,
-        suggestion: `Configure channels: ${rule.requiredChannels.join(', ')}`
+        suggestion: `Configure channels: ${safeChannelNames.join(', ')}`
       }
     }
 
@@ -721,16 +747,37 @@ export class MissionValidator {
   validateAbsenceCheck(rule, missionData) {
     const units = this.filterUnits(missionData.units, rule.target)
     
-    const patterns = rule.forbiddenPatterns.map(p => new RegExp(p, 'i'))
+    if (units.length === 0 || !rule.forbiddenPatterns?.length) {
+      return { passed: true }
+    }
+
+    // Defensive: handle missing/empty names with fallback
+    const unitsWithNames = units.map(unit => ({
+      ...unit,
+      name: unit.name || ''
+    }))
     
-    const matching = units.filter(unit => {
-      return patterns.some(pattern => pattern.test(unit.name))
+    // Build pattern regex safely
+    let patterns = rule.forbiddenPatterns
+    try {
+      patterns = patterns.map(p => new RegExp(p, 'i'))
+    } catch (err) {
+      const msg = `Invalid forbidden pattern: ${rule.forbiddenPatterns.join(', ')}`
+      console.warn(`${msg} - using empty patterns`)  
+      return { passed: true }
+    }
+    
+    const matching = unitsWithNames.filter(unit => {
+      // Skip undefined patterns
+      const validPatterns = patterns.filter(p => p)
+      return validPatterns.some(pattern => pattern.test(unit.name))
     })
 
     if (matching.length > 0) {
+      const namesStr = matching.map(u => u.name || '(unnamed)').join(', ')
       return {
         passed: false,
-        details: `Found ${matching.length} forbidden unit(s): ${matching.map(u => u.name).join(', ')}`,
+        details: `Found ${matching.length} forbidden unit(s): ${namesStr}`,
         suggestion: 'Remove test/debug/temp aircraft from mission'
       }
     }
