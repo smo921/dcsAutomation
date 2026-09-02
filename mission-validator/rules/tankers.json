@@ -1,0 +1,99 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "Tanker/Refueling rules - extracted for tanker operations",
+  "categories": [
+    {
+      "id": "tanker",
+      "name": "Tanker Configuration",
+      "description": "KC-130/KC-135 refueling configurations and requirements",
+      "rules": [
+        {
+          "id": "tanker-altitude-001",
+          "name": "Tanker Altitude Standard",
+          "description": "Tankers should fly at optimized refueling altitude of 20,000 feet for efficiency and fuel management",
+          "severity": "warning",
+          "type": "altitude_check",
+          "expectedAltitude": 20000,
+          "tolerance": 1000,
+          "unit": "feet",
+          "target": {
+            "task": "Refueling"
+          }
+        },
+        {
+          "id": "tanker-speed-001",
+          "name": "Tanker Speed Standard",
+          "description": "Tankers should maintain minimum refueling speed of 250 knots to keep up with receiver aircraft",
+          "severity": "error",
+          "type": "speed_check",
+          "unit": "knots",
+          "target": {
+            "task": "Refueling"
+          },
+          "minSpeed": 250
+        },
+        {
+          "id": "tanker-late-activation-001",
+          "name": "Tanker Late Activation",
+          "description": "KC tankers should use late activation for extended loiter capability and fuel conservation",
+          "severity": "warning",
+          "type": "property_check",
+          "property": "lateActivation",
+          "expectedValue": true,
+          "target": {
+            "task": "Refueling"
+          }
+        },
+        {
+          "id": "tanker-kc130-001",
+          "name": "KC-130 Tanker Configuration",
+          "description": "Verify KC-130 tanker has proper frequency 255.00 MHz and TACAN 10X settings",
+          "severity": "error",
+          "type": "aircraft_config",
+          "aircraftType": "KC130",
+          "expectedConfig": {
+            "frequency": 255,
+            "tacan": "10X"
+          },
+          "target": {
+            "task": "Refueling",
+            "aircraftType": "KC130"
+          }
+        },
+        {
+          "id": "tanker-kc135-001",
+          "name": "KC-135 Tanker Configuration",
+          "description": "Verify KC-135 tanker has proper frequency 257.00 MHz and TACAN 11X settings",
+          "severity": "error",
+          "type": "aircraft_config",
+          "aircraftType": "KC135",
+          "expectedConfig": {
+            "frequency": 257,
+            "tacan": "11X"
+          },
+          "target": {
+            "task": "Refueling",
+            "aircraftType": "KC135"
+          }
+        },
+        {
+          "id": "tanker-kc135-mprs-001",
+          "name": "KC-135-MPRS Tanker Configuration",
+          "description": "Verify KC-135-MPRS tanker has proper frequency 259.00 MHz and TACAN 12X settings",
+          "severity": "error",
+          "type": "aircraft_config",
+          "aircraftType": "KC135-MPRS",
+          "expectedConfig": {
+            "frequency": 259,
+            "tacan": "12X"
+          },
+          "target": {
+            "task": "Refueling",
+            "aircraftType": "KC135-MPRS"
+          }
+        }
+      ]
+    }
+  ]
+}

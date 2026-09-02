@@ -23,3 +23,19 @@ mission-editor/*.log
 
 # Temporary .miz extraction directory
 miz-temp/
+# Validator documentation (working drafts)
+*ISSUES.md
+*FIX-PLAN.md
+mission-validator/TASKS.md
+
+mission-validator/KNOWN-ISSUES.md
+mission-validator/validation-results/
+
+
+
+# Pi agent memory and configuration
+.pi/
+
+# Agent documentation (auto-generated memory topics)
+docs/
+

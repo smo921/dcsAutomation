@@ -1,0 +1,52 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "Ground base configuration rules - spawn and RED force proximity",
+  "categories": [
+    {
+      "id": "base",
+      "name": "Base Configuration",
+      "description": "Ground base rules and settings for BLUE coalition bases",
+      "rules": [
+        {
+          "id": "blue-base-dynspawn-001",
+          "name": "BLUE Base Dynamic Spawn",
+          "description": "BLUE ground units should have dynamic spawn enabled for hot missions",
+          "severity": "error",
+          "type": "property_check",
+          "property": "dynSpawnTemplate",
+          "expectedValue": true,
+          "target": {
+            "coalition": "blue",
+            "type": "ground",
+            "controlled": true
+          }
+        },
+        {
+          "id": "blue-base-hotstart-001",
+          "name": "BLUE Base Hot Start Support",
+          "description": "BLUE base units should allow hot starting for quick deployment",
+          "severity": "error",
+          "type": "property_check",
+          "property": "allowHotStart",
+          "expectedValue": true,
+          "target": {
+            "coalition": "blue",
+            "type": "ground",
+            "controlled": true
+          }
+        },
+        {
+          "id": "red-proximity-001",
+          "name": "RED Force Proximity Check",
+          "description": "No RED forces within safe distance of BLUE base for tactical advantage",
+          "severity": "info",
+          "type": "proximity_check",
+          "target": {
+            "coalition": "red"
+          }
+        }
+      ]
+    }
+  ]
+}

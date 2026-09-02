@@ -1,0 +1,58 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "Mission cleanup rules - remove test aircraft and debug scripts",  
+  "categories": [
+    {
+      "id": "cleanup",
+      "name": "Mission Cleanup", 
+      "description": "Remove test aircraft, debug units, and temporary scripting from missions",
+      "rules": [
+        {
+          "id": "cleanup-test-aircraft-001", 
+          "name": "No Test Aircraft", 
+          "description": "Mission should not contain TEST/FAKE or other placeholder aircraft in flight lineup",
+          "severity": "error",
+          "type": "absence_check",
+          "forbiddenPatterns": ["/TEST.*/i", "/FAKE.*/i", "/SPAWN.*/i", "/DEBUG.*/i"],
+          "target": {
+            "unitTypes": ["plane", "helicopter", "ground"]
+          }
+        },
+        {
+          "id": "cleanup-dummy-001", 
+          "name": "No Dummy Aircraft", 
+          "description": "Mission should not contain DUMMY or SPAWN units that aren't part of actual flight plan",
+          "severity": "warning",
+          "type": "absence_check", 
+          "forbiddenPatterns": ["/DUMMY.*/i", "/SPAWN.*/i"],
+          "target": {
+            "unitTypes": ["plane", "helicopter"]
+          }
+        },
+        {
+          "id": "cleanup-h1tman-001", 
+          "name": "No H1TMAN Aircraft", 
+          "description": "Remove H1TMAN ground units if not required for mission (debug aircraft)",
+          "severity": "info",
+          "type": "absence_check", 
+          "forbiddenPatterns": ["/H1TMAN.*/i"],
+          "target": {
+            "unitTypes": ["ground"]
+          }
+        },
+        {
+          "id": "cleanup-bad-spawn-001", 
+          "name": "No Invalid Spawn Units", 
+          "description": "Mission should not contain invalid or broken spawn configurations",
+          "severity": "error", 
+          "type": "absence_check",
+          "forbiddenPatterns": ["/INVALID/i", "/BROKEN/i"],
+          "target": {
+            "unitTypes": ["plane", "helicopter", "ship", "ground"]
+          }
+        }
+      ]
+    }
+  ]
+}

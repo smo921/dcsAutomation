@@ -1,0 +1,60 @@
+{
+  "$schema": "../RULES-META.json",
+  "version": "1.0.0",
+  "description": "FARP Operations rules - dynamic spawn and support facilities check",
+  "categories": [
+    {
+      "id": "farp",
+      "name": "FARP Operations", 
+      "description": "Forward Arming Refueling Point requirements",
+      "rules": [
+        {
+          "id": "farpc-dynspawn-001",
+          "name": "FARP Dynamic Spawn Enabled",
+          "description": "FARP units must have dynamic spawn enabled for hot missions",
+          "severity": "error", 
+          "type": "property_check",
+          "property": "dynSpawnTemplate",
+          "expectedValue": true,
+          "target": {
+            "task": "FARP"
+          }
+        },
+        {
+          "id": "farpc-hotstart-001", 
+          "name": "FARP Hot Start Enabled", 
+          "description": "FARP units should support hot starting for quick mission deployment",
+          "severity": "error",
+          "type": "property_check",
+          "property": "allowHotStart", 
+          "expectedValue": true,
+          "target": {
+            "task": "FARP"
+          }
+        },
+        {
+          "id": "farpc-buildings-001", 
+          "name": "FARP Support Buildings Present",
+          "description": "FARP must have hangar, fueling facilities, etc.",
+          "severity": "info",
+          "type": "presence_check",
+          "target": {
+            "task": "FARP"
+          }
+        },
+        {
+          "id": "farpc-wind-001", 
+          "name": "FARP Wind Sock Configured",
+          "description": "FARP should have wind direction indicator",
+          "severity": "info",
+          "type": "property_check",
+          "property": "wind",
+          "expectedValue": true,
+          "target": {
+            "task": "FARP"
+          }
+        }
+      ]
+    }
+  ]
+}

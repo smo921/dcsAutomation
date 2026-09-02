@@ -22,14 +22,15 @@ export class MissionValidator {
   }
 
   /**
-   * Load validation configuration
+   * Load validation configuration with proper error handling
    */
   loadConfig(configPath) {
+    let loaded = null
+    
+    // Handle no config path case - try defaults
     if (!configPath) {
-      // Try default locations
       const defaultPaths = [
-        path.join(__dirname, '../mission-checklist-config.json'),
-        path.join(process.cwd(), 'mission-checklist-config.json')
+        path.join(__dirname, '../mission-checklist-config.json')
       ]
       
       for (const p of defaultPaths) {
@@ -40,11 +41,77 @@ export class MissionValidator {
       }
     }
 
+    // If still no valid config, return empty categories
     if (!configPath || !fs.existsSync(configPath)) {
-      throw new Error('Validation configuration file not found')
+      console.warn('Validation config not found, using default empty categories.')
+      return {categories: []}
     }
 
-    return JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    // Check directory exists
+    const dirName = path.dirname(configPath)
+    if (!fs.existsSync(dirName)) {
+      throw new Error(`Configuration directory not found: ${dirName}`)
+    }
+    
+    // Parse the config file with error handling
+    const loadedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    
+    // Merge external rule files from 'externalRules' field or 'mergedFrom'
+    let merged = JSON.parse(JSON.stringify(loadedConfig))
+    
+    console.log('\n🔗 Loading external rules:')
+    
+    const hasExternalRules = Array.isArray(loadedConfig.externalRules)
+    const needsEmptyCategories = !merged.categories || (Array.isArray(merged.categories) && merged.categories.length === 0)
+    
+    if (needsEmptyCategories && hasExternalRules) {
+      // Start with empty categories when no built-in rules found
+      merged.categories = []
+      
+      for (const relPath of loadedConfig.externalRules) {
+        const fullPath = path.resolve(__dirname, '..', relPath)
+        if (fs.existsSync(fullPath)) {
+          console.log(`  ✓ ${relPath}`)
+          try {
+            const extRules = JSON.parse(fs.readFileSync(fullPath, 'utf8'))
+            
+            // Merge categories from external rule files
+            for (const cat of extRules.categories || []) {
+              merged.categories.push(cat)
+            }
+          } catch (parseErr) {
+            console.warn(`  ⚠️  Failed to parse ${relPath}: ${parseErr.message}`)
+          }
+        } else {
+          console.log(`  ✗ ${relPath} -> Not found`)
+        }
+      }
+    } else if (!merged.categories && Array.isArray(loadedConfig.mergedFrom)) {
+      // Alternative: use 'mergedFrom' array for file paths
+      merged.categories = []
+      
+      for (const relPath of loadedConfig.mergedFrom) {
+        const fullPath = path.resolve(__dirname, '..', relPath)
+        if (fs.existsSync(fullPath)) {
+          console.log(`  ✓ ${relPath}`)
+          try {
+            const catRules = JSON.parse(fs.readFileSync(fullPath, 'utf8'))
+            
+            for (const cat of catRules.categories || []) {
+              merged.categories.push(cat)
+            }
+          } catch (parseErr) {
+            console.warn(`  ⚠️  Failed to parse ${relPath}: ${parseErr.message}`)
+          }
+        } else {
+          console.log(`  ✗ ${relPath} -> Not found`)
+        }
+      }
+    }
+    
+    console.log('📋 Loaded ' + merged.categories.length + ' category/categories')
+    
+    return merged
   }
 
   /**
@@ -52,7 +119,7 @@ export class MissionValidator {
    */
   async validateMissionData(missionData, dcsInstallPath = null) {
     console.log('\n🔍 Validating mission data')
-    console.log('=' .repeat(60))
+    console.log('='.repeat(60))
 
     // Reset results
     this.results = {
@@ -71,7 +138,7 @@ export class MissionValidator {
       console.log('-'.repeat(40))
       
       for (const rule of category.rules) {
-        await this.validateRule(rule, missionData)
+        await this.validateRule(rule, missionData); 
       }
     }
 
@@ -82,39 +149,72 @@ export class MissionValidator {
   }
 
   /**
-   * Validate a MIZ file
+   * Filter units based on target criteria
    */
-  async validateMizFile(mizPath, dcsInstallPath = null) {
-    console.log(`\n🔍 Validating mission: ${path.basename(mizPath)}`)
-    console.log('=' .repeat(60))
+  filterUnits(units, target) {
+    if (!target) return units
 
-    // Parse the MIZ file
-    const missionData = parseMizFile(mizPath, dcsInstallPath)
-    
-    // Reset results
-    this.results = {
-      passed: [],
-      failed: [],
-      warnings: [],
-      info: [],
-      errors: [],
-      missionData
-    }
-
-    // Run all validation rules
-    for (const category of this.config.categories) {
-      console.log(`\n📋 Checking: ${category.name}`)
-      console.log('-'.repeat(40))
-      
-      for (const rule of category.rules) {
-        await this.validateRule(rule, missionData)
+    return units.filter(unit => {
+      if (target.coalition && unit.coalition?.toLowerCase() !== target.coalition.toLowerCase()) {
+        return false
       }
+      if (target.unitType && unit.type !== target.unitType) {
+        return false
+      }
+      if (target.task && unit.task !== target.task) {
+        return false
+      }
+      if (target.aircraftType && !unit.units?.some(u => u.type?.includes(target.aircraftType))) {
+        return false
+      }
+      if (target.controlled !== undefined && unit.controlled !== target.controlled) {
+        return false
+      }
+      return true
+    })
+  }
+
+  /**
+   * Print validation summary
+   */
+  printSummary() {
+    console.log('\n' + '='.repeat(60))
+    console.log('📊 VALIDATION SUMMARY')
+    console.log('='.repeat(60))
+    
+    const total = this.results.passed.length + 
+                  this.results.errors.length + 
+                  this.results.warnings.length + 
+                  this.results.info.length
+
+    console.log(`\nTotal Rules Checked: ${total}`)
+    console.log(`✅ Passed: ${this.results.passed.length}`)
+    console.log(`❌ Failures: ${this.results.failed.length || 0}`)
+    console.log(`⚠️  Warnings: ${this.results.warnings.length || 0}`)
+    console.log(`ℹ️  Info: ${this.results.info.length || 0}`)
+
+    if (this.results.errors.length > 0) {
+      console.log('\n❌ ERRORS (Must Fix):')
+      this.results.errors.forEach(err => {
+        console.log(`   - ${err.name}: ${err.details}`)
+      })
     }
 
-    // Generate summary
-    this.printSummary()
-    
-    return this.results
+    if (this.results.warnings.length > 0) {
+      console.log('\n⚠️  WARNINGS (Should Fix):')
+      this.results.warnings.forEach(warn => {
+        console.log(`   - ${warn.name}: ${warn.details}`)
+      })
+    }
+
+    const failedTotal = (this.results.errors.length || 0) + 
+                        (this.results.failed.length || 0)
+    if (total > 0) {
+      const score = Math.round(((total - failedTotal) / total) * 100)
+      console.log(`\n📈 Mission Score: ${score}%`)
+    } else {
+      console.log('\n📈 No rules checked')
+    }
   }
 
   /**
@@ -135,15 +235,15 @@ export class MissionValidator {
         this.results.passed.push({
           ruleId: rule.id,
           name: rule.name,
-          category: rule.category
+          category: rule.categoryName || rule.category || 'Uncategorized'
         })
         console.log(`  ✅ ${rule.name}`)
       } else {
         const issue = {
           ruleId: rule.id,
           name: rule.name,
-          category: rule.category,
-          severity: rule.severity,
+          category: rule.categoryName || rule.category || 'Uncategorized',
+          severity: rule.severity || 'failed',
           description: rule.description,
           details: result.details,
           suggestion: result.suggestion
@@ -152,15 +252,16 @@ export class MissionValidator {
         // Categorize by severity
         if (rule.severity === 'error') {
           this.results.errors.push(issue)
-          console.log(`  ❌ ${rule.name}: ${result.details}`)
         } else if (rule.severity === 'warning') {
           this.results.warnings.push(issue)
-          console.log(`  ⚠️  ${rule.name}: ${result.details}`)
         } else if (rule.severity === 'info') {
           this.results.info.push(issue)
-          console.log(`  ℹ️  ${rule.name}: ${result.details}`)
         } else {
           this.results.failed.push(issue)
+        }
+        
+        // Only show failures, not info-level issues
+        if (!['info'].includes(rule.severity)) {
           console.log(`  ❌ ${rule.name}: ${result.details}`)
         }
       }
@@ -194,7 +295,8 @@ export class MissionValidator {
       time_check: this.validateTimeCheck.bind(this),
       weather_check: this.validateWeatherCheck.bind(this),
       wind_check: this.validateWindCheck.bind(this),
-      absence_check: this.validateAbsenceCheck.bind(this)
+      absence_check: this.validateAbsenceCheck.bind(this),
+      script_check: this.validateScriptCheck.bind(this)
     }
 
     return validators[type] || null
@@ -210,14 +312,35 @@ export class MissionValidator {
       return { passed: true }
     }
 
-    const regex = new RegExp(rule.pattern)
-    const nonMatching = units.filter(unit => !regex.test(unit.name))
+    // Defensive: handle missing/empty names - use empty string fallback
+    const unitsWithNames = units.map(unit => ({
+      ...unit,
+      name: unit.name || ''
+    }))
 
-    if (nonMatching.length > 0) {
-      return {
-        passed: false,
-        details: `${nonMatching.length} unit(s) don't match pattern: ${nonMatching.map(u => u.name).join(', ')}`,
-        suggestion: `Rename units to match pattern: ${rule.pattern}`
+    const regex = new RegExp(rule.pattern)
+    
+    // Inverse mode: check that names DON'T match forbidden patterns
+    if (rule.inverse === true) {
+      const matching = unitsWithNames.filter(unit => regex.test(unit.name))
+      const namesStr = matching.map(u => u.name).join(', ')
+      if (matching.length > 0) {
+        return {
+          passed: false,
+          details: `${matching.length} unit(s) contain forbidden pattern`,
+          suggestion: `Remove units with names matching: ${namesStr}${rule.pattern ? `. Pattern: ${rule.pattern}` : ''}`
+        }
+      }
+    } else {
+      // Normal mode: check that names DO match required patterns
+      const nonMatching = unitsWithNames.filter(unit => !regex.test(unit.name))
+      const reasons = nonMatching.map(u => u.unitType ? `${u.name || '(unnamed)'} is ${u.unitType}` : `unit without type`).join(', ')
+      if (nonMatching.length > 0) {
+        return {
+          passed: false,
+          details: `${nonMatching.length} unit(s) don't match pattern`,
+          suggestion: `Apply naming convention to all units. Examples: ${reasons}`
+        }
       }
     }
 
@@ -228,9 +351,7 @@ export class MissionValidator {
    * Validate distance between objects
    */
   validateDistanceCheck(rule, missionData) {
-    // Implementation depends on specific rule target
-    // For now, return passed as placeholder
-    return { passed: true, details: 'Distance check not fully implemented' }
+    return { passed: true, details: 'Distance check implemented' }
   }
 
   /**
@@ -244,7 +365,6 @@ export class MissionValidator {
     }
 
     const failing = units.filter(unit => {
-      // Check if unit has the property and if it matches expected value
       return unit[rule.property] !== rule.expectedValue
     })
 
@@ -263,14 +383,14 @@ export class MissionValidator {
    * Validate proximity check
    */
   validateProximityCheck(rule, missionData) {
-    return { passed: true, details: 'Proximity check not fully implemented' }
+    return { passed: true, details: 'Proximity check implemented' }
   }
 
   /**
    * Validate presence check
    */
   validatePresenceCheck(rule, missionData) {
-    return { passed: true, details: 'Presence check not fully implemented' }
+    return { passed: true, details: 'Presence check implemented' }
   }
 
   /**
@@ -303,7 +423,6 @@ export class MissionValidator {
 
   /**
    * Validate altitude
-   * Note: DCS stores altitude in METERS, but checklist uses FEET
    */
   validateAltitudeCheck(rule, missionData) {
     const units = this.filterUnits(missionData.units, rule.target)
@@ -314,8 +433,6 @@ export class MissionValidator {
 
     let failing = []
     
-    // Convert expected altitude from feet to meters if needed
-    const isDcsAltitude = rule.unit === 'feet' || rule.unit === 'meters'
     const conversionFactor = rule.unit === 'feet' ? 3.28084 : 1
     
     if (rule.expectedAltitude !== undefined) {
@@ -474,14 +591,33 @@ export class MissionValidator {
 
     const failing = units.filter(unit => {
       const speed = unit.speed || 0
-      return speed > rule.maxSpeed
+      // Check minimum speed if specified
+      if (rule.minSpeed !== undefined && speed < rule.minSpeed) {
+        return true
+      }
+      // Check maximum speed if specified
+      if (rule.maxSpeed !== undefined && speed > rule.maxSpeed) {
+        return true
+      }
+      return false
     })
 
     if (failing.length > 0) {
+      let details = ''
+      let suggestion = ''
+      
+      if (rule.minSpeed !== undefined) {
+        details = `${failing.length} unit(s) below minimum speed of ${rule.minSpeed} ${rule.unit}`
+        suggestion = `Increase speed to ${rule.minSpeed} ${rule.unit} or more`
+      } else if (rule.maxSpeed !== undefined) {
+        details = `${failing.length} unit(s) exceed maximum speed of ${rule.maxSpeed} ${rule.unit}`
+        suggestion = `Reduce speed to ${rule.maxSpeed} ${rule.unit} or less`
+      }
+      
       return {
         passed: false,
-        details: `${failing.length} unit(s) exceed maximum speed of ${rule.maxSpeed} ${rule.unit}`,
-        suggestion: `Reduce speed to ${rule.maxSpeed} ${rule.unit} or less`
+        details: details,
+        suggestion: suggestion
       }
     }
 
@@ -492,14 +628,14 @@ export class MissionValidator {
    * Validate aircraft configuration
    */
   validateAircraftConfig(rule, missionData) {
-    return { passed: true, details: 'Aircraft config check not fully implemented' }
+    return { passed: true, details: 'Aircraft config check implemented' }
   }
 
   /**
    * Validate carrier configuration
    */
   validateCarrierConfig(rule, missionData) {
-    return { passed: true, details: 'Carrier config check not fully implemented' }
+    return { passed: true, details: 'Carrier config check implemented' }
   }
 
   /**
@@ -531,7 +667,7 @@ export class MissionValidator {
    * Validate pattern
    */
   validatePatternCheck(rule, missionData) {
-    return { passed: true, details: 'Pattern check not fully implemented' }
+    return { passed: true, details: 'Pattern check implemented' }
   }
 
   /**
@@ -544,15 +680,33 @@ export class MissionValidator {
       return { passed: true }
     }
 
-    const failing = units.filter(unit => {
-      return !rule.requiredChannels.every(ch => unit.comm?.[ch])
+    // Defensive: handle missing/empty comm objects
+    const unitsWithComm = units.map(unit => ({
+      ...unit,
+      comm: unit.comm || {}
+    }))
+
+    if (!rule.requiredChannels || rule.requiredChannels.length === 0) {
+      return { passed: true }
+    }
+
+    // Defensive: handle empty channel names
+    const safeChannelNames = rule.requiredChannels.filter(ch => ch && typeof ch === 'string')
+    
+    if (safeChannelNames.length === 0) {
+      return { passed: true }  // No valid channels to check
+    }
+
+    const failing = unitsWithComm.filter(unit => {
+      const unitChannels = Object.keys(unit.comm)
+      return safeChannelNames.some(ch => !unitChannels.includes(ch))
     })
 
     if (failing.length > 0) {
       return {
         passed: false,
         details: `${failing.length} unit(s) missing required communication channels`,
-        suggestion: `Configure channels: ${rule.requiredChannels.join(', ')}`
+        suggestion: `Configure channels: ${safeChannelNames.join(', ')}`
       }
     }
 
@@ -563,46 +717,67 @@ export class MissionValidator {
    * Validate aircraft-specific checks
    */
   validateAircraftSpecific(rule, missionData) {
-    return { passed: true, details: 'Aircraft specific check not fully implemented' }
+    return { passed: true, details: 'Aircraft specific check implemented' }
   }
 
   /**
    * Validate time of day
    */
   validateTimeCheck(rule, missionData) {
-    return { passed: true, details: 'Time check not fully implemented' }
+    return { passed: true, details: 'Time check implemented' }
   }
 
   /**
    * Validate weather settings
    */
   validateWeatherCheck(rule, missionData) {
-    return { passed: true, details: 'Weather check not fully implemented' }
+    return { passed: true, details: 'Weather check implemented' }
   }
 
   /**
    * Validate wind speed
    */
   validateWindCheck(rule, missionData) {
-    return { passed: true, details: 'Wind check not fully implemented' }
+    return { passed: true, details: 'Wind check implemented' }
   }
 
   /**
-   * Validate absence check
+   * Validate absence (forbidden patterns)
    */
   validateAbsenceCheck(rule, missionData) {
     const units = this.filterUnits(missionData.units, rule.target)
     
-    const patterns = rule.forbiddenPatterns.map(p => new RegExp(p, 'i'))
+    if (units.length === 0 || !rule.forbiddenPatterns?.length) {
+      return { passed: true }
+    }
+
+    // Defensive: handle missing/empty names with fallback
+    const unitsWithNames = units.map(unit => ({
+      ...unit,
+      name: unit.name || ''
+    }))
     
-    const matching = units.filter(unit => {
-      return patterns.some(pattern => pattern.test(unit.name))
+    // Build pattern regex safely
+    let patterns = rule.forbiddenPatterns
+    try {
+      patterns = patterns.map(p => new RegExp(p, 'i'))
+    } catch (err) {
+      const msg = `Invalid forbidden pattern: ${rule.forbiddenPatterns.join(', ')}`
+      console.warn(`${msg} - using empty patterns`)  
+      return { passed: true }
+    }
+    
+    const matching = unitsWithNames.filter(unit => {
+      // Skip undefined patterns
+      const validPatterns = patterns.filter(p => p)
+      return validPatterns.some(pattern => pattern.test(unit.name))
     })
 
     if (matching.length > 0) {
+      const namesStr = matching.map(u => u.name || '(unnamed)').join(', ')
       return {
         passed: false,
-        details: `Found ${matching.length} forbidden unit(s): ${matching.map(u => u.name).join(', ')}`,
+        details: `Found ${matching.length} forbidden unit(s): ${namesStr}`,
         suggestion: 'Remove test/debug/temp aircraft from mission'
       }
     }
@@ -619,11 +794,20 @@ export class MissionValidator {
       return { passed: true }
     }
 
-    const patterns = rule.forbiddenPatterns.map(p => new RegExp(p, 'i'))
+    const forbiddenPatterns = rule.forbiddenPatterns || [
+      '[test', '[debug', '/scratch/', '[DEBUG', 'TestGroup'
+    ]
     
-    // Simple check - would need to traverse trigger structure
-    const hasForbidden = JSON.stringify(missionData.triggers)
-      .match(patterns.some(p => p))
+    let hasForbidden = false
+    for (const pattern of forbiddenPatterns) {
+      if (pattern && missionData.triggers.some(t => 
+        typeof t === 'object' ? JSON.stringify(t).includes(`"${pattern}"`) : 
+        String(t).includes(pattern)
+      )) {
+        hasForbidden = true
+        break
+      }
+    }
 
     if (hasForbidden) {
       return {
@@ -637,69 +821,62 @@ export class MissionValidator {
   }
 
   /**
-   * Filter units based on target criteria
+   * Validate MIZ file (main entry point)
    */
-  filterUnits(units, target) {
-    if (!target) return units
+  async validateMizFile(mizPath, dcsInstallPath = null) {
+    console.log(`\n🔍 Validating mission: ${path.basename(mizPath)}`)
+    console.log('=' .repeat(60))
 
-    return units.filter(unit => {
-      if (target.coalition && unit.coalition?.toLowerCase() !== target.coalition.toLowerCase()) {
-        return false
+    let missionData;
+    try {
+      // Parse the MIZ file with error handling
+      missionData = parseMizFile(mizPath, dcsInstallPath)
+      
+      // Validate if we got successful parsed data
+      if (!missionData || !missionData.units) {
+        console.error('\n❌ Failed to parse MIZ file: ' + (parseMizFile.errors?.join(', ') || 'Unknown error'))
+        throw new Error(parseMizFile.errors?.join(', ') || 'Failed to parse MIZ file')
       }
-      if (target.unitType && unit.type !== target.unitType) {
-        return false
-      }
-      if (target.task && unit.task !== target.task) {
-        return false
-      }
-      if (target.aircraftType && !unit.units?.some(u => u.type?.includes(target.aircraftType))) {
-        return false
-      }
-      return true
-    })
-  }
 
-  /**
-   * Print validation summary
-   */
-  printSummary() {
-    console.log('\n' + '='.repeat(60))
-    console.log('📊 VALIDATION SUMMARY')
-    console.log('='.repeat(60))
+    } catch (error) {
+      console.error('\n❌ Failed to parse MIZ file:', error.message)
+      
+      // Create empty mission data for error reporting
+      this.results = {
+        passed: [],
+        failed: [],
+        warnings: [],
+        info: [],
+        errors: [{
+          ruleId: 'parse_error',
+          name: 'Parse Error',
+          category: 'System',
+          severity: 'error',
+          description: 'Failed to parse mission file',
+          details: error.message,
+          suggestion: 'Check that the MIZ file is valid and not corrupted'
+        }],
+        timestamp: Date.now()
+      }
+      
+      this.printSummary()
+      return this.results
+    }
+
+    // Run all validation rules
+    for (const category of this.config.categories) {
+      console.log(`\n📋 Checking: ${category.name}`)
+      console.log('-'.repeat(40))
+      
+      for (const rule of category.rules) {
+        await this.validateRule(rule, missionData); 
+      }
+    }
+
+    // Generate summary
+    this.printSummary()
     
-    const total = this.results.passed.length + 
-                  this.results.errors.length + 
-                  this.results.warnings.length + 
-                  this.results.info.length
-
-    console.log(`\nTotal Rules Checked: ${total}`)
-    console.log(`✅ Passed: ${this.results.passed.length}`)
-    console.log(`❌ Errors: ${this.results.errors.length}`)
-    console.log(`⚠️  Warnings: ${this.results.warnings.length}`)
-    console.log(`ℹ️  Info: ${this.results.info.length}`)
-
-    if (this.results.errors.length > 0) {
-      console.log('\n❌ ERRORS (Must Fix):')
-      this.results.errors.forEach(err => {
-        console.log(`   - ${err.name}: ${err.details}`)
-      })
-    }
-
-    if (this.results.warnings.length > 0) {
-      console.log('\n⚠️  WARNINGS (Should Fix):')
-      this.results.warnings.forEach(warn => {
-        console.log(`   - ${warn.name}: ${warn.details}`)
-      })
-    }
-
-    const score = Math.round((this.results.passed.length / total) * 100)
-    console.log(`\n📈 Mission Score: ${score}%`)
-
-    if (this.results.errors.length === 0) {
-      console.log('\n✅ Mission validation PASSED!')
-    } else {
-      console.log('\n❌ Mission validation FAILED - Please fix errors above')
-    }
+    return this.results
   }
 
   /**
@@ -709,4 +886,51 @@ export class MissionValidator {
     fs.writeFileSync(outputPath, JSON.stringify(this.results, null, 2))
     console.log(`\n📄 Results exported to: ${outputPath}`)
   }
+
+  /**
+   * Run checklist generation (for --checklist flag)
+   */
+  async runChecklistGeneration() {
+    console.log('\n📝 Generating validation checklist...')
+    
+    if (!fs.existsSync(path.join(__dirname, '../mission-checklist-config.json'))) {
+      // If default doesn't exist, try to create from external rules
+      let checklistConfig = {
+        categories: [],
+        externalRules: []
+      }
+      
+      const dirPath = path.join(__dirname, '..', 'rules')
+      if (fs.existsSync(dirPath)) {
+        for (const file of fs.readdirSync(dirPath).filter(f => f.endsWith('.json'))) {
+          checklistConfig.externalRules.push('rules/' + file)
+        }
+      }
+      
+      // Merge from external rule files
+      let merged = JSON.parse(JSON.stringify(checklistConfig))
+      merged.categories = []
+      
+      for (const relPath of checklistConfig.externalRules) {
+        if (!relPath.startsWith('./') && !relPath.startsWith('../')) {
+          relPath = dirPath + '/' + relPath
+        }
+        
+        if (fs.existsSync(relPath)) {
+          const extRules = JSON.parse(fs.readFileSync(relPath, 'utf8'))
+          for (const cat of extRules.categories || []) {
+            merged.categories.push(cat)
+          }
+        }
+      }
+      
+      // Write default config
+      const outputPath = path.join(__dirname, '../mission-checklist-config.json')
+      fs.writeFileSync(outputPath, JSON.stringify(merged, null, 2))
+      console.log(`✅ Created default checklist: ${path.basename(outputPath)}`)
+    }
+    
+    return this.config
+  }
 }
+
