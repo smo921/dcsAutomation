@@ -27,4 +27,15 @@ miz-temp/
 *ISSUES.md
 *FIX-PLAN.md
 mission-validator/TASKS.md
+
 mission-validator/KNOWN-ISSUES.md
+mission-validator/validation-results/
+
+
+
+# Pi agent memory and configuration
+.pi/
+
+# Agent documentation (auto-generated memory topics)
+docs/
+

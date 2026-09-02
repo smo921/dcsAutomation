@@ -22,9 +22,9 @@
         },
         {
           "id": "blue-comm-001",
-          "name": "BLUE COMM Channels Set",
-          "description": "All BLUE units must have UHF/VHF radios configured",
-          "severity": "error",
+          "name": "BLUE COMM Channels Set (Aircraft Only)",
+          "description": "Client-controlled BLUE aircraft units must have UHF/VHF radios configured",
+          "severity": "warning",
           "type": "comm_check",
           "requiredChannels": [
             "UHF",
@@ -32,14 +32,20 @@
           ],
           "target": {
             "coalition": "blue",
-            "controlled": true,
             "type": [
               "plane",
               "helicopter"
             ]
-          }
+          },
+          "exceptions": [
+            "AI-controlled ground units don't need COMM channels",
+            "Static ground units are not valid targets for this rule"
+          ],
+          "client_only": true
+
         },
         {
+
           "id": "blue-cap-freq-001",
           "name": "CAP Frequency Standard",
           "description": "CAP aircraft should use standard surveillance frequency 485 MHz",

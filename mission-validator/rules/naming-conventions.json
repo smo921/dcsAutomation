@@ -10,15 +10,20 @@
       "rules": [
         {
           "id": "naming-blue-force-001",
-          "name": "BLUE Force Naming Standard",
-          "description": "All BLUE units must use Blue-X or named convention pattern",
+          "name": "BLUE Force Naming Standard (AI Units)",
+          "description": "All BLUE AI-controlled units must use Blue-X or named convention pattern for identification",
           "severity": "warning",
           "type": "naming_pattern",
           "pattern": "^Blue-|^REDBOMBER|^RED.*|^(Scourge|Danguy|strAero|Jim|Hodges|Mumbles|H1TMAN|Drumbeej|Trigger|Carrier-|Rotary-|Cogs-N-Loyd|Spark-N-Blackclaw|Hawk-|^Abrams-|^SHORAD-|Blue-Ground-Backup-|Ground-)",
+          "inverse": true,
           "target": {
             "coalition": "blue",
             "controlled": true
-          }
+          },
+          "exceptions": [
+            "Client-controlled aircraft use their own callsigns (naming not enforced)",
+            "Ground units may have different naming conventions"
+          ]
         },
         {
           "id": "naming-red-force-001",
